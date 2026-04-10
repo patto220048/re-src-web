@@ -1,16 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Search, FileAudio, Film, Image, Type, SlidersHorizontal } from "lucide-react";
+import { Search, FileAudio, Film, Image, Type, SlidersHorizontal, Loader2 } from "lucide-react";
+import { searchResources } from "@/app/lib/firestore";
 import styles from "./ContextSearch.module.css";
-
-const DEMO_RESULTS = [
-  { id: 1, name: "Whoosh Transition", category: "sound-effects", format: "mp3" },
-  { id: 2, name: "Boom Impact", category: "sound-effects", format: "wav" },
-  { id: 3, name: "Meme Dance", category: "video-meme", format: "mp4" },
-  { id: 4, name: "Fire Green Screen", category: "green-screen", format: "mp4" },
-  { id: 5, name: "Neon Glow Overlay", category: "image-overlay", format: "png" },
-];
 
 function getCategoryIcon(cat) {
   const size = 14;
@@ -28,25 +21,56 @@ export default function ContextSearch() {
   const [visible, setVisible] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [query, setQuery] = useState("");
+  const [results, setResults] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef(null);
   const containerRef = useRef(null);
-
-  const filtered = query
-    ? DEMO_RESULTS.filter((r) =>
-        r.name.toLowerCase().includes(query.toLowerCase())
-      )
-    : DEMO_RESULTS;
+  const debounceRef = useRef(null);
 
   const close = useCallback(() => {
     setVisible(false);
     setQuery("");
+    setResults([]);
     setActiveIndex(0);
   }, []);
 
+  // Debounced search when query changes
+  useEffect(() => {
+    if (!visible) return;
+
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+
+    if (!query.trim()) {
+      setResults([]);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(true);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const data = await searchResources(query.trim());
+        setResults(data.slice(0, 8)); // Limit to 8 results for quick search
+        setActiveIndex(0);
+      } catch (e) {
+        console.error("Search error:", e);
+        setResults([]);
+      }
+      setLoading(false);
+    }, 250); // 250ms debounce
+
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, [query, visible]);
+
   useEffect(() => {
     const handleContextMenu = (e) => {
-      // Don't override on admin pages or input elements
       if (
         window.location.pathname.startsWith("/admin") ||
         e.target.tagName === "INPUT" ||
@@ -56,8 +80,6 @@ export default function ContextSearch() {
       }
 
       e.preventDefault();
-
-      // Smart positioning: avoid overflow
       const x = Math.min(e.clientX, window.innerWidth - 340);
       const y = Math.min(e.clientY, window.innerHeight - 360);
 
@@ -91,7 +113,7 @@ export default function ContextSearch() {
     switch (e.key) {
       case "ArrowDown":
         e.preventDefault();
-        setActiveIndex((i) => Math.min(i + 1, filtered.length - 1));
+        setActiveIndex((i) => Math.min(i + 1, results.length - 1));
         break;
       case "ArrowUp":
         e.preventDefault();
@@ -99,9 +121,12 @@ export default function ContextSearch() {
         break;
       case "Enter":
         e.preventDefault();
-        if (filtered[activeIndex]) {
-          // Navigate to resource or download
-          window.location.href = `/${filtered[activeIndex].category}`;
+        if (results[activeIndex]) {
+          window.location.href = `/${results[activeIndex].category}`;
+          close();
+        } else if (query.trim()) {
+          // Fallback: go to search page
+          window.location.href = `/search?q=${encodeURIComponent(query.trim())}`;
           close();
         }
         break;
@@ -134,9 +159,16 @@ export default function ContextSearch() {
         <kbd className={styles.kbd}>ESC</kbd>
       </div>
 
-      {filtered.length > 0 && (
+      {loading && (
+        <div className={styles.empty}>
+          <Loader2 size={14} style={{ animation: "spin 1s linear infinite" }} />
+          <span style={{ marginLeft: "6px" }}>Searching...</span>
+        </div>
+      )}
+
+      {!loading && results.length > 0 && (
         <ul className={styles.results}>
-          {filtered.map((item, idx) => (
+          {results.map((item, idx) => (
             <li
               key={item.id}
               className={`${styles.resultItem} ${idx === activeIndex ? styles.active : ""}`}
@@ -150,13 +182,13 @@ export default function ContextSearch() {
                 {getCategoryIcon(item.category)}
               </span>
               <span className={styles.resultName}>{item.name}</span>
-              <span className={styles.resultFormat}>{item.format}</span>
+              <span className={styles.resultFormat}>{item.fileFormat || item.format}</span>
             </li>
           ))}
         </ul>
       )}
 
-      {query && filtered.length === 0 && (
+      {!loading && query && results.length === 0 && (
         <div className={styles.empty}>No results found</div>
       )}
 

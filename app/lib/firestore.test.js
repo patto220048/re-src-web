@@ -41,3 +41,56 @@ describe('Firestore API - Resources', () => {
     expect(result.id).toBe('test-id');
   });
 });
+
+import { addFolder } from './firestore';
+
+describe('Firestore API - Folders', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('addFolder adds a document to folders collection with null parentId if not provided', async () => {
+    const mockDocRef = { id: 'folder-test-id' };
+    addDoc.mockResolvedValue(mockDocRef);
+    collection.mockReturnValue('mocked-folder-collection');
+
+    const folderData = {
+      name: 'Test Folder',
+      categorySlug: 'test-category'
+    };
+
+    const result = await addFolder(folderData);
+
+    expect(collection).toHaveBeenCalledWith(db, 'folders');
+    expect(addDoc).toHaveBeenCalledWith('mocked-folder-collection', {
+      ...folderData,
+      parentId: null,
+      resourceCount: 0,
+      createdAt: 'mocked-timestamp'
+    });
+    expect(result.id).toBe('folder-test-id');
+  });
+
+  it('addFolder adds a document to folders collection with provided parentId', async () => {
+    const mockDocRef = { id: 'folder-test-id-2' };
+    addDoc.mockResolvedValue(mockDocRef);
+    collection.mockReturnValue('mocked-folder-collection');
+
+    const folderData = {
+      name: 'Sub Folder',
+      categorySlug: 'test-category',
+      parentId: 'parent-folder-id'
+    };
+
+    const result = await addFolder(folderData);
+
+    expect(collection).toHaveBeenCalledWith(db, 'folders');
+    expect(addDoc).toHaveBeenCalledWith('mocked-folder-collection', {
+      ...folderData,
+      parentId: 'parent-folder-id',
+      resourceCount: 0,
+      createdAt: 'mocked-timestamp'
+    });
+    expect(result.id).toBe('folder-test-id-2');
+  });
+});

@@ -4,10 +4,10 @@ import { useState } from "react";
 import { ChevronRight, Folder, FolderOpen } from "lucide-react";
 import styles from "./TreeFolder.module.css";
 
-function TreeItem({ folder, selectedPath, onSelect, level = 0 }) {
+function TreeItem({ folder, selectedFolderId, onSelect, level = 0 }) {
   const [expanded, setExpanded] = useState(false);
   const hasChildren = folder.children && folder.children.length > 0;
-  const isSelected = selectedPath === folder.path;
+  const isSelected = selectedFolderId === folder.id;
 
   return (
     <li className={styles.item}>
@@ -16,7 +16,7 @@ function TreeItem({ folder, selectedPath, onSelect, level = 0 }) {
         style={{ paddingLeft: `${12 + level * 16}px` }}
         onClick={() => {
           if (hasChildren) setExpanded(!expanded);
-          onSelect(folder.path);
+          onSelect(folder);
         }}
       >
         {hasChildren && (
@@ -40,9 +40,9 @@ function TreeItem({ folder, selectedPath, onSelect, level = 0 }) {
         <ul className={styles.children}>
           {folder.children.map((child) => (
             <TreeItem
-              key={child.path}
+              key={child.id}
               folder={child}
-              selectedPath={selectedPath}
+              selectedFolderId={selectedFolderId}
               onSelect={onSelect}
               level={level + 1}
             />
@@ -53,15 +53,15 @@ function TreeItem({ folder, selectedPath, onSelect, level = 0 }) {
   );
 }
 
-export default function TreeFolder({ folders = [], selectedPath, onSelect }) {
+export default function TreeFolder({ folders = [], selectedFolderId, onSelect }) {
   return (
     <nav className={styles.tree} aria-label="Folder navigation">
       <ul className={styles.list}>
         {folders.map((folder) => (
           <TreeItem
-            key={folder.path}
+            key={folder.id}
             folder={folder}
-            selectedPath={selectedPath}
+            selectedFolderId={selectedFolderId}
             onSelect={onSelect}
           />
         ))}

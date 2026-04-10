@@ -8,7 +8,7 @@ import styles from "./Sidebar.module.css";
 export default function Sidebar({
   categoryName,
   folders = [],
-  selectedPath,
+  selectedFolderId,
   onSelectFolder,
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -36,7 +36,7 @@ export default function Sidebar({
         <div className={styles.content}>
           {/* "All" option */}
           <button
-            className={`${styles.allBtn} ${!selectedPath ? styles.allActive : ""}`}
+            className={`${styles.allBtn} ${!selectedFolderId ? styles.allActive : ""}`}
             onClick={() => {
               onSelectFolder?.(null);
               setMobileOpen(false);
@@ -48,9 +48,9 @@ export default function Sidebar({
 
           <TreeFolder
             folders={folders}
-            selectedPath={selectedPath}
-            onSelect={(path) => {
-              onSelectFolder?.(path);
+            selectedFolderId={selectedFolderId}
+            onSelect={(folder) => {
+              onSelectFolder?.(folder);
               setMobileOpen(false);
             }}
           />

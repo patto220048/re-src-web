@@ -48,6 +48,13 @@
   gap: var(--space-4);
 }
 
+/* ---------- Sound Grid (list layout) ---------- */
+.soundGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: var(--space-3);
+}
+
 /* ---------- Empty ---------- */
 .empty {
   text-align: center;
@@ -73,6 +80,9 @@
   .grid {
     grid-template-columns: repeat(2, 1fr);
   }
+  .soundGrid {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 480px) {
@@ -80,3 +90,66 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* ---------- Skeleton Loading ---------- */
+.skeleton {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+}
+
+.skeletonCircle {
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  border-radius: 50%;
+  background: var(--bg-surface);
+  animation: shimmer 1.5s infinite ease-in-out;
+}
+
+.skeletonLines {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.skeletonLine {
+  height: 10px;
+  border-radius: 4px;
+  background: var(--bg-surface);
+  animation: shimmer 1.5s infinite ease-in-out;
+}
+
+.skeletonCard {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.skeletonThumb {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  background: var(--bg-surface);
+  animation: shimmer 1.5s infinite ease-in-out;
+}
+
+.skeletonCardBody {
+  padding: var(--space-3) var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+@keyframes shimmer {
+  0%, 100% { opacity: 0.4; }
+  50%      { opacity: 0.15; }
+}
+

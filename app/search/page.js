@@ -75,7 +75,12 @@ function SearchContent() {
       {results.length > 0 ? (
         <div className={styles.grid}>
           {results.map((r, idx) => (
-            <ResourceCard key={r.id} {...r} index={idx} />
+            <ResourceCard
+              key={r.id}
+              {...r}
+              downloadUrl={r.downloadUrl || r.fileUrl}
+              index={idx}
+            />
           ))}
         </div>
       ) : (

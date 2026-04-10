@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect, Suspense } from "react";
 import { Upload, X, FileIcon, Loader2, StopCircle, FolderOpen } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 import styles from "./page.module.css";
 import { uploadFile, generateStoragePath } from "../../../lib/storage";
-import { addResource } from "../../../lib/firestore";
+import { addResource, getFolders } from "../../../lib/firestore";
 
 const CATEGORIES = [
   { slug: "sound-effects", name: "Sound Effects" },
@@ -64,14 +65,39 @@ const getFilesFromDataTransferItems = async (items) => {
   return files;
 };
 
-export default function NewResource() {
+function NewResourceContent() {
+  const searchParams = useSearchParams();
+  const initialFolderId = searchParams.get('folderId') || null;
+
   const [files, setFiles] = useState([]);
   const [bulkCategory, setBulkCategory] = useState("");
   const [isUploading, setIsUploading] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [allFolders, setAllFolders] = useState([]);
+
   const fileInputRef = useRef(null);
   const folderInputRef = useRef(null);
   const cancelRef = useRef(false);
+
+  useEffect(() => {
+    async function loadAllFolders() {
+      // In a real app we might load per category, but for ease here we'll load all or just leave them dynamically filtered
+      // But we can just use `getFolders()` without category to get everything if we remove the category requirement, 
+      // or we can just fetch folders on demand. Let's fetch all folders across all categories
+      try {
+        const promises = CATEGORIES.map(c => getFolders(c.slug, null));
+        const results = await Promise.all(promises);
+        // This only gets root folders, which might be incomplete for deep nesting, but good for MVP
+        // Best approach is a full tree fetch or flat fetch
+        // For now, let's assume we fetch root folders 
+        const combined = results.flat();
+        setAllFolders(combined);
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    loadAllFolders();
+  }, []);
 
   const createStagingItem = (file) => {
     let path = file.customPath || file.webkitRelativePath || file.name;
@@ -97,8 +123,9 @@ export default function NewResource() {
       rawFile: file,
       id: crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(),
       name: file.name,
+      displayName: file.name.replace(/\.[^/.]+$/, ''), // Editable name (without extension)
       size: file.size,
-      folder: folderName,
+      folderId: initialFolderId,
       category: guessedCategory,
       tags: "",
       status: "pending" // pending, uploading, success, error
@@ -173,15 +200,18 @@ export default function NewResource() {
           const path = generateStoragePath(item.category, item.name);
           const downloadUrl = await uploadFile(item.rawFile, path);
   
+          const fileExtension = item.name.includes('.') ? item.name.split('.').pop() : 'UNKNOWN';
+          const finalName = item.displayName || item.name.replace(/\.[^/.]+$/, '');
           const resourceData = {
-            name: item.name,
-            slug: item.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
+            name: finalName,
+            slug: finalName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
             category: item.category,
-            folder: item.folder,
+            folderId: item.folderId || null,
             tags: item.tags ? item.tags.split(',').map(t => t.trim()).filter(Boolean) : [],
             fileName: item.name,
             fileSize: item.size,
             fileType: item.rawFile.type,
+            fileFormat: fileExtension.toUpperCase(),
             downloadUrl: downloadUrl,
             storagePath: path,
           };
@@ -277,7 +307,8 @@ export default function NewResource() {
               <thead>
                 <tr>
                   <th>File</th>
-                  <th>Folder Path</th>
+                  <th>Display Name</th>
+                  <th>Folder</th>
                   <th>Category</th>
                   <th>Tags (comma)</th>
                   <th>Status</th>
@@ -296,11 +327,25 @@ export default function NewResource() {
                     <td>
                       <input 
                         type="text" 
-                        value={file.folder} 
-                        onChange={(e) => updateFileObj(file.id, 'folder', e.target.value)}
-                        placeholder="Root"
+                        value={file.displayName} 
+                        onChange={(e) => updateFileObj(file.id, 'displayName', e.target.value)}
+                        placeholder="Enter name..."
                         disabled={isUploading || file.status === 'success'}
                       />
+                    </td>
+                    <td>
+                      <select 
+                        value={file.folderId || ""} 
+                        onChange={(e) => updateFileObj(file.id, 'folderId', e.target.value)}
+                        disabled={isUploading || file.status === 'success'}
+                      >
+                        <option value="">Root / Select Folder</option>
+                        {allFolders
+                           .filter(f => !file.category || f.categorySlug === file.category)
+                           .map((f) => (
+                          <option key={f.id} value={f.id}>{f.name}</option>
+                        ))}
+                      </select>
                     </td>
                     <td>
                       <select 
@@ -370,5 +415,13 @@ export default function NewResource() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function NewResource() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <NewResourceContent />
+    </Suspense>
   );
 }

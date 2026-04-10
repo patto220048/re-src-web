@@ -19,15 +19,15 @@ import { db } from './firebase';
    RESOURCES
    ======================================== */
 
-export async function getResources(categorySlug, folderPath = null) {
+export async function getResources(categorySlug, folderId = undefined) {
   const ref = collection(db, 'resources');
   const constraints = [where('isPublished', '==', true)];
 
   if (categorySlug) {
     constraints.push(where('category', '==', categorySlug));
   }
-  if (folderPath) {
-    constraints.push(where('folder', '==', folderPath));
+  if (folderId !== undefined) {
+    constraints.push(where('folderId', '==', folderId));
   }
 
   constraints.push(orderBy('createdAt', 'desc'));
@@ -101,20 +101,26 @@ export async function getCategoryBySlug(slug) {
    FOLDERS
    ======================================== */
 
-export async function getFolders(categorySlug) {
+export async function getFolders(categorySlug, parentId = null) {
   const ref = collection(db, 'folders');
-  const q = query(
-    ref,
+  const constraints = [
     where('categorySlug', '==', categorySlug),
+    where('parentId', '==', parentId || null),
     orderBy('order', 'asc')
-  );
+  ];
+  const q = query(ref, ...constraints);
   const snapshot = await getDocs(q);
   return snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
 }
 
 export async function addFolder(data) {
   const ref = collection(db, 'folders');
-  return addDoc(ref, { ...data, resourceCount: 0 });
+  return addDoc(ref, { 
+    ...data, 
+    parentId: data.parentId || null,
+    resourceCount: 0,
+    createdAt: serverTimestamp() 
+  });
 }
 
 export async function updateFolder(id, data) {
