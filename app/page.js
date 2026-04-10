@@ -3,7 +3,7 @@ import SearchBar from "@/app/components/ui/SearchBar";
 import { getCategories } from "@/app/lib/firestore";
 import styles from "./page.module.css";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 3600; // Revalidate every hour
 
 export default async function Home() {
   let categories = [];

@@ -20,6 +20,7 @@ import { db } from './firebase';
    ======================================== */
 
 export async function getResources(categorySlug, folderId = undefined) {
+  if (!db) return [];
   const ref = collection(db, 'resources');
   const constraints = [where('isPublished', '==', true)];
 
@@ -38,6 +39,7 @@ export async function getResources(categorySlug, folderId = undefined) {
 }
 
 export async function getResourceBySlug(categorySlug, resourceSlug) {
+  if (!db) return null;
   const ref = collection(db, 'resources');
   const q = query(
     ref,
@@ -52,6 +54,7 @@ export async function getResourceBySlug(categorySlug, resourceSlug) {
 }
 
 export async function addResource(data) {
+  if (!db) return null;
   const ref = collection(db, 'resources');
   return addDoc(ref, {
     ...data,
@@ -63,16 +66,19 @@ export async function addResource(data) {
 }
 
 export async function updateResource(id, data) {
+  if (!db) return null;
   const ref = doc(db, 'resources', id);
   return updateDoc(ref, { ...data, updatedAt: serverTimestamp() });
 }
 
 export async function deleteResource(id) {
+  if (!db) return null;
   const ref = doc(db, 'resources', id);
   return deleteDoc(ref);
 }
 
 export async function incrementDownloadCount(id) {
+  if (!db) return null;
   const ref = doc(db, 'resources', id);
   return updateDoc(ref, { downloadCount: increment(1) });
 }
@@ -82,6 +88,7 @@ export async function incrementDownloadCount(id) {
    ======================================== */
 
 export async function getCategories() {
+  if (!db) return [];
   const ref = collection(db, 'categories');
   const q = query(ref, orderBy('order', 'asc'));
   const snapshot = await getDocs(q);
@@ -89,6 +96,7 @@ export async function getCategories() {
 }
 
 export async function getCategoryBySlug(slug) {
+  if (!db) return null;
   const ref = collection(db, 'categories');
   const q = query(ref, where('slug', '==', slug), limit(1));
   const snapshot = await getDocs(q);
@@ -102,6 +110,7 @@ export async function getCategoryBySlug(slug) {
    ======================================== */
 
 export async function getFolders(categorySlug, parentId = null) {
+  if (!db) return [];
   const ref = collection(db, 'folders');
   const constraints = [
     where('categorySlug', '==', categorySlug),
@@ -114,6 +123,7 @@ export async function getFolders(categorySlug, parentId = null) {
 }
 
 export async function addFolder(data) {
+  if (!db) return null;
   const ref = collection(db, 'folders');
   return addDoc(ref, { 
     ...data, 
@@ -124,11 +134,13 @@ export async function addFolder(data) {
 }
 
 export async function updateFolder(id, data) {
+  if (!db) return null;
   const ref = doc(db, 'folders', id);
   return updateDoc(ref, data);
 }
 
 export async function deleteFolder(id) {
+  if (!db) return null;
   const ref = doc(db, 'folders', id);
   return deleteDoc(ref);
 }
@@ -138,6 +150,7 @@ export async function deleteFolder(id) {
    ======================================== */
 
 export async function getSettings() {
+  if (!db) return null;
   const ref = doc(db, 'settings', 'general');
   const snapshot = await getDoc(ref);
   if (!snapshot.exists()) return null;
@@ -145,6 +158,7 @@ export async function getSettings() {
 }
 
 export async function updateSettings(data) {
+  if (!db) return null;
   const ref = doc(db, 'settings', 'general');
   return updateDoc(ref, { ...data, updatedAt: serverTimestamp() });
 }
@@ -154,6 +168,7 @@ export async function updateSettings(data) {
    ======================================== */
 
 export async function searchResources(searchTerm) {
+  if (!db) return [];
   // Firestore doesn't support full-text search natively.
   // We fetch published resources and filter client-side for MVP.
   // For production, consider Algolia or Typesense integration.
