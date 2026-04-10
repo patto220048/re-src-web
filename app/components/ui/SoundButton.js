@@ -130,7 +130,10 @@ export default function SoundButton({
 
     setIsDownloading(true);
     try {
+      // 1. Try cross-origin download via blob (allows naming)
       const response = await fetch(downloadUrl);
+      if (!response.ok) throw new Error("Fetch failed");
+
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -146,7 +149,25 @@ export default function SoundButton({
 
       if (id) incrementDownloadCount(id).catch(() => {});
     } catch (err) {
-      console.error("Download failed:", err);
+      console.warn("Blob download failed (likely CORS). Falling back to direct link.", err);
+
+      // 2. Fallback: Open in new tab (browser handles it, usually triggers download or play)
+      try {
+        const link = document.createElement("a");
+        link.href = downloadUrl;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        const ext = fileFormat ? `.${fileFormat.replace(/^\./, "").toLowerCase()}` : "";
+        const baseName = name?.replace(/\.[^/.]+$/, "") || "download";
+        link.download = `${baseName}${ext}`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        if (id) incrementDownloadCount(id).catch(() => {});
+      } catch (fallbackErr) {
+        console.error("Direct download fallback failed:", fallbackErr);
+      }
     }
     setIsDownloading(false);
   };

@@ -26,8 +26,10 @@ export default function DownloadButton({ downloadUrl, fileUrl, fileName, fileFor
     setState("downloading");
 
     try {
-      // Cross-origin safe download via blob
+      // 1. Try cross-origin download via blob (allows naming)
       const response = await fetch(resolvedUrl);
+      if (!response.ok) throw new Error("Fetch failed");
+      
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
@@ -39,15 +41,35 @@ export default function DownloadButton({ downloadUrl, fileUrl, fileName, fileFor
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
 
-      // Increment download count client-side (Option A)
       if (resourceId) {
         incrementDownloadCount(resourceId).catch(() => {});
       }
-
       setState("done");
       setTimeout(() => setState("idle"), 2000);
-    } catch {
-      setState("idle");
+    } catch (err) {
+      console.warn("Blob download failed (likely CORS). Falling back to direct link.", err);
+      
+      // 2. Fallback: Open in new tab (browser handles it, usually triggers download or play)
+      try {
+        const link = document.createElement("a");
+        link.href = resolvedUrl;
+        link.target = "_blank";
+        link.rel = "noopener noreferrer";
+        // Note: 'download' attribute only works for same-origin or with specific headers
+        link.download = getDownloadName(); 
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        if (resourceId) {
+          incrementDownloadCount(resourceId).catch(() => {});
+        }
+        setState("done");
+        setTimeout(() => setState("idle"), 2000);
+      } catch (fallbackErr) {
+        console.error("Direct download fallback failed:", fallbackErr);
+        setState("idle");
+      }
     }
   };
 
