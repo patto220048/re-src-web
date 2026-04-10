@@ -180,24 +180,4 @@ export async function updateSettings(data) {
 /* ========================================
    SEARCH
    ======================================== */
-
-export async function searchResources(searchTerm) {
-  if (!db) return [];
-  // Firestore doesn't support full-text search natively.
-  // We fetch published resources and filter client-side for MVP.
-  // For production, consider Algolia or Typesense integration.
-  const ref = collection(db, 'resources');
-  const q = query(ref, where('isPublished', '==', true), orderBy('createdAt', 'desc'), limit(200));
-  const snapshot = await getDocs(q);
-  const all = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-
-  if (!searchTerm) return all;
-
-  const term = searchTerm.toLowerCase();
-  return all.filter(
-    (r) =>
-      r.name?.toLowerCase().includes(term) ||
-      r.description?.toLowerCase().includes(term) ||
-      r.tags?.some((t) => t.toLowerCase().includes(term))
-  );
-}
+// Note: searchResources has been moved to lib/searchUtils.js for Client-side Fuse.js caching

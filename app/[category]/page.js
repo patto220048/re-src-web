@@ -64,6 +64,30 @@ function serializeList(list) {
   });
 }
 
+import { unstable_cache } from "next/cache";
+
+const getCachedCategoryData = unstable_cache(
+  async (slug) => {
+    const fetchedFolders = await getAllFolders(slug);
+    
+    const ref = collection(db, "resources");
+    const constraints = [
+      where("category", "==", slug),
+      where("isPublished", "==", true),
+    ];
+    const q = query(ref, ...constraints);
+    const snapshot = await getDocs(q);
+    const fetchedResources = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+    return {
+      flatFolders: serializeList(fetchedFolders),
+      allResources: serializeList(fetchedResources)
+    };
+  },
+  ['category-data'],
+  { revalidate: 3600, tags: ['resources'] }
+);
+
 export default async function CategoryPage({ params }) {
   // Await params to be compatible with Next.js 15+ constraints
   const resolvedParams = await params;
@@ -74,22 +98,11 @@ export default async function CategoryPage({ params }) {
   let allResources = [];
 
   try {
-    const fetchedFolders = await getAllFolders(slug);
-    
-    // Fetch resources using the exact same constraints to avoid missing index error
-    const ref = collection(db, "resources");
-    const constraints = [
-      where("category", "==", slug),
-      where("isPublished", "==", true),
-    ];
-    const q = query(ref, ...constraints);
-    const snapshot = await getDocs(q);
-    const fetchedResources = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-
-    flatFolders = serializeList(fetchedFolders);
-    allResources = serializeList(fetchedResources);
+    const data = await getCachedCategoryData(slug);
+    flatFolders = data.flatFolders;
+    allResources = data.allResources;
   } catch (e) {
-    console.error("ISR Fetch error in category page:", e.message);
+    console.error("Fetch error in category page:", e.message);
   }
 
   const folderTree = buildFolderTree(flatFolders);

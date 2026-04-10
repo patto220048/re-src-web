@@ -4,8 +4,7 @@ import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { Search as SearchIcon } from "lucide-react";
-import { collection, query, where, orderBy, limit, getDocs } from "firebase/firestore";
-import { db } from "@/app/lib/firebase";
+import { searchResourcesClient } from "@/app/lib/searchUtils";
 import SearchBar from "@/app/components/ui/SearchBar";
 import ResourceCard from "@/app/components/ui/ResourceCard";
 import styles from "./page.module.css";
@@ -27,21 +26,8 @@ function SearchContent() {
       setLoading(true);
       setSearched(true);
       try {
-        // Fetch published resources and filter client-side (Firestore doesn't support full-text search)
-        const ref = collection(db, "resources");
-        const q = query(ref, where("isPublished", "==", true), limit(200));
-        const snapshot = await getDocs(q);
-        const all = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-
-        const term = initialQuery.toLowerCase();
-        const filtered = all.filter(
-          (r) =>
-            r.name?.toLowerCase().includes(term) ||
-            r.slug?.toLowerCase().includes(term) ||
-            r.tags?.some((t) => t.toLowerCase().includes(term)) ||
-            r.category?.toLowerCase().includes(term)
-        );
-        setResults(filtered);
+        const found = await searchResourcesClient(initialQuery.trim(), 200);
+        setResults(found);
       } catch (e) {
         console.error("Search error:", e.message);
       }

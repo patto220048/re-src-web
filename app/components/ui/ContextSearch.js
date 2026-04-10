@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Search, FileAudio, Film, Image, Type, SlidersHorizontal, Loader2 } from "lucide-react";
-import { searchResources } from "@/app/lib/firestore";
+import { searchResourcesClient, getOrBuildSearchIndex } from "@/app/lib/searchUtils";
 import styles from "./ContextSearch.module.css";
 
 function getCategoryIcon(cat) {
@@ -15,6 +15,36 @@ function getCategoryIcon(cat) {
     case "preset-lut": return <SlidersHorizontal size={size} />;
     default: return <FileAudio size={size} />;
   }
+}
+
+// Helper to highlight matched text
+function highlightText(text, matches = [], keyName) {
+  if (!text) return null;
+  const match = matches.find(m => m.key === keyName);
+  if (!match || !match.indices || match.indices.length === 0) {
+    return text; // No match on this key
+  }
+
+  const elements = [];
+  let lastIndex = 0;
+  match.indices.forEach(([start, end], idx) => {
+    if (start > lastIndex) {
+      elements.push(<span key={`text-${idx}`}>{text.substring(lastIndex, start)}</span>);
+    }
+    // fuse.js end index is inclusive
+    elements.push(
+      <mark key={`mark-${idx}`} className={styles.highlight}>
+        {text.substring(start, end + 1)}
+      </mark>
+    );
+    lastIndex = end + 1;
+  });
+
+  if (lastIndex < text.length) {
+    elements.push(<span key={`text-last`}>{text.substring(lastIndex)}</span>);
+  }
+
+  return <>{elements}</>;
 }
 
 export default function ContextSearch() {
@@ -52,15 +82,15 @@ export default function ContextSearch() {
     setLoading(true);
     debounceRef.current = setTimeout(async () => {
       try {
-        const data = await searchResources(query.trim());
-        setResults(data.slice(0, 8)); // Limit to 8 results for quick search
+        const data = await searchResourcesClient(query.trim(), 8);
+        setResults(data);
         setActiveIndex(0);
       } catch (e) {
         console.error("Search error:", e);
         setResults([]);
       }
       setLoading(false);
-    }, 250); // 250ms debounce
+    }, 50); // Mức debounce rất nhỏ vì tìm kiếm local cực nhanh
 
     return () => {
       if (debounceRef.current) {
@@ -181,7 +211,9 @@ export default function ContextSearch() {
               <span className={styles.resultIcon}>
                 {getCategoryIcon(item.category)}
               </span>
-              <span className={styles.resultName}>{item.name}</span>
+              <span className={styles.resultName}>
+                {highlightText(item.name, item.matches, "name")}
+              </span>
               <span className={styles.resultFormat}>{item.fileFormat || item.format}</span>
             </li>
           ))}

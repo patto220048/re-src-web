@@ -105,6 +105,13 @@
   color: var(--text-primary);
 }
 
+.highlight {
+  background: transparent;
+  color: var(--neon-cyan);
+  font-weight: 600;
+  padding: 0;
+}
+
 .resultFormat {
   font-family: var(--font-mono);
   font-size: 0.7rem;
