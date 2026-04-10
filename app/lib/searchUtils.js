@@ -81,14 +81,14 @@ export async function getOrBuildSearchIndex(forceRebuild = false) {
 function createFuseInstance(dataList) {
   return new Fuse(dataList, {
     keys: [
-      { name: "name", weight: 2.0 },
-      { name: "tags", weight: 1.5 },
-      { name: "category", weight: 1.0 },
-      { name: "description", weight: 0.5 },
+      { name: "name", weight: 1.0 },
+      { name: "tags", weight: 0.8 },
+      { name: "category", weight: 0.6 },
+      { name: "description", weight: 0.4 },
     ],
     includeScore: true,
     includeMatches: true, // For highlighting
-    threshold: 0.3, // 0.0 is perfect match, 1.0 is match anything
+    threshold: 0.6, // 0.0 is perfect match, 1.0 is match anything
     ignoreLocation: true,
     useExtendedSearch: true
   });

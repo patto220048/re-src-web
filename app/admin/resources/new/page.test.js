@@ -29,8 +29,19 @@ jest.mock('lucide-react', () => ({
   StopCircle: () => <svg data-testid="stop-icon" />
 }));
 
+// Mock next/navigation
+jest.mock('next/navigation', () => ({
+  useSearchParams: () => ({
+    get: jest.fn().mockReturnValue(null),
+  }),
+  useRouter: () => ({
+    push: jest.fn(),
+    back: jest.fn(),
+  }),
+}));
+
 describe('NewResource Component', () => {
-  it('renders the upload area initially empty', () => {
+  it('renders the upload area initially empty', async () => {
     render(<NewResource />);
     expect(screen.getByText('Add Resources')).toBeInTheDocument();
     expect(screen.getByText(/Drag & drop files or folders here/i)).toBeInTheDocument();
@@ -38,7 +49,7 @@ describe('NewResource Component', () => {
 
   // Since actual drop events with DataTransferItem are complex to mock in jsdom,
   // we'll focus on UI elements rendering. Let's simulate a click on the upload button.
-  it('shows file input element', () => {
+  it('shows file input element', async () => {
     const { container } = render(<NewResource />);
     const fileInput = container.querySelector('input[webkitdirectory="true"]');
     expect(fileInput).toBeInTheDocument();
