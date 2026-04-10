@@ -45,8 +45,10 @@ export default function SoundButton({
     }
   }, []);
 
-  useEffect(() => {
-    if (!downloadUrl) return;
+  // Helper to initialize audio on demand
+  const initAudio = useCallback(() => {
+    if (audioRef.current || !downloadUrl) return audioRef.current;
+    
     const audio = new Audio();
     audio.preload = "metadata";
     audio.src = downloadUrl;
@@ -66,26 +68,33 @@ export default function SoundButton({
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     });
     audioRef.current = audio;
-
-    return () => {
-      audio.pause();
-      mediaManager.stop(audio);
-      audio.src = "";
-      audioRef.current = null;
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    };
+    return audio;
   }, [downloadUrl]);
 
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      const audio = audioRef.current;
+      if (audio) {
+        audio.pause();
+        mediaManager.stop(audio);
+        audio.src = "";
+        audioRef.current = null;
+      }
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
+
   const handleMouseEnter = useCallback(() => {
-    const audio = audioRef.current;
+    const audio = initAudio();
     if (audio && audio.readyState < 2 && audio.paused) {
       audio.preload = "auto";
       audio.load();
     }
-  }, []);
+  }, [initAudio]);
 
   const togglePlay = useCallback(() => {
-    const audio = audioRef.current;
+    const audio = initAudio();
     if (!audio || !downloadUrl) return;
 
     if (isPlaying) {
@@ -97,6 +106,7 @@ export default function SoundButton({
       if (audio.ended) audio.currentTime = 0;
       mediaManager.play(audio, () => {
         setIsPlaying(false);
+        setCurrentTime(0); // Sync state when another media overrides
         if (rafRef.current) cancelAnimationFrame(rafRef.current);
       });
       const playPromise = audio.play();
@@ -112,15 +122,25 @@ export default function SoundButton({
         });
       }
     }
-  }, [downloadUrl, isPlaying, updateTime]);
+  }, [downloadUrl, isPlaying, updateTime, initAudio]);
 
   // Seek via progress bar click
   const handleProgressClick = useCallback((e) => {
+    e.stopPropagation();
     const audio = audioRef.current;
-    if (!audio || !duration) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    audio.currentTime = ratio * duration;
+    if (!audio) return;
+    
+    // Ensure we use the actual native duration to avoid stale closure variables
+    const audioDuration = audio.duration || duration;
+    if (!audioDuration) return;
+
+    // e.nativeEvent.offsetX is relative to the element that triggered the event
+    // Since child elements have pointer-events: none, this is always relative to progressWrapper
+    const offsetX = e.nativeEvent.offsetX;
+    const totalWidth = e.currentTarget.offsetWidth;
+    const ratio = Math.max(0, Math.min(1, offsetX / totalWidth));
+    
+    audio.currentTime = ratio * audioDuration;
     setCurrentTime(audio.currentTime);
   }, [duration]);
 
@@ -201,38 +221,36 @@ export default function SoundButton({
         )}
       </button>
 
-      {/* Sound wave bars */}
-      {isPlaying && (
-        <div className={styles.waveBars}>
-          <span className={styles.bar} />
-          <span className={styles.bar} />
-          <span className={styles.bar} />
-          <span className={styles.bar} />
-        </div>
-      )}
+      {/* Sound wave bars - Always rendered, CSS handles width/opacity animation */}
+      <div className={styles.waveBars}>
+        <span className={styles.bar} />
+        <span className={styles.bar} />
+        <span className={styles.bar} />
+        <span className={styles.bar} />
+      </div>
 
       {/* Info */}
       <div className={styles.info}>
         <span className={styles.name} title={name}>{displayName}</span>
-        <span className={styles.meta}>
+        <div className={styles.meta}>
           {fileFormat && <span className={styles.format}>{fileFormat}</span>}
           {sizeStr && <span className={styles.size}>{sizeStr}</span>}
           <span className={styles.dlCount}>
             <Download size={10} />
             {(downloadCount || 0).toLocaleString()}
           </span>
-          {/* Time display — only on active item */}
-          {(isPlaying || currentTime > 0) && duration > 0 && (
-            <span className={styles.time}>
-              {formatTime(currentTime)} / {formatTime(duration)}
-            </span>
-          )}
-        </span>
+          {/* Time display container handles jumpy layout */}
+          <span className={`${styles.time} ${(isPlaying || currentTime > 0) ? styles.timeVisible : ""}`}>
+            {duration > 0 ? `${formatTime(currentTime)} / ${formatTime(duration)}` : ""}
+          </span>
+        </div>
 
         {/* Progress bar — only on active item */}
         {(isPlaying || currentTime > 0) && duration > 0 && (
-          <div className={styles.progressTrack} onClick={handleProgressClick}>
-            <div className={styles.progressFill} style={{ width: `${progress}%` }} />
+          <div className={styles.progressWrapper} onClick={handleProgressClick}>
+            <div className={styles.progressTrack}>
+              <div className={styles.progressFill} style={{ width: `${progress}%` }} />
+            </div>
           </div>
         )}
       </div>

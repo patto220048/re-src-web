@@ -44,6 +44,24 @@ export default function ResourceCard({
     }
   }, []);
 
+  const handleProgressClick = useCallback((e) => {
+    e.stopPropagation();
+    const video = videoRef.current;
+    if (!video) return;
+    
+    // Ensure we use the actual native duration
+    const videoDuration = video.duration;
+    if (!videoDuration) return;
+
+    // Utilize native offset
+    const offsetX = e.nativeEvent.offsetX;
+    const totalWidth = e.currentTarget.offsetWidth;
+    const ratio = Math.max(0, Math.min(1, offsetX / totalWidth));
+    
+    video.currentTime = ratio * videoDuration;
+    setVideoProgress(ratio * 100);
+  }, []);
+
   // Cleanup rAF on unmount
   useEffect(() => {
     return () => {
@@ -54,7 +72,9 @@ export default function ResourceCard({
   const handleMouseEnter = () => {
     setIsHovering(true);
     if (cardType === "video" && videoRef.current) {
-      mediaManager.play(videoRef.current, () => {});
+      mediaManager.play(videoRef.current, () => {
+        setVideoProgress(0);
+      });
       const p = videoRef.current.play();
       if (p !== undefined) {
         p.then(() => {
@@ -121,11 +141,13 @@ export default function ResourceCard({
             )}
             {/* Video Progress Bar */}
             {isHovering && (
-              <div className={styles.videoProgressTrack}>
-                <div
-                  className={styles.videoProgressFill}
-                  style={{ width: `${videoProgress}%` }}
-                />
+              <div className={styles.videoProgressWrapper} onClick={handleProgressClick}>
+                <div className={styles.videoProgressTrack}>
+                  <div
+                    className={styles.videoProgressFill}
+                    style={{ width: `${videoProgress}%` }}
+                  />
+                </div>
               </div>
             )}
             <div className={styles.formatBadge}>{fileFormat}</div>

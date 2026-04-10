@@ -17,6 +17,7 @@ export const mediaManager = {
     if (activeMedia && activeMedia !== element) {
       try {
         activeMedia.pause();
+        activeMedia.currentTime = 0;
       } catch (_) {
         // ignore if already disposed
       }

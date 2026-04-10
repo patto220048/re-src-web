@@ -7,6 +7,12 @@
     ],
     "method": ["GET", "HEAD"],
     "maxAgeSeconds": 3600,
-    "responseHeader": ["Content-Type", "Content-Disposition"]
+    "responseHeader": [
+      "Content-Type", 
+      "Content-Disposition", 
+      "Accept-Ranges", 
+      "Content-Length", 
+      "Content-Range"
+    ]
   }
 ]
