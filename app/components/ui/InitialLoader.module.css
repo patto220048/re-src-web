@@ -37,9 +37,8 @@
 }
 
 .cube {
-  background-color: rgb(var(--neon-cyan-rgb));
-  box-shadow: 0 0 10px rgba(var(--neon-cyan-rgb), 0.5), 
-              0 0 20px rgba(var(--neon-cyan-rgb), 0.3);
+  background-color: var(--text-primary);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
   animation: loader_pulse 1.2s infinite ease-in-out;
 }
 
@@ -56,15 +55,14 @@
 
 @keyframes loader_pulse {
   0%, 100% {
-    opacity: 0.3;
+    opacity: 0.2;
     transform: scale(0.8);
-    box-shadow: 0 0 5px rgba(var(--neon-cyan-rgb), 0.2);
+    box-shadow: 0 0 0px rgba(255, 255, 255, 0);
   }
   50% {
     opacity: 1;
     transform: scale(1.1);
-    box-shadow: 0 0 20px rgba(var(--neon-cyan-rgb), 0.8),
-                0 0 40px rgba(var(--neon-cyan-rgb), 0.4);
+    box-shadow: 0 0 15px rgba(255, 255, 255, 0.5);
   }
 }
 
