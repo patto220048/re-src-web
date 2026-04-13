@@ -36,7 +36,7 @@
 .grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: var(--space-4);
+  gap: var(--space-6);
 }
 
 .empty {
@@ -69,12 +69,22 @@
   color: var(--neon-cyan);
 }
 
-@media (max-width: 1024px) {
-  .grid { grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 1200px) {
+  .grid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
 }
+
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
+  }
+}
+
 @media (max-width: 768px) {
-  .grid { grid-template-columns: repeat(2, 1fr); }
-}
-@media (max-width: 480px) {
-  .grid { grid-template-columns: 1fr; }
+  .grid {
+    grid-template-columns: 1fr;
+  }
 }

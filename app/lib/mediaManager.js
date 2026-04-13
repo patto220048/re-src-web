@@ -1,10 +1,21 @@
 /**
  * Global Media Manager — ensures only one audio/video plays at a time.
- * When a new media starts, all others automatically stop.
+ * Also manages global volume settings across the site.
  */
 
 let activeMedia = null;
 let activeCallback = null;
+
+// Initialize global volume from localStorage or default to 0.5
+let globalVolume = 0.5;
+let globalMuted = false;
+
+if (typeof window !== 'undefined') {
+  const savedVol = localStorage.getItem('editerlor_volume');
+  if (savedVol !== null) globalVolume = parseFloat(savedVol);
+  const savedMuted = localStorage.getItem('editerlor_muted');
+  if (savedMuted !== null) globalMuted = savedMuted === 'true';
+}
 
 export const mediaManager = {
   /**
@@ -13,7 +24,7 @@ export const mediaManager = {
    * @param {Function} onStopped - callback when this media is stopped by another
    */
   play(element, onStopped) {
-    // Stop currently active media
+    // 1. Stop currently active media
     if (activeMedia && activeMedia !== element) {
       try {
         activeMedia.pause();
@@ -24,8 +35,22 @@ export const mediaManager = {
       if (activeCallback) activeCallback();
     }
 
+    // 2. Set as active
     activeMedia = element;
     activeCallback = onStopped;
+
+    // 3. Apply global volume settings
+    this.applySettings(element);
+  },
+
+  /**
+   * Apply current global volume/muted settings to an element
+   * @param {HTMLAudioElement|HTMLVideoElement} element 
+   */
+  applySettings(element) {
+    if (!element) return;
+    element.volume = globalVolume;
+    element.muted = globalMuted;
   },
 
   /**
@@ -47,4 +72,28 @@ export const mediaManager = {
   isActive(element) {
     return activeMedia === element;
   },
+
+  /**
+   * Global Volume Controls
+   */
+  getVolume() { return globalVolume; },
+  setVolume(val) {
+    globalVolume = Math.max(0, Math.min(1, val));
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('editerlor_volume', globalVolume);
+    }
+    // Update active media instantly
+    if (activeMedia) activeMedia.volume = globalVolume;
+  },
+
+  getMuted() { return globalMuted; },
+  setMuted(val) {
+    globalMuted = val;
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('editerlor_muted', globalMuted);
+    }
+    // Update active media instantly
+    if (activeMedia) activeMedia.muted = globalMuted;
+  }
 };
+

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import Image from "next/image";
-import { Download as DownloadCount, Play, Eye } from "lucide-react";
+import { Download as DownloadCount, Play, Eye, Volume2, VolumeX } from "lucide-react";
 import DownloadButton from "./DownloadButton";
 import { mediaManager } from "@/app/lib/mediaManager";
 import styles from "./ResourceCard.module.css";
@@ -32,6 +32,8 @@ export default function ResourceCard({
   const resolvedUrl = downloadUrl || fileUrl;
   const [isHovering, setIsHovering] = useState(false);
   const [videoProgress, setVideoProgress] = useState(0);
+  const [isMuted, setIsMuted] = useState(mediaManager.getMuted());
+  const [volume, setVolume] = useState(mediaManager.getVolume());
   const videoRef = useRef(null);
   const rafRef = useRef(null);
   const displayName = (name || fileName || "Untitled").replace(/\.[^/.]+$/, "");
@@ -72,6 +74,10 @@ export default function ResourceCard({
 
   const handleMouseEnter = () => {
     setIsHovering(true);
+    // Sync with global volume settings
+    setIsMuted(mediaManager.getMuted());
+    setVolume(mediaManager.getVolume());
+
     if (cardType === "video" && videoRef.current) {
       mediaManager.play(videoRef.current, () => {
         setVideoProgress(0);
@@ -110,7 +116,6 @@ export default function ResourceCard({
                     ref={videoRef}
                     src={resolvedUrl}
                     className={styles.videoPreview}
-                    muted
                     loop
                     playsInline
                     preload="none"
@@ -124,7 +129,6 @@ export default function ResourceCard({
                 ref={videoRef}
                 src={resolvedUrl}
                 className={styles.videoPreview}
-                muted
                 loop
                 playsInline
                 preload="none"
@@ -149,6 +153,40 @@ export default function ResourceCard({
                     style={{ width: `${videoProgress}%` }}
                   />
                 </div>
+              </div>
+            )}
+
+            {/* Volume Control */}
+            {isHovering && cardType === "video" && (
+              <div className={styles.volumeControl} onClick={(e) => e.stopPropagation()}>
+                <button 
+                  className={styles.volumeBtn}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const newMuted = !isMuted;
+                    setIsMuted(newMuted);
+                    mediaManager.setMuted(newMuted);
+                  }}
+                >
+                  {isMuted ? <VolumeX size={14} /> : <Volume2 size={14} />}
+                </button>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value={isMuted ? 0 : volume}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value);
+                    setVolume(val);
+                    if (val > 0) {
+                      setIsMuted(false);
+                      mediaManager.setMuted(false);
+                    }
+                    mediaManager.setVolume(val);
+                  }}
+                  className={styles.volumeSlider}
+                />
               </div>
             )}
             <div className={styles.formatBadge}>{fileFormat}</div>
