@@ -23,9 +23,12 @@ export default function AdminResources() {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // Navigation State
   const [selectedFolderId, setSelectedFolderId] = useState(null);
   const [viewMode, setViewMode] = useState('grid'); // 'grid' or 'list'
+  
+  // Renaming State
+  const [renamingResourceId, setRenamingResourceId] = useState(null);
+  const [renamingName, setRenamingName] = useState("");
   
   // Drag and Drop State
   const [isDragging, setIsDragging] = useState(false);
@@ -164,6 +167,41 @@ export default function AdminResources() {
     }
   };
 
+  const handleRenameFolder = async (folderId, newName) => {
+    try {
+      await updateFolder(folderId, { name: newName });
+      setFolders(prev => prev.map(f => f.id === folderId ? { ...f, name: newName } : f));
+      await revalidateResourceData();
+    } catch (e) {
+      console.error("Rename failed:", e);
+      alert("Đổi tên thư mục thất bại.");
+    }
+  };
+
+  const handleMoveFolder = async (folderId, targetParentId, targetCategorySlug) => {
+    try {
+      // Validate: cannot move into itself
+      if (folderId === targetParentId) return;
+
+      // Update Firestore
+      await updateFolder(folderId, { 
+        parentId: targetParentId, 
+        categorySlug: targetCategorySlug 
+      });
+
+      // Update local state
+      setFolders(prev => prev.map(f => 
+        f.id === folderId ? { ...f, parentId: targetParentId, categorySlug: targetCategorySlug } : f
+      ));
+
+      // Revalidate frontend
+      await revalidateResourceData();
+    } catch (e) {
+      console.error("Move folder failed:", e);
+      alert("Không thể di chuyển thư mục.");
+    }
+  };
+
   const handleDeleteFolder = async (folder) => {
     // 1. Double check with user
     const hasChildren = folders.some(f => f.parentId === folder.id);
@@ -207,6 +245,61 @@ export default function AdminResources() {
   };
 
 
+  const getFolderPath = useCallback((folderId, categorySlug) => {
+    const path = [];
+    const category = categories.find(c => c.slug === categorySlug);
+    if (category) {
+      path.push({ id: `cat-${categorySlug}`, name: category.name });
+    }
+
+    if (!folderId) return path;
+
+    const folderChain = [];
+    let currentId = folderId;
+    while (currentId) {
+      const folder = folders.find(f => f.id === currentId);
+      if (!folder) break;
+      folderChain.unshift({ id: folder.id, name: folder.name });
+      currentId = folder.parentId;
+    }
+    
+    return [...path, ...folderChain];
+  }, [folders, categories]);
+
+  const currentPath = useMemo(() => {
+    if (!selectedFolderId) return [{ id: null, name: 'Tất cả tài nguyên' }];
+    
+    if (selectedFolderId.startsWith('cat-')) {
+      const slug = selectedFolderId.replace('cat-', '');
+      const cat = categories.find(c => c.slug === slug);
+      return [{ id: selectedFolderId, name: cat?.name || slug }];
+    }
+    
+    const folder = folders.find(f => f.id === selectedFolderId);
+    if (!folder) return [{ id: null, name: 'Tất cả tài nguyên' }];
+    
+    return getFolderPath(selectedFolderId, folder.categorySlug);
+  }, [selectedFolderId, categories, folders, getFolderPath]);
+
+  const handleRenameResource = async (id, originalName) => {
+    const newName = renamingName.trim();
+    if (!newName || newName === originalName) {
+      setRenamingResourceId(null);
+      return;
+    }
+
+    try {
+      await updateResource(id, { name: newName });
+      setResources(prev => prev.map(r => r.id === id ? { ...r, name: newName } : r));
+      setRenamingResourceId(null);
+      await revalidateResourceData();
+    } catch (e) {
+      console.error("Rename failed:", e);
+      alert("Đổi tên thất bại.");
+      setRenamingResourceId(null);
+    }
+  };
+
   async function handleDelete(id, displayName) {
     if (!confirm(`Xóa "${displayName}"? Thao tác này không thể hoàn tác.`)) return;
     try {
@@ -248,6 +341,8 @@ export default function AdminResources() {
           selectedId={selectedFolderId}
           onSelect={setSelectedFolderId}
           onAddFolder={handleAddFolder}
+          onRenameFolder={handleRenameFolder}
+          onMoveFolder={handleMoveFolder}
           onDropResource={handleDropResource}
           onDeleteFolder={handleDeleteFolder}
         />
@@ -310,6 +405,20 @@ export default function AdminResources() {
               </button>
             </div>
           </div>
+          
+          <div className={styles.breadcrumbArea}>
+            {currentPath.map((item, i) => (
+              <span key={item.id || 'root'} className={styles.globalBreadcrumbItem}>
+                <button 
+                  className={styles.breadcrumbLink}
+                  onClick={() => setSelectedFolderId(item.id)}
+                >
+                  {item.name}
+                </button>
+                {i < currentPath.length - 1 && <span className={styles.breadcrumbDivider}>/</span>}
+              </span>
+            ))}
+          </div>
         </div>
 
         <div className={styles.scrollArea}>
@@ -358,11 +467,44 @@ export default function AdminResources() {
                         </div>
                       </div>
                       <div className={styles.cardInfo}>
-                        <h3 className={styles.cardTitle}>{r.name || r.fileName || "Untitled"}</h3>
+                        {renamingResourceId === r.id ? (
+                          <input
+                            className={styles.renameInput}
+                            value={renamingName}
+                            onChange={(e) => setRenamingName(e.target.value)}
+                            onBlur={() => handleRenameResource(r.id, r.name)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleRenameResource(r.id, r.name);
+                              if (e.key === 'Escape') setRenamingResourceId(null);
+                            }}
+                            autoFocus
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        ) : (
+                          <h3 
+                            className={styles.cardTitle}
+                            onDoubleClick={(e) => {
+                              e.stopPropagation();
+                              setRenamingResourceId(r.id);
+                              setRenamingName(r.name || r.fileName || "");
+                            }}
+                          >
+                            {r.name || r.fileName || "Untitled"}
+                          </h3>
+                        )}
                         <div className={styles.cardMeta}>
                           <span className={styles.formatBadge}>{r.fileFormat}</span>
-                          <span>{r.category}</span>
+                          <span className={styles.categoryName}>{r.category}</span>
                         </div>
+
+                        {r.tags && r.tags.length > 0 && (
+                          <div className={styles.cardTags}>
+                            {r.tags.slice(0, 3).map((tag, i) => (
+                              <span key={i} className={styles.tagBadge}>{tag}</span>
+                            ))}
+                            {r.tags.length > 3 && <span className={styles.tagMore}>+{r.tags.length - 3}</span>}
+                          </div>
+                        )}
                       </div>
                     </>
                   ) : (
@@ -372,8 +514,42 @@ export default function AdminResources() {
                           <LayoutGrid size={20} strokeWidth={1.5} />
                         </div>
                         <div className={styles.listNameInfo}>
-                          <span className={styles.listTitle}>{r.name || r.fileName || "Untitled"}</span>
-                          <span className={styles.listCategory}>{r.category} • {r.fileFormat}</span>
+                          {renamingResourceId === r.id ? (
+                            <input
+                              className={styles.renameInput}
+                              value={renamingName}
+                              onChange={(e) => setRenamingName(e.target.value)}
+                              onBlur={() => handleRenameResource(r.id, r.name)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleRenameResource(r.id, r.name);
+                                if (e.key === 'Escape') setRenamingResourceId(null);
+                              }}
+                              autoFocus
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          ) : (
+                            <span 
+                              className={styles.listTitle}
+                              onDoubleClick={(e) => {
+                                e.stopPropagation();
+                                setRenamingResourceId(r.id);
+                                setRenamingName(r.name || r.fileName || "");
+                              }}
+                            >
+                              {r.name || r.fileName || "Untitled"}
+                            </span>
+                          )}
+                          <div className={styles.listMetaRow}>
+                            <span className={styles.listCategory}>{r.fileFormat}</span>
+                            {r.tags && r.tags.length > 0 && (
+                              <div className={styles.listTags}>
+                                {r.tags.slice(0, 2).map((tag, i) => (
+                                  <span key={i} className={styles.listTagBadge}>{tag}</span>
+                                ))}
+                                {r.tags.length > 2 && <span className={styles.listTagMore}>...</span>}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </div>
                       <div className={styles.listColDate}>

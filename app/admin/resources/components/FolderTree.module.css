@@ -94,9 +94,11 @@
   border-right: 2px solid var(--text-primary);
 }
 
-.item.dragOver {
-  background: var(--bg-surface);
-  border: 1px dashed var(--text-primary);
+.item.dragOver,
+.categoryHeader.dragOver {
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: inset 0 0 0 1px var(--text-primary);
+  border-radius: 2px;
 }
 
 .toggleBtn {
@@ -123,6 +125,20 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  user-select: none;
+}
+
+.renameInput {
+  flex: 1;
+  background: var(--bg-primary);
+  border: 1px solid var(--text-primary);
+  color: var(--text-primary);
+  font-size: 0.8125rem;
+  padding: 0 4px;
+  height: 20px;
+  outline: none;
+  font-family: inherit;
+  width: 100%;
 }
 
 .itemActions {

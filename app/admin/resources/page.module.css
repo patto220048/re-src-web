@@ -194,13 +194,28 @@
 }
 
 .cardTitle {
-  font-weight: 600;
-  font-size: 1rem;
-  margin-bottom: var(--space-2);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  margin: 0 0 10px 0;
+  color: var(--text-primary);
+  line-height: 1.4;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  user-select: none;
+}
+
+.renameInput {
+  background: var(--bg-primary);
+  border: 1px solid var(--text-primary);
   color: var(--text-primary);
+  font-size: 0.9375rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  width: 100%;
+  margin-bottom: 8px;
+  outline: none;
+  font-family: inherit;
 }
 
 .cardMeta {
@@ -209,6 +224,87 @@
   align-items: center;
   font-size: 0.75rem;
   color: var(--text-secondary);
+  margin-bottom: var(--space-3);
+}
+
+.categoryName {
+  text-transform: capitalize;
+}
+
+.cardLocation {
+  font-size: 0.75rem;
+  margin-bottom: var(--space-3);
+  display: flex;
+  align-items: center;
+}
+
+.breadcrumbArea {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: var(--space-6);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-default);
+  flex-wrap: wrap;
+}
+
+.globalBreadcrumbItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.breadcrumbLink {
+  background: none;
+  border: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 0;
+  transition: all var(--transition-fast);
+  text-transform: capitalize;
+}
+
+.breadcrumbLink:hover {
+  color: var(--text-primary);
+  text-decoration: underline;
+}
+
+.breadcrumbDivider {
+  color: var(--text-muted);
+  opacity: 0.5;
+  font-size: 0.75rem;
+}
+
+.rootLabel {
+  color: var(--text-muted);
+  font-style: italic;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.cardTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: auto;
+}
+
+.tagBadge {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  padding: 2px 6px;
+  font-size: 0.65rem;
+  color: var(--text-secondary);
+  border-radius: 2px;
+}
+
+.tagMore {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  align-self: center;
 }
 
 .formatBadge {
@@ -374,6 +470,31 @@
 
 .listCategory {
   font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.listMetaRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-top: 2px;
+}
+
+.listTags {
+  display: flex;
+  gap: 4px;
+}
+
+.listTagBadge {
+  background: transparent;
+  padding: 0 4px;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  border-left: 1px solid var(--border-default);
+}
+
+.listTagMore {
+  font-size: 0.65rem;
   color: var(--text-muted);
 }
 

@@ -20,14 +20,25 @@ const FolderItem = ({
   onSelect, 
   selectedId, 
   onAddSub, 
+  onRenameFolder,
+  onMoveFolder,
   onDropResource, 
   onDeleteFolder,
   expandedFolders,
   toggleFolder
 }) => {
   const [isDragOver, setIsDragOver] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState(folder.name);
   const isSelected = selectedId === folder.id;
   const isOpen = expandedFolders[folder.id];
+
+  const handleDragStart = (e) => {
+    e.stopPropagation();
+    e.dataTransfer.setData("folderId", folder.id);
+    e.dataTransfer.setData("sourceCategory", folder.categorySlug);
+    e.dataTransfer.effectAllowed = "move";
+  };
 
   const handleDragOver = (e) => {
     e.preventDefault();
@@ -41,10 +52,24 @@ const FolderItem = ({
   const handleDrop = (e) => {
     e.preventDefault();
     setIsDragOver(false);
+    
     const resourceId = e.dataTransfer.getData("resourceId");
+    const draggedFolderId = e.dataTransfer.getData("folderId");
+
     if (resourceId && onDropResource) {
       onDropResource(resourceId, folder.id);
+    } else if (draggedFolderId && onMoveFolder) {
+      if (draggedFolderId !== folder.id) {
+        onMoveFolder(draggedFolderId, folder.id, folder.categorySlug);
+      }
     }
+  };
+
+  const handleRename = () => {
+    if (editName.trim() && editName !== folder.name) {
+      onRenameFolder(folder.id, editName.trim());
+    }
+    setIsEditing(false);
   };
 
   return (
@@ -56,6 +81,8 @@ const FolderItem = ({
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
+        draggable
+        onDragStart={handleDragStart}
       >
         <button 
           onClick={(e) => { e.stopPropagation(); toggleFolder(folder.id); }} 
@@ -69,7 +96,34 @@ const FolderItem = ({
         </button>
         
         {isOpen ? <FolderOpen size={16} className={styles.folderIcon} /> : <Folder size={16} className={styles.folderIcon} />}
-        <span className={styles.name}>{folder.name}</span>
+        
+        {isEditing ? (
+          <input
+            className={styles.renameInput}
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+            onBlur={handleRename}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleRename();
+              if (e.key === 'Escape') {
+                setEditName(folder.name);
+                setIsEditing(false);
+              }
+            }}
+            autoFocus
+            onClick={(e) => e.stopPropagation()}
+          />
+        ) : (
+          <span 
+            className={styles.name}
+            onDoubleClick={(e) => {
+              e.stopPropagation();
+              setIsEditing(true);
+            }}
+          >
+            {folder.name}
+          </span>
+        )}
         
         <div className={styles.itemActions}>
           {level < 3 && ( 
@@ -101,6 +155,8 @@ const FolderItem = ({
               onSelect={onSelect}
               selectedId={selectedId}
               onAddSub={onAddSub}
+              onRenameFolder={onRenameFolder}
+              onMoveFolder={onMoveFolder}
               onDropResource={onDropResource}
               onDeleteFolder={onDeleteFolder}
               expandedFolders={expandedFolders}
@@ -119,11 +175,14 @@ export default function FolderTree({
   selectedId, 
   categories, 
   onAddFolder,
+  onRenameFolder,
+  onMoveFolder,
   onDropResource,
   onDeleteFolder
 }) {
   const [collapsedCats, setCollapsedCats] = useState([]);
   const [expandedFolders, setExpandedFolders] = useState({});
+  const [dragOverCat, setDragOverCat] = useState(null);
 
   // Load initial state from localStorage
   useEffect(() => {
@@ -161,6 +220,26 @@ export default function FolderTree({
     localStorage.setItem('admin_sidebar_expanded_folders', JSON.stringify(next));
   };
 
+  const handleCatDragOver = (e, slug) => {
+    e.preventDefault();
+    setDragOverCat(slug);
+  };
+
+  const handleCatDrop = (e, cat) => {
+    e.preventDefault();
+    setDragOverCat(null);
+    const draggedFolderId = e.dataTransfer.getData("folderId");
+    const resourceId = e.dataTransfer.getData("resourceId");
+
+    if (draggedFolderId && onMoveFolder) {
+      // Move to root of category
+      onMoveFolder(draggedFolderId, null, cat.slug);
+    } else if (resourceId && onDropResource) {
+      // Moves resource to category "root" (optional, but handled)
+      onDropResource(resourceId, null);
+    }
+  };
+
   const treeByGlobal = useMemo(() => {
     const grouped = {};
     categories.forEach(cat => {
@@ -180,8 +259,11 @@ export default function FolderTree({
         {categories.map((cat) => (
           <div key={cat.slug} className={styles.categorySection}>
             <div 
-              className={`${styles.categoryHeader} ${selectedId === `cat-${cat.slug}` ? styles.selected : ""}`}
+              className={`${styles.categoryHeader} ${selectedId === `cat-${cat.slug}` ? styles.selected : ""} ${dragOverCat === cat.slug ? styles.dragOver : ""}`}
               onClick={() => onSelect(`cat-${cat.slug}`, cat.slug)}
+              onDragOver={(e) => handleCatDragOver(e, cat.slug)}
+              onDragLeave={() => setDragOverCat(null)}
+              onDrop={(e) => handleCatDrop(e, cat)}
             >
               <button 
                 className={`${styles.toggleBtn} ${collapsedCats.includes(cat.slug) ? styles.isCollapsed : ""}`}
@@ -210,6 +292,8 @@ export default function FolderTree({
                     onSelect={onSelect}
                     selectedId={selectedId}
                     onAddSub={onAddFolder}
+                    onRenameFolder={onRenameFolder}
+                    onMoveFolder={onMoveFolder}
                     onDropResource={onDropResource}
                     onDeleteFolder={onDeleteFolder}
                     expandedFolders={expandedFolders}
