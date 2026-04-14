@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import Link from "next/link";
 import { Plus, Search, Trash2, Edit2, MoreVertical, LayoutGrid, List as ListIcon, FolderPlus, Loader2, Play, Pause, Eye } from "lucide-react";
-import { collection, getDocs, doc, deleteDoc, query, where, orderBy } from "firebase/firestore";
+import { collection, getDocs, doc, deleteDoc, query, where, orderBy, writeBatch, serverTimestamp } from "firebase/firestore";
 import { db } from "@/app/lib/firebase";
 import { revalidateResourceData } from "@/app/lib/actions";
 import { getAllAdminFolders, getCategories, addFolder, updateResource, updateFolder, deleteFolder } from "@/app/lib/firestore";
@@ -17,6 +17,9 @@ import { getFilesFromDataTransfer } from "./utils/dropUtils";
 import AdminDropOverlay from "./components/AdminDropOverlay";
 import UploadDrawer from "./components/UploadDrawer";
 import FolderTree from "./components/FolderTree";
+import BulkToolbar from "./components/BulkToolbar";
+import BulkEditModal from "./components/BulkEditModal";
+import MoveSelectionModal from "./components/MoveSelectionModal";
 
 export default function AdminResources() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -40,6 +43,11 @@ export default function AdminResources() {
   const [playingId, setPlayingId] = useState(null);
   const [previewResource, setPreviewResource] = useState(null);
   const audioRef = useRef(null);
+  
+  // Bulk Actions State
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [isBulkEditOpen, setIsBulkEditOpen] = useState(false);
+  const [isMoveModalOpen, setIsMoveModalOpen] = useState(false);
   
   const { 
     stagingFiles, 
@@ -114,21 +122,41 @@ export default function AdminResources() {
 
   // Handle Internal Resource Move (Grid to Sidebar)
   const handleResourceDragStart = (e, resource) => {
-    e.dataTransfer.setData("resourceId", resource.id);
+    // If dragging a selected item, we move all selected items
+    if (selectedIds.includes(resource.id)) {
+      e.dataTransfer.setData("resourceIds", JSON.stringify(selectedIds));
+      e.dataTransfer.setData("text/plain", `Moving ${selectedIds.length} items`);
+    } else {
+      e.dataTransfer.setData("resourceId", resource.id);
+      e.dataTransfer.setData("text/plain", `Moving ${resource.name || 'item'}`);
+    }
     e.dataTransfer.effectAllowed = "move";
   };
 
-  const handleDropResource = async (resourceId, targetFolderId) => {
+  const handleDropResource = async (idOrIds, targetFolderId) => {
     try {
-      // 1. Update Firestore
-      await updateResource(resourceId, { folderId: targetFolderId });
+      const idsToMove = Array.isArray(idOrIds) ? idOrIds : [idOrIds];
       
-      // 2. Update local state for "Super Speed" feedback
+      // 1. Update Firestore in batch
+      const batch = writeBatch(db);
+      idsToMove.forEach(id => {
+        const ref = doc(db, "resources", id);
+        batch.update(ref, { 
+          folderId: targetFolderId,
+          updatedAt: serverTimestamp()
+        });
+      });
+      await batch.commit();
+      
+      // 2. Update local state
       setResources(prev => prev.map(r => 
-        r.id === resourceId ? { ...r, folderId: targetFolderId } : r
+        idsToMove.includes(r.id) ? { ...r, folderId: targetFolderId } : r
       ));
       
-      // 3. Revalidate frontend
+      // 3. Clear selection
+      setSelectedIds([]);
+      
+      // 4. Revalidate frontend
       await revalidateResourceData();
     } catch (e) {
       console.error("Move failed:", e);
@@ -317,15 +345,80 @@ export default function AdminResources() {
   async function handleDelete(id, displayName) {
     if (!confirm(`Xóa "${displayName}"? Thao tác này không thể hoàn tác.`)) return;
     try {
-      console.log("Deleting resource:", id);
       await deleteDoc(doc(db, "resources", id));
       setResources((prev) => prev.filter((r) => r.id !== id));
+      setSelectedIds(prev => prev.filter(sid => sid !== id));
       await revalidateResourceData();
     } catch (e) {
       console.error("Delete failed:", e);
       alert("Xóa thất bại: " + e.message);
     }
   }
+
+  // Bulk Actions
+  const toggleSelect = (id) => {
+    setSelectedIds(prev => 
+      prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
+    );
+  };
+
+  const selectAll = () => {
+    if (selectedIds.length === filtered.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filtered.map(r => r.id));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    if (!confirm(`Xóa ${selectedIds.length} tài nguyên đã chọn? Thao tác này không thể hoàn tác.`)) return;
+
+    try {
+      const batch = writeBatch(db);
+      selectedIds.forEach(id => {
+        batch.delete(doc(db, "resources", id));
+      });
+      await batch.commit();
+
+      setResources(prev => prev.filter(r => !selectedIds.includes(r.id)));
+      setSelectedIds([]);
+      await revalidateResourceData();
+    } catch (e) {
+      console.error("Bulk delete failed:", e);
+      alert("Xóa hàng loạt thất bại.");
+    }
+  };
+
+  const handleBulkEditSave = async (updatedItems) => {
+    try {
+      const batch = writeBatch(db);
+      updatedItems.forEach(item => {
+        const ref = doc(db, "resources", item.id);
+        batch.update(ref, {
+          name: item.name,
+          tags: item.tags,
+          category: item.category,
+          folderId: item.folderId,
+          updatedAt: serverTimestamp()
+        });
+      });
+      await batch.commit();
+
+      // Update local state
+      setResources(prev => prev.map(r => {
+        const updated = updatedItems.find(ui => ui.id === r.id);
+        return updated ? { ...r, ...updated } : r;
+      }));
+      
+      setIsBulkEditOpen(false);
+      setSelectedIds([]);
+      await revalidateResourceData();
+    } catch (e) {
+      console.error("Bulk edit failed:", e);
+      alert("Lưu thay đổi hàng loạt thất bại.");
+    }
+  };
 
   const handlePlay = (e, resource) => {
     e.stopPropagation();
@@ -451,6 +544,13 @@ export default function AdminResources() {
             </div>
             <div className={styles.viewToggle}>
               <button 
+                className={`${styles.selectBtn} ${selectedIds.length === filtered.length && filtered.length > 0 ? styles.active : ""}`}
+                onClick={selectAll}
+                title="Chọn tất cả"
+              >
+                {selectedIds.length === filtered.length && filtered.length > 0 ? "Bỏ chọn hết" : "Chọn tất cả"}
+              </button>
+              <button 
                 className={`${styles.toggleBtn} ${viewMode === 'list' ? styles.active : ''}`}
                 onClick={() => setViewMode('list')}
               >
@@ -484,6 +584,13 @@ export default function AdminResources() {
           <div className={`${styles.resourceGrid} ${viewMode === 'list' ? styles.listMode : ''}`}>
             {viewMode === 'list' && filtered.length > 0 && !loading && (
               <div className={styles.listHeader}>
+                <div className={styles.colCheckbox}>
+                  <input 
+                    type="checkbox" 
+                    checked={selectedIds.length === filtered.length && filtered.length > 0} 
+                    onChange={selectAll}
+                  />
+                </div>
                 <div className={styles.colName}>Tên tài nguyên</div>
                 <div className={styles.colDate}>Ngày tạo</div>
                 <div className={styles.colSize}>Dung lượng</div>
@@ -499,13 +606,22 @@ export default function AdminResources() {
               filtered.map((r) => (
                 <div 
                   key={r.id} 
-                  className={`${styles.card} ${viewMode === 'list' ? styles.listRow : ''}`}
+                  className={`${styles.card} ${viewMode === 'list' ? styles.listRow : ''} ${selectedIds.includes(r.id) ? styles.selectedCard : ''}`}
                   draggable
                   onDragStart={(e) => handleResourceDragStart(e, r)}
+                  onClick={() => viewMode === 'list' && toggleSelect(r.id)}
                 >
                   {viewMode === 'grid' ? (
                     <>
-                      <div className={styles.cardPreview}>
+                      <div className={styles.cardCheckbox}>
+                        <input 
+                          type="checkbox" 
+                          checked={selectedIds.includes(r.id)} 
+                          onChange={() => toggleSelect(r.id)}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </div>
+                      <div className={styles.cardPreview} onClick={() => toggleSelect(r.id)}>
                         <div className={styles.cardIcon}>
                           <LayoutGrid size={48} strokeWidth={1} />
                         </div>
@@ -587,6 +703,13 @@ export default function AdminResources() {
                     </>
                   ) : (
                     <>
+                      <div className={styles.listColCheckbox} onClick={(e) => e.stopPropagation()}>
+                        <input 
+                          type="checkbox" 
+                          checked={selectedIds.includes(r.id)} 
+                          onChange={() => toggleSelect(r.id)}
+                        />
+                      </div>
                       <div className={styles.listColName}>
                         <div className={styles.listIconSmall}>
                           <LayoutGrid size={20} strokeWidth={1.5} />
@@ -687,6 +810,34 @@ export default function AdminResources() {
       <PreviewOverlay 
         resource={previewResource} 
         onClose={() => setPreviewResource(null)} 
+      />
+
+      <BulkToolbar 
+        selectedCount={selectedIds.length}
+        onClear={() => setSelectedIds([])}
+        onDelete={handleBulkDelete}
+        onEdit={() => setIsBulkEditOpen(true)}
+        onMove={() => setIsMoveModalOpen(true)}
+      />
+
+      <BulkEditModal 
+        isOpen={isBulkEditOpen}
+        onClose={() => setIsBulkEditOpen(false)}
+        selectedResources={resources.filter(r => selectedIds.includes(r.id))}
+        folders={folders}
+        categories={categories}
+        onSave={handleBulkEditSave}
+      />
+
+      <MoveSelectionModal 
+        isOpen={isMoveModalOpen}
+        onClose={() => setIsMoveModalOpen(false)}
+        selectedCount={selectedIds.length}
+        folders={folders}
+        onConfirm={(targetFolderId) => {
+          handleDropResource(selectedIds, targetFolderId);
+          setIsMoveModalOpen(false);
+        }}
       />
     </>
   );

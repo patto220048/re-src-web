@@ -41,7 +41,12 @@ export default function TreeSelect({
   const filteredOptions = useMemo(() => {
     if (!searchTerm.trim()) return options;
     const term = searchTerm.toLowerCase();
-    return options.filter(opt => opt.name.toLowerCase().includes(term));
+    return options.filter(opt => {
+      const searchTarget = (opt.label || opt.name || "").toLowerCase();
+      // Remove visual indentation markers for cleaner searching
+      const cleanTarget = searchTarget.replace(/^[—\s]+/, "");
+      return cleanTarget.includes(term) || searchTarget.includes(term);
+    });
   }, [options, searchTerm]);
 
   const handleSelect = (id) => {
@@ -61,7 +66,7 @@ export default function TreeSelect({
           {selectedOption ? (
             <>
               <Folder size={16} className={styles.selectedIcon} />
-              <span className={styles.selectedName}>{selectedOption.name}</span>
+              <span className={styles.selectedName}>{selectedOption.name || selectedOption.label?.replace(/^[—\s]+/, "")}</span>
             </>
           ) : (
             <span className={styles.placeholder}>{placeholder}</span>
@@ -104,15 +109,8 @@ export default function TreeSelect({
 
             {filteredOptions.length > 0 ? (
               filteredOptions.map((opt) => {
-                // Determine depth for indentation if label contains it, 
-                // or use a separate property if available.
-                // In our case, opt.label has '——' prefixes currently, 
-                // but let's try to parse depth or use the fact that it's hierarchical.
-                
-                // Assuming opt.label was set with indentation in the parent:
-                // `${'—'.repeat(depth)}${folder.name}`
-                const dashMatch = opt.label?.match(/^—+/);
-                const depth = dashMatch ? dashMatch[0].length : 0;
+                const dashMatch = opt.label?.match(/^[—\s]+/);
+                const depth = dashMatch ? dashMatch[0].length / 2 : 0; // Each level was "— " (2 chars)
                 
                 return (
                   <div 
@@ -122,7 +120,7 @@ export default function TreeSelect({
                     onClick={() => handleSelect(opt.id)}
                   >
                     {depth > 0 ? <FolderOpen size={14} className={styles.itemIcon} /> : <Folder size={14} className={styles.itemIcon} />}
-                    <span className={styles.itemName}>{opt.name}</span>
+                    <span className={styles.itemName}>{opt.label || opt.name}</span>
                   </div>
                 );
               })

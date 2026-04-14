@@ -42,21 +42,40 @@ const FolderItem = ({
 
   const handleDragOver = (e) => {
     e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = "move";
     setIsDragOver(true);
   };
 
-  const handleDragLeave = () => {
+  const handleDragEnter = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
     setIsDragOver(false);
   };
 
   const handleDrop = (e) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsDragOver(false);
     
     const resourceId = e.dataTransfer.getData("resourceId");
+    const resourceIdsStr = e.dataTransfer.getData("resourceIds");
     const draggedFolderId = e.dataTransfer.getData("folderId");
 
-    if (resourceId && onDropResource) {
+    if (resourceIdsStr && onDropResource) {
+      try {
+        const ids = JSON.parse(resourceIdsStr);
+        onDropResource(ids, folder.id);
+      } catch (err) {
+        console.error("Failed to parse resourceIds", err);
+      }
+    } else if (resourceId && onDropResource) {
       onDropResource(resourceId, folder.id);
     } else if (draggedFolderId && onMoveFolder) {
       if (draggedFolderId !== folder.id) {
@@ -78,6 +97,7 @@ const FolderItem = ({
         className={`${styles.item} ${isSelected ? styles.selected : ""} ${isDragOver ? styles.dragOver : ""}`}
         style={{ paddingLeft: `${level * 16 + 12}px` }}
         onClick={() => onSelect(folder.id, folder.categorySlug)}
+        onDragEnter={handleDragEnter}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
@@ -222,18 +242,41 @@ export default function FolderTree({
 
   const handleCatDragOver = (e, slug) => {
     e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = "move";
     setDragOverCat(slug);
+  };
+
+  const handleCatDragEnter = (e, slug) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverCat(slug);
+  };
+
+  const handleCatDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverCat(null);
   };
 
   const handleCatDrop = (e, cat) => {
     e.preventDefault();
+    e.stopPropagation();
     setDragOverCat(null);
     const draggedFolderId = e.dataTransfer.getData("folderId");
     const resourceId = e.dataTransfer.getData("resourceId");
+    const resourceIdsStr = e.dataTransfer.getData("resourceIds");
 
     if (draggedFolderId && onMoveFolder) {
       // Move to root of category
       onMoveFolder(draggedFolderId, null, cat.slug);
+    } else if (resourceIdsStr && onDropResource) {
+      try {
+        const ids = JSON.parse(resourceIdsStr);
+        onDropResource(ids, null);
+      } catch (err) {
+        console.error("Failed to parse resourceIds", err);
+      }
     } else if (resourceId && onDropResource) {
       // Moves resource to category "root" (optional, but handled)
       onDropResource(resourceId, null);
@@ -261,8 +304,9 @@ export default function FolderTree({
             <div 
               className={`${styles.categoryHeader} ${selectedId === `cat-${cat.slug}` ? styles.selected : ""} ${dragOverCat === cat.slug ? styles.dragOver : ""}`}
               onClick={() => onSelect(`cat-${cat.slug}`, cat.slug)}
+              onDragEnter={(e) => handleCatDragEnter(e, cat.slug)}
               onDragOver={(e) => handleCatDragOver(e, cat.slug)}
-              onDragLeave={() => setDragOverCat(null)}
+              onDragLeave={handleCatDragLeave}
               onDrop={(e) => handleCatDrop(e, cat)}
             >
               <button 
