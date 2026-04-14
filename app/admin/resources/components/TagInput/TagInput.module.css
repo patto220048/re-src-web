@@ -10,10 +10,9 @@
 .tagsContext {
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  min-height: 42px;
+  gap: 8px;
+  padding: 8px 12px;
+  min-height: 48px;
   background: var(--bg-primary);
   border: 2px solid var(--border-color);
   box-shadow: 4px 4px 0px var(--border-color);
@@ -22,7 +21,7 @@
 
 .tagsContext:focus-within {
   box-shadow: 2px 2px 0px var(--border-color);
-  transform: translate(1px, 1px);
+  transform: translate(2px, 2px);
   border-color: var(--text-primary);
 }
 
@@ -30,11 +29,11 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 3px 8px;
+  padding: 4px 10px;
   background: var(--text-primary);
   color: var(--bg-primary);
-  font-size: 11px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 600;
   text-transform: uppercase;
   border: 1px solid var(--text-primary);
 }
@@ -58,36 +57,31 @@
 
 .input {
   flex: 1;
-  min-width: 100px;
+  min-width: 120px;
   border: none;
   background: transparent;
   color: var(--text-primary);
   font-family: inherit;
-  font-size: 13px;
+  font-size: 14px;
   outline: none;
   padding: 4px 0;
 }
 
-.input::placeholder {
-  color: var(--text-muted);
-  opacity: 0.5;
-}
-
 .suggestions {
   position: absolute;
-  top: calc(100% + 8px);
+  top: calc(100% + 12px);
   left: 0;
   right: 0;
   background: var(--bg-primary);
   border: 2px solid var(--border-color);
   box-shadow: 6px 6px 0px var(--border-color);
   z-index: 1000;
-  max-height: 200px;
+  max-height: 250px;
   overflow-y: auto;
 }
 
 .suggestionItem {
-  padding: 10px 14px;
+  padding: 12px 16px;
   cursor: pointer;
   display: flex;
   justify-content: space-between;
@@ -108,12 +102,12 @@
 
 .tagName {
   font-weight: 700;
-  font-size: 13px;
+  font-size: 14px;
   text-transform: uppercase;
 }
 
 .tagCount {
-  font-size: 10px;
+  font-size: 11px;
   opacity: 0.6;
   font-weight: 500;
 }
@@ -122,14 +116,9 @@
   opacity: 0.8;
 }
 
-.disabled {
-  opacity: 0.6;
-  pointer-events: none;
-}
-
-/* Custom Scrollbar */
+/* Custom Scrollbar for suggestions */
 .suggestions::-webkit-scrollbar {
-  width: 4px;
+  width: 6px;
 }
 
 .suggestions::-webkit-scrollbar-track {

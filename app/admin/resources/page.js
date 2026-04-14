@@ -6,7 +6,7 @@ import { Plus, Search, Trash2, Edit2, MoreVertical, LayoutGrid, List as ListIcon
 import { collection, getDocs, doc, deleteDoc, query, where, orderBy, writeBatch, serverTimestamp } from "firebase/firestore";
 import { db } from "@/app/lib/firebase";
 import { revalidateResourceData } from "@/app/lib/actions";
-import { getAllAdminFolders, getCategories, addFolder, updateResource, updateFolder, deleteFolder } from "@/app/lib/firestore";
+import { getAllAdminFolders, getCategories, addFolder, updateResource, updateFolder, deleteFolder, deleteResource, syncTagsCount } from "@/app/lib/firestore";
 import styles from "./page.module.css";
 import { mediaManager } from "@/app/lib/mediaManager";
 import PreviewOverlay from "@/app/components/ui/PreviewOverlay";
@@ -345,7 +345,7 @@ export default function AdminResources() {
   async function handleDelete(id, displayName) {
     if (!confirm(`Xóa "${displayName}"? Thao tác này không thể hoàn tác.`)) return;
     try {
-      await deleteDoc(doc(db, "resources", id));
+      await deleteResource(id);
       setResources((prev) => prev.filter((r) => r.id !== id));
       setSelectedIds(prev => prev.filter(sid => sid !== id));
       await revalidateResourceData();
@@ -376,10 +376,20 @@ export default function AdminResources() {
 
     try {
       const batch = writeBatch(db);
+      const deletedTags = [];
+      
       selectedIds.forEach(id => {
+        const res = resources.find(r => r.id === id);
+        if (res && res.tags) deletedTags.push(...res.tags);
         batch.delete(doc(db, "resources", id));
       });
+
       await batch.commit();
+
+      // Đồng bộ tag count: Giảm usageCount của các tag bị xóa
+      if (deletedTags.length > 0) {
+        await syncTagsCount([], deletedTags);
+      }
 
       setResources(prev => prev.filter(r => !selectedIds.includes(r.id)));
       setSelectedIds([]);
@@ -393,7 +403,19 @@ export default function AdminResources() {
   const handleBulkEditSave = async (updatedItems) => {
     try {
       const batch = writeBatch(db);
+      const addedTotal = [];
+      const removedTotal = [];
+
       updatedItems.forEach(item => {
+        const oldItem = resources.find(r => r.id === item.id);
+        if (oldItem) {
+          const oldTags = oldItem.tags || [];
+          const newTags = item.tags || [];
+          
+          addedTotal.push(...newTags.filter(t => !oldTags.includes(t)));
+          removedTotal.push(...oldTags.filter(t => !newTags.includes(t)));
+        }
+
         const ref = doc(db, "resources", item.id);
         batch.update(ref, {
           name: item.name,
@@ -403,7 +425,13 @@ export default function AdminResources() {
           updatedAt: serverTimestamp()
         });
       });
+
       await batch.commit();
+
+      // Đồng bộ tag count
+      if (addedTotal.length > 0 || removedTotal.length > 0) {
+        await syncTagsCount(addedTotal, removedTotal);
+      }
 
       // Update local state
       setResources(prev => prev.map(r => {

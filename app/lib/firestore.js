@@ -11,6 +11,7 @@ import {
   orderBy,
   limit,
   increment,
+  writeBatch,
   serverTimestamp,
 } from 'firebase/firestore';
 import { db } from './firebase';
@@ -64,6 +65,12 @@ export async function getResourceBySlug(categorySlug, resourceSlug) {
 export async function addResource(data) {
   if (!db) return null;
   const ref = collection(db, 'resources');
+  
+  // Đồng bộ tag count nếu có
+  if (data.tags && data.tags.length > 0) {
+    await syncTagsCount(data.tags, []);
+  }
+
   return addDoc(ref, {
     ...data,
     downloadCount: 0,
@@ -76,12 +83,35 @@ export async function addResource(data) {
 export async function updateResource(id, data) {
   if (!db) return null;
   const ref = doc(db, 'resources', id);
+
+  // Nếu có cập nhật tags, ta cần so sánh để đồng bộ count
+  if (data.tags) {
+    const oldSnap = await getDoc(ref);
+    if (oldSnap.exists()) {
+      const oldTags = oldSnap.data().tags || [];
+      const newTags = data.tags;
+      const added = newTags.filter(t => !oldTags.includes(t));
+      const removed = oldTags.filter(t => !newTags.includes(t));
+      await syncTagsCount(added, removed);
+    }
+  }
+
   return updateDoc(ref, { ...data, updatedAt: serverTimestamp() });
 }
 
 export async function deleteResource(id) {
   if (!db) return null;
   const ref = doc(db, 'resources', id);
+
+  // Giảm tag count trước khi xóa
+  const oldSnap = await getDoc(ref);
+  if (oldSnap.exists()) {
+    const oldTags = oldSnap.data().tags || [];
+    if (oldTags.length > 0) {
+      await syncTagsCount([], oldTags);
+    }
+  }
+
   return deleteDoc(ref);
 }
 
@@ -220,6 +250,192 @@ export async function updateSettings(data) {
   if (!db) return null;
   const ref = doc(db, 'settings', 'general');
   return updateDoc(ref, { ...data, updatedAt: serverTimestamp() });
+}
+
+/* ========================================
+   TAGS
+   ======================================== */
+
+/**
+ * Cập nhật số lượng sử dụng của các tag trong collection 'tags'.
+ * @param {string[]} addedTags - Danh sách tag mới thêm vào
+ * @param {string[]} removedTags - Danh sách tag bị xóa đi
+ */
+export async function syncTagsCount(addedTags = [], removedTags = []) {
+  if (!db || (addedTags.length === 0 && removedTags.length === 0)) return;
+  const batch = writeBatch(db);
+
+  // Xử lý tag thêm mới
+  addedTags.forEach(tagName => {
+    const tagId = tagName.toLowerCase().trim();
+    if (!tagId) return;
+    const tagRef = doc(db, 'tags', tagId);
+    batch.set(tagRef, {
+      name: tagName.trim(),
+      usageCount: increment(1),
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+  });
+
+  // Xử lý tag bị xóa
+  removedTags.forEach(tagName => {
+    const tagId = tagName.toLowerCase().trim();
+    if (!tagId) return;
+    const tagRef = doc(db, 'tags', tagId);
+    batch.update(tagRef, {
+      usageCount: increment(-1),
+      updatedAt: serverTimestamp()
+    });
+  });
+
+  await batch.commit();
+}
+
+/**
+ * Ghi lại nhật ký thay đổi tag (Rename/Delete).
+ */
+export async function logTagAction(action, tagName, metadata = {}) {
+  if (!db) return;
+  const ref = collection(db, 'logs/tags/entries');
+  return addDoc(ref, {
+    action,
+    tagName,
+    metadata,
+    timestamp: serverTimestamp()
+  });
+}
+
+/**
+ * Lấy toàn bộ danh sách Tag từ collection 'tags'.
+ */
+export async function getTags() {
+  if (!db) return [];
+  const ref = collection(db, 'tags');
+  const q = query(ref, orderBy('usageCount', 'desc'));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+/**
+ * Đồng bộ lại toàn bộ collection 'tags' dựa trên dữ liệu thực tế từ 'resources'.
+ * Thường dùng khi khởi tạo hoặc khi dữ liệu bị sai lệch.
+ */
+export async function syncAllTagsFromResources() {
+  if (!db) return;
+  
+  // 1. Lấy tất cả resources
+  const resRef = collection(db, 'resources');
+  const snapshot = await getDocs(resRef);
+  
+  const tagCounts = {};
+  snapshot.docs.forEach(doc => {
+    const tags = doc.data().tags || [];
+    tags.forEach(tag => {
+      const t = tag.trim();
+      if (!t) return;
+      const id = t.toLowerCase();
+      if (!tagCounts[id]) {
+        tagCounts[id] = { name: t, count: 0 };
+      }
+      tagCounts[id].count++;
+    });
+  });
+
+  // 2. Cập nhật collection 'tags' bằng Batch
+  const batch = writeBatch(db);
+
+  // Xóa trắng hoặc cập nhật đè (Ở đây ta cập nhật đè để giữ các trường meta khác nếu có)
+  Object.keys(tagCounts).forEach(id => {
+    const tagRef = doc(db, 'tags', id);
+    batch.set(tagRef, {
+      name: tagCounts[id].name,
+      usageCount: tagCounts[id].count,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+  });
+
+  await batch.commit();
+  return Object.keys(tagCounts).length;
+}
+
+/**
+ * Đổi tên Tag trên toàn bộ hệ thống.
+ */
+export async function renameTagGlobally(oldName, newName) {
+  if (!db) return;
+  const oldId = oldName.toLowerCase().trim();
+  const newId = newName.toLowerCase().trim();
+  if (oldId === newId) return;
+
+  const batch = writeBatch(db);
+
+  // 1. Tìm tất cả resources có chứa tag cũ
+  const resRef = collection(db, 'resources');
+  const q = query(resRef, where('tags', 'array-contains', oldName));
+  const snapshot = await getDocs(q);
+
+  snapshot.docs.forEach(resDoc => {
+    const data = resDoc.data();
+    const updatedTags = data.tags.map(t => t === oldName ? newName : t);
+    batch.update(resDoc.ref, { 
+      tags: updatedTags,
+      updatedAt: serverTimestamp()
+    });
+  });
+
+  // 2. Cập nhật collection 'tags' (xóa cũ, thêm/tăng mới)
+  const oldTagRef = doc(db, 'tags', oldId);
+  const newTagRef = doc(db, 'tags', newId);
+  
+  // Lấy data tag cũ để bảo toàn count
+  const oldTagSnap = await getDoc(oldTagRef);
+  const count = oldTagSnap.exists() ? oldTagSnap.data().usageCount : 0;
+
+  batch.delete(oldTagRef);
+  batch.set(newTagRef, {
+    name: newName,
+    usageCount: increment(count),
+    updatedAt: serverTimestamp()
+  }, { merge: true });
+
+  // 3. Ghi log
+  await logTagAction('RENAME', oldName, { newName, count });
+
+  await batch.commit();
+  return snapshot.size;
+}
+
+/**
+ * Xóa Tag khỏi toàn bộ hệ thống.
+ */
+export async function deleteTagGlobally(tagName) {
+  if (!db) return;
+  const tagId = tagName.toLowerCase().trim();
+
+  const batch = writeBatch(db);
+
+  // 1. Tìm tất cả resources có chứa tag này
+  const resRef = collection(db, 'resources');
+  const q = query(resRef, where('tags', 'array-contains', tagName));
+  const snapshot = await getDocs(q);
+
+  snapshot.docs.forEach(resDoc => {
+    const data = resDoc.data();
+    const updatedTags = data.tags.filter(t => t !== tagName);
+    batch.update(resDoc.ref, { 
+      tags: updatedTags,
+      updatedAt: serverTimestamp()
+    });
+  });
+
+  // 2. Xóa khỏi collection 'tags'
+  batch.delete(doc(db, 'tags', tagId));
+
+  // 3. Ghi log
+  await logTagAction('DELETE', tagName, { count: snapshot.size });
+
+  await batch.commit();
+  return snapshot.size;
 }
 
 /* ========================================
