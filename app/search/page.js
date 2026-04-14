@@ -7,6 +7,7 @@ import { Search as SearchIcon } from "lucide-react";
 import { searchResourcesClient } from "@/app/lib/searchUtils";
 import SearchBar from "@/app/components/ui/SearchBar";
 import ResourceCard from "@/app/components/ui/ResourceCard";
+import PreviewOverlay from "@/app/components/ui/PreviewOverlay";
 import styles from "./page.module.css";
 
 function SearchContent() {
@@ -15,6 +16,7 @@ function SearchContent() {
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [previewResource, setPreviewResource] = useState(null);
 
   useEffect(() => {
     async function doSearch() {
@@ -66,6 +68,7 @@ function SearchContent() {
               {...r}
               downloadUrl={r.downloadUrl || r.fileUrl}
               index={idx}
+              onPreview={() => setPreviewResource(r)}
             />
           ))}
         </div>
@@ -78,6 +81,14 @@ function SearchContent() {
             💡 You can also <strong>right-click</strong> anywhere for quick search
           </p>
         </div>
+      )}
+
+      {previewResource && (
+        <PreviewOverlay 
+          resource={previewResource} 
+          onClose={() => setPreviewResource(null)} 
+          showDownload={true} 
+        />
       )}
     </div>
   );

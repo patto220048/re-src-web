@@ -1,11 +1,11 @@
 "use client";
 
 import { useState } from "react";
-import { Download, Check } from "lucide-react";
+import { Download, Check, Loader2 } from "lucide-react";
 import { incrementDownloadCount } from "@/app/lib/firestore";
 import styles from "./DownloadButton.module.css";
 
-export default function DownloadButton({ downloadUrl, fileUrl, fileName, fileFormat, resourceId }) {
+export default function DownloadButton({ downloadUrl, fileUrl, fileName, fileFormat, resourceId, size }) {
   const [state, setState] = useState("idle"); // idle | downloading | done
 
   // Resolve URL: prefer downloadUrl, fallback to fileUrl
@@ -75,21 +75,25 @@ export default function DownloadButton({ downloadUrl, fileUrl, fileName, fileFor
 
   return (
     <button
-      className={`${styles.btn} ${styles[state]}`}
+      className={`${styles.btn} ${styles[state]} ${size === "compact" ? styles.compact : ""}`}
       onClick={handleClick}
       disabled={state === "downloading" || !resolvedUrl}
       aria-label={`Download ${fileName || "file"}`}
     >
       {state === "done" ? (
         <Check size={16} className={styles.checkIcon} />
+      ) : state === "downloading" ? (
+        <Loader2 size={16} className={styles.loaderIcon} />
       ) : (
         <Download size={16} className={styles.downloadIcon} />
       )}
-      <span className={styles.text}>
-        {state === "idle" && "Download"}
-        {state === "downloading" && "..."}
-        {state === "done" && "Done!"}
-      </span>
+      {size !== "compact" && (
+        <span className={styles.text}>
+          {state === "idle" && "Download"}
+          {state === "downloading" && "..."}
+          {state === "done" && "Done!"}
+        </span>
+      )}
     </button>
   );
 }

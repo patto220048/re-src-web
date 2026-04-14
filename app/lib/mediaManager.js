@@ -1,29 +1,65 @@
 /**
  * Global Media Manager — ensures only one audio/video plays at a time.
- * Also manages global volume settings across the site.
+ * Also manages independent volume settings for different media categories.
  */
 
 let activeMedia = null;
 let activeCallback = null;
+let activeType = null;
 
-// Initialize global volume from localStorage or default to 0.5
-let globalVolume = 0.5;
-let globalMuted = false;
+// Settings structure
+const settings = {
+  video: { volume: 0.5, muted: false },
+  audio: { volume: 0.5, muted: false }
+};
+
+const listeners = new Set();
 
 if (typeof window !== 'undefined') {
-  const savedVol = localStorage.getItem('editerlor_volume');
-  if (savedVol !== null) globalVolume = parseFloat(savedVol);
-  const savedMuted = localStorage.getItem('editerlor_muted');
-  if (savedMuted !== null) globalMuted = savedMuted === 'true';
+  // Legacy migration and loading
+  ['video', 'audio'].forEach(type => {
+    const savedVol = localStorage.getItem(`editerlor_${type}_volume`);
+    if (savedVol !== null) {
+      settings[type].volume = parseFloat(savedVol);
+    } else if (type === 'video') {
+      // Fallback for legacy global volume
+      const legacyVol = localStorage.getItem('editerlor_volume');
+      if (legacyVol !== null) settings.video.volume = parseFloat(legacyVol);
+    }
+
+    const savedMuted = localStorage.getItem(`editerlor_${type}_muted`);
+    if (savedMuted !== null) {
+      settings[type].muted = savedMuted === 'true';
+    } else if (type === 'video') {
+      // Fallback for legacy global muted
+      const legacyMuted = localStorage.getItem('editerlor_muted');
+      if (legacyMuted !== null) settings.video.muted = legacyMuted === 'true';
+    }
+  });
+}
+
+function notify() {
+  listeners.forEach(cb => cb({ ...settings }));
 }
 
 export const mediaManager = {
   /**
+   * Register a listener for setting changes
+   * @param {Function} callback 
+   * @returns {Function} unsubscribe function
+   */
+  subscribe(callback) {
+    listeners.add(callback);
+    return () => listeners.delete(callback);
+  },
+
+  /**
    * Register and play a media element. Stops any currently playing media first.
    * @param {HTMLAudioElement|HTMLVideoElement} element
+   * @param {string} type - 'video' or 'audio'
    * @param {Function} onStopped - callback when this media is stopped by another
    */
-  play(element, onStopped) {
+  play(element, type = 'video', onStopped) {
     // 1. Stop currently active media
     if (activeMedia && activeMedia !== element) {
       try {
@@ -38,19 +74,21 @@ export const mediaManager = {
     // 2. Set as active
     activeMedia = element;
     activeCallback = onStopped;
+    activeType = type;
 
-    // 3. Apply global volume settings
-    this.applySettings(element);
+    // 3. Apply global volume settings for this type
+    this.applySettings(element, type);
   },
 
   /**
    * Apply current global volume/muted settings to an element
    * @param {HTMLAudioElement|HTMLVideoElement} element 
+   * @param {string} type - 'video' or 'audio'
    */
-  applySettings(element) {
-    if (!element) return;
-    element.volume = globalVolume;
-    element.muted = globalMuted;
+  applySettings(element, type = 'video') {
+    if (!element || !settings[type]) return;
+    element.volume = settings[type].volume;
+    element.muted = settings[type].muted;
   },
 
   /**
@@ -61,6 +99,7 @@ export const mediaManager = {
     if (activeMedia === element) {
       activeMedia = null;
       activeCallback = null;
+      activeType = null;
     }
   },
 
@@ -76,24 +115,45 @@ export const mediaManager = {
   /**
    * Global Volume Controls
    */
-  getVolume() { return globalVolume; },
-  setVolume(val) {
-    globalVolume = Math.max(0, Math.min(1, val));
+  getVolume(type = 'video') { 
+    return settings[type]?.volume ?? 0.5; 
+  },
+  
+  setVolume(val, type = 'video') {
+    if (!settings[type]) return;
+    settings[type].volume = Math.max(0, Math.min(1, val));
+    
     if (typeof window !== 'undefined') {
-      localStorage.setItem('editerlor_volume', globalVolume);
+      localStorage.setItem(`editerlor_${type}_volume`, settings[type].volume);
     }
-    // Update active media instantly
-    if (activeMedia) activeMedia.volume = globalVolume;
+    
+    // Update active media instantly if types match
+    if (activeMedia && activeType === type) {
+      activeMedia.volume = settings[type].volume;
+    }
+    
+    notify();
   },
 
-  getMuted() { return globalMuted; },
-  setMuted(val) {
-    globalMuted = val;
+  getMuted(type = 'video') { 
+    return settings[type]?.muted ?? false; 
+  },
+  
+  setMuted(val, type = 'video') {
+    if (!settings[type]) return;
+    settings[type].muted = val;
+    
     if (typeof window !== 'undefined') {
-      localStorage.setItem('editerlor_muted', globalMuted);
+      localStorage.setItem(`editerlor_${type}_muted`, settings[type].muted);
     }
-    // Update active media instantly
-    if (activeMedia) activeMedia.muted = globalMuted;
+    
+    // Update active media instantly if types match
+    if (activeMedia && activeType === type) {
+      activeMedia.muted = settings[type].muted;
+    }
+    
+    notify();
   }
 };
+
 

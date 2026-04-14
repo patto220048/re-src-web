@@ -114,7 +114,7 @@ export default function SoundButton({
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     } else {
       if (audio.ended) audio.currentTime = 0;
-      mediaManager.play(audio, () => {
+      mediaManager.play(audio, 'audio', () => {
         setIsPlaying(false);
         setCurrentTime(0); // Sync state when another media overrides
         if (rafRef.current) cancelAnimationFrame(rafRef.current);

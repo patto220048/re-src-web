@@ -28,12 +28,13 @@ export default function ResourceCard({
   thumbnailUrl,
   cardType = "default",
   index = 0,
+  onPreview,
 }) {
   const resolvedUrl = downloadUrl || fileUrl;
   const [isHovering, setIsHovering] = useState(false);
   const [videoProgress, setVideoProgress] = useState(0);
-  const [isMuted, setIsMuted] = useState(mediaManager.getMuted());
-  const [volume, setVolume] = useState(mediaManager.getVolume());
+  const [isMuted, setIsMuted] = useState(mediaManager.getMuted('video'));
+  const [volume, setVolume] = useState(mediaManager.getVolume('video'));
   const videoRef = useRef(null);
   const rafRef = useRef(null);
   const displayName = (name || fileName || "Untitled").replace(/\.[^/.]+$/, "");
@@ -65,6 +66,15 @@ export default function ResourceCard({
     setVideoProgress(ratio * 100);
   }, []);
 
+  // Sync with global settings
+  useEffect(() => {
+    const unsubscribe = mediaManager.subscribe((settings) => {
+      setIsMuted(settings.video.muted);
+      setVolume(settings.video.volume);
+    });
+    return unsubscribe;
+  }, []);
+
   // Cleanup rAF on unmount
   useEffect(() => {
     return () => {
@@ -79,7 +89,7 @@ export default function ResourceCard({
     setVolume(mediaManager.getVolume());
 
     if (cardType === "video" && videoRef.current) {
-      mediaManager.play(videoRef.current, () => {
+      mediaManager.play(videoRef.current, 'video', () => {
         setVideoProgress(0);
       });
       const p = videoRef.current.play();
@@ -117,6 +127,7 @@ export default function ResourceCard({
                     src={resolvedUrl}
                     className={styles.videoPreview}
                     loop
+                    muted
                     playsInline
                     preload="none"
                   />
@@ -130,6 +141,7 @@ export default function ResourceCard({
                 src={resolvedUrl}
                 className={styles.videoPreview}
                 loop
+                muted
                 playsInline
                 preload="none"
               />
@@ -165,7 +177,7 @@ export default function ResourceCard({
                     e.stopPropagation();
                     const newMuted = !isMuted;
                     setIsMuted(newMuted);
-                    mediaManager.setMuted(newMuted);
+                    mediaManager.setMuted(newMuted, 'video');
                   }}
                 >
                   {isMuted ? <VolumeX size={14} /> : <Volume2 size={14} />}
@@ -181,9 +193,9 @@ export default function ResourceCard({
                     setVolume(val);
                     if (val > 0) {
                       setIsMuted(false);
-                      mediaManager.setMuted(false);
+                      mediaManager.setMuted(false, 'video');
                     }
-                    mediaManager.setVolume(val);
+                    mediaManager.setVolume(val, 'video');
                   }}
                   className={styles.volumeSlider}
                 />
@@ -280,9 +292,11 @@ export default function ResourceCard({
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      {renderPreview()}
+      <div className={styles.previewClickArea} onClick={() => onPreview && onPreview()}>
+        {renderPreview()}
+      </div>
 
-      <div className={styles.info}>
+      <div className={styles.info} onClick={() => onPreview && onPreview()}>
         <h3 className={styles.name} title={name}>{displayName}</h3>
 
         <div className={styles.meta}>

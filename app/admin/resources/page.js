@@ -2,12 +2,14 @@
 
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import Link from "next/link";
-import { Plus, Search, Trash2, Edit2, MoreVertical, LayoutGrid, List as ListIcon, FolderPlus, Loader2 } from "lucide-react";
+import { Plus, Search, Trash2, Edit2, MoreVertical, LayoutGrid, List as ListIcon, FolderPlus, Loader2, Play, Pause, Eye } from "lucide-react";
 import { collection, getDocs, doc, deleteDoc, query, where, orderBy } from "firebase/firestore";
 import { db } from "@/app/lib/firebase";
 import { revalidateResourceData } from "@/app/lib/actions";
 import { getAllAdminFolders, getCategories, addFolder, updateResource, updateFolder, deleteFolder } from "@/app/lib/firestore";
 import styles from "./page.module.css";
+import { mediaManager } from "@/app/lib/mediaManager";
+import PreviewOverlay from "@/app/components/ui/PreviewOverlay";
 
 // New Components & Hooks
 import { useAdminUpload } from "./hooks/useAdminUpload";
@@ -33,6 +35,11 @@ export default function AdminResources() {
   // Drag and Drop State
   const [isDragging, setIsDragging] = useState(false);
   const dragCounter = useRef(0);
+  
+  // Audio & Preview State
+  const [playingId, setPlayingId] = useState(null);
+  const [previewResource, setPreviewResource] = useState(null);
+  const audioRef = useRef(null);
   
   const { 
     stagingFiles, 
@@ -63,6 +70,13 @@ export default function AdminResources() {
       setLoading(false);
     }
     loadInitial();
+    
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        mediaManager.stop(audioRef.current);
+      }
+    };
   }, [stagingFiles.length]); // Reload when uploads finish
 
   // Handle Global Drag and Drop (Files from OS)
@@ -312,6 +326,50 @@ export default function AdminResources() {
       alert("Xóa thất bại: " + e.message);
     }
   }
+
+  const handlePlay = (e, resource) => {
+    e.stopPropagation();
+    e.preventDefault();
+
+    if (playingId === resource.id) {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        setPlayingId(null);
+        mediaManager.stop(audioRef.current);
+      }
+      return;
+    }
+
+    // Stop current if any
+    if (audioRef.current) {
+      audioRef.current.pause();
+      mediaManager.stop(audioRef.current);
+    }
+
+    const audio = new Audio(resource.downloadUrl || resource.fileUrl);
+    audioRef.current = audio;
+    
+    mediaManager.play(audio, () => {
+      setPlayingId(null);
+    });
+
+    audio.play().then(() => {
+      setPlayingId(resource.id);
+    }).catch(err => {
+      if (err.name === 'AbortError') return;
+      console.error("Playback failed:", err);
+      setPlayingId(null);
+    });
+
+    audio.onended = () => {
+      setPlayingId(null);
+      mediaManager.stop(audio);
+    };
+  };
+
+  const isAudio = (cat) => ["sound-effects", "music"].includes(cat);
+  const isVisual = (cat) => ["video-meme", "green-screen", "animation", "image-overlay", "font"].includes(cat);
+
   return (
     <>
       <AdminDropOverlay isDragging={isDragging} />
@@ -452,11 +510,30 @@ export default function AdminResources() {
                           <LayoutGrid size={48} strokeWidth={1} />
                         </div>
                         <div className={styles.cardOverlay}>
-                          <Link href={`/admin/resources/${r.id}`} className={`${styles.actionBtn} ${styles.edit}`}>
+                          {isAudio(r.category) && (
+                            <button
+                              className={`${styles.actionBtn} ${playingId === r.id ? styles.active : ''}`}
+                              onClick={(e) => handlePlay(e, r)}
+                              title="Nghe thử"
+                            >
+                              {playingId === r.id ? <Pause size={18} /> : <Play size={18} />}
+                            </button>
+                          )}
+                          {isVisual(r.category) && (
+                            <button
+                              className={styles.actionBtn}
+                              onClick={(e) => { e.stopPropagation(); setPreviewResource(r); }}
+                              title="Xem trước"
+                            >
+                              <Eye size={18} />
+                            </button>
+                          )}
+                          <Link href={`/admin/resources/${r.id}`} className={`${styles.actionBtn} ${styles.edit}`} title="Chỉnh sửa">
                             <Edit2 size={18} />
                           </Link>
                           <button
                             className={`${styles.actionBtn} ${styles.delete}`}
+                            title="Xóa"
                             onClick={(e) => {
                               e.stopPropagation();
                               e.preventDefault();
@@ -560,11 +637,30 @@ export default function AdminResources() {
                         {r.fileSize ? (r.fileSize / 1024 / 1024).toFixed(2) + ' MB' : '---'}
                       </div>
                       <div className={styles.listColActions}>
-                        <Link href={`/admin/resources/${r.id}`} className={styles.inlineActionBtn}>
+                        {isAudio(r.category) && (
+                          <button
+                            className={`${styles.inlineActionBtn} ${playingId === r.id ? styles.active : ''}`}
+                            onClick={(e) => handlePlay(e, r)}
+                            title="Nghe thử"
+                          >
+                            {playingId === r.id ? <Pause size={14} /> : <Play size={14} />}
+                          </button>
+                        )}
+                        {isVisual(r.category) && (
+                          <button
+                            className={styles.inlineActionBtn}
+                            onClick={(e) => { e.stopPropagation(); setPreviewResource(r); }}
+                            title="Xem trước"
+                          >
+                            <Eye size={14} />
+                          </button>
+                        )}
+                        <Link href={`/admin/resources/${r.id}`} className={styles.inlineActionBtn} title="Chỉnh sửa">
                           <Edit2 size={16} />
                         </Link>
                         <button 
                           className={`${styles.inlineActionBtn} ${styles.delete}`}
+                          title="Xóa"
                           onClick={(e) => {
                             e.stopPropagation();
                             e.preventDefault();
@@ -587,6 +683,11 @@ export default function AdminResources() {
         </div>
       </main>
       </div>
+
+      <PreviewOverlay 
+        resource={previewResource} 
+        onClose={() => setPreviewResource(null)} 
+      />
     </>
   );
 }

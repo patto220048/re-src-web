@@ -539,3 +539,63 @@
   border-color: #ff0000;
   color: white;
 }
+
+/* Preview Modal Styles */
+.previewOverlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  backdrop-filter: blur(8px);
+  animation: fadeIn var(--transition-fast) ease-out;
+}
+
+.previewContent {
+  background: var(--bg-card);
+  border: 4px solid var(--text-primary);
+  width: 90%;
+  max-width: 1000px;
+  max-height: 90vh;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 20px 20px 0px rgba(0, 0, 0, 0.5);
+}
+
+.closePreview {
+  position: absolute;
+  top: -24px;
+  right: -24px;
+  background: var(--text-primary);
+  color: var(--bg-primary);
+  border: 2px solid var(--text-primary);
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  transition: all var(--transition-fast);
+}
+
+.closePreview:hover {
+  transform: rotate(90deg);
+  background: #ff0000;
+  border-color: #ff0000;
+  color: white;
+}
+
+/* Active State for buttons */
+.actionBtn.active, .inlineActionBtn.active {
+  background: var(--text-primary);
+  color: var(--bg-primary);
+  border-color: var(--text-primary);
+}
+

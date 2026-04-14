@@ -6,6 +6,7 @@ import ResourceCard from "@/app/components/ui/ResourceCard";
 import SoundButton from "@/app/components/ui/SoundButton";
 import FilterBar from "@/app/components/ui/FilterBar";
 import InitialLoader from "@/app/components/ui/InitialLoader";
+import PreviewOverlay from "@/app/components/ui/PreviewOverlay";
 import styles from "./page.module.css";
 
 const PAGE_SIZE = 24;
@@ -18,6 +19,7 @@ export default function ClientPage({ slug, info, folders, resources }) {
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   const [isReady, setIsReady] = useState(false);
   const [isMoreLoading, setIsMoreLoading] = useState(false);
+  const [previewResource, setPreviewResource] = useState(null);
 
   // Initial mount ready state
   useEffect(() => {
@@ -120,6 +122,7 @@ export default function ClientPage({ slug, info, folders, resources }) {
               downloadUrl={resource.downloadUrl || resource.fileUrl}
               cardType="font"
               index={idx % PAGE_SIZE}
+              onPreview={() => setPreviewResource(resource)}
             />
           ))}
         </div>
@@ -140,6 +143,7 @@ export default function ClientPage({ slug, info, folders, resources }) {
                   : "video"
               }
               index={idx % PAGE_SIZE}
+              onPreview={() => setPreviewResource(resource)}
             />
           ))}
         </div>
@@ -207,6 +211,13 @@ export default function ClientPage({ slug, info, folders, resources }) {
         {renderResources()}
       </div>
     </div>
+    {previewResource && (
+      <PreviewOverlay 
+        resource={previewResource} 
+        onClose={() => setPreviewResource(null)} 
+        showDownload={true} 
+      />
+    )}
     </>
   );
 }

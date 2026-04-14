@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Search, Menu, X } from "lucide-react";
 import ThemeToggle from "@/app/components/ui/ThemeToggle";
+import GlobalAudioSettings from "@/app/components/ui/GlobalAudioSettings";
 import styles from "./Navbar.module.css";
 
 const categories = [
@@ -66,6 +67,7 @@ export default function Navbar() {
         {/* Actions */}
         <div className={styles.actions}>
           <ThemeToggle />
+          <GlobalAudioSettings />
           
           <Link href="/search" className={styles.searchBtn} aria-label="Search">
             <Search size={20} />

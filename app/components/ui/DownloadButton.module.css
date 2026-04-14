@@ -21,6 +21,13 @@
   color: var(--bg-primary);
 }
 
+.btn.compact {
+  width: auto;
+  min-width: 44px;
+  padding: 10px;
+  gap: 0;
+}
+
 .btn:hover {
   transform: translate(-3px, -3px);
   box-shadow: 4px 4px 0px var(--text-muted);
@@ -52,6 +59,15 @@
 
 .checkIcon {
   animation: checkPop 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+
+.loaderIcon {
+  animation: loaderSpin 1s linear infinite;
+}
+
+@keyframes loaderSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 @keyframes checkPop {
