@@ -49,8 +49,13 @@ export default function EditResource() {
   
   // New file upload state
   const [newFile, setNewFile] = useState(null);
+  const [thumbnailFile, setThumbnailFile] = useState(null);
+  const [previewFile, setPreviewFile] = useState(null);
   const [uploadProgress, setUploadProgress] = useState(0);
+  
   const fileInputRef = useRef(null);
+  const thumbnailInputRef = useRef(null);
+  const previewInputRef = useRef(null);
 
   useEffect(() => {
     async function loadData() {
@@ -154,9 +159,23 @@ export default function EditResource() {
         tags: tags || [],
       };
 
-      // If a new file is uploaded
+      // 2. Handle Thumbnail upload
+      if (thumbnailFile) {
+        const thumbPath = generateStoragePath(category, `thumb-${thumbnailFile.name}`);
+        const thumbnailUrl = await uploadFile(thumbnailFile, thumbPath);
+        updateData.thumbnailUrl = thumbnailUrl;
+      }
+
+      // 3. Handle Preview upload
+      if (previewFile) {
+        const previewPath = generateStoragePath(category, `preview-${previewFile.name}`);
+        const previewUrl = await uploadFile(previewFile, previewPath);
+        updateData.previewUrl = previewUrl;
+      }
+
+      // 4. If a new main file is uploaded
       if (newFile) {
-        // 1. Upload new file
+        // ... (existing main file upload logic)
         const path = generateStoragePath(category, newFile.name);
         const downloadUrl = await uploadFile(newFile, path, (p) => setUploadProgress(Math.round(p)));
         
@@ -172,13 +191,12 @@ export default function EditResource() {
           fileFormat: fileExtension.toUpperCase(),
         };
 
-        // 2. Delete old file if exists
+        // Delete old file if exists
         if (resource.storagePath) {
           try {
             await deleteFile(resource.storagePath);
           } catch (delErr) {
             console.warn("Failed to delete old file:", delErr.message);
-            // Don't block the update if deletion fails (e.g. file already gone)
           }
         }
       }
@@ -263,6 +281,87 @@ export default function EditResource() {
                 onChange={setTags}
                 disabled={saving}
               />
+            </div>
+          </div>
+
+          {/* Media Previews Section */}
+          <div className={styles.section}>
+            <h2 className={styles.sectionTitle}>Visual Previews</h2>
+            
+            <div className={styles.mediaGrid}>
+              {/* Thumbnail */}
+              <div className={styles.mediaItem}>
+                <label>Thumbnail (Grid View)</label>
+                <div className={styles.mediaPreview}>
+                  {thumbnailFile ? (
+                    <img src={URL.createObjectURL(thumbnailFile)} alt="New Thumb" />
+                  ) : resource?.thumbnailUrl ? (
+                    <img src={resource.thumbnailUrl} alt="Current Thumb" />
+                  ) : (
+                    <div className={styles.noMedia}>No Thumbnail</div>
+                  )}
+                  <button 
+                    type="button" 
+                    className={styles.mediaActionBtn}
+                    onClick={() => thumbnailInputRef.current?.click()}
+                  >
+                    {resource?.thumbnailUrl || thumbnailFile ? "Change" : "Upload"}
+                  </button>
+                  {thumbnailFile && (
+                    <button 
+                      type="button" 
+                      className={styles.removeMediaBtn}
+                      onClick={() => setThumbnailFile(null)}
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+                <input 
+                  type="file" 
+                  ref={thumbnailInputRef} 
+                  onChange={(e) => setThumbnailFile(e.target.files[0])} 
+                  accept="image/*" 
+                  style={{ display: "none" }} 
+                />
+              </div>
+
+              {/* Preview Image */}
+              <div className={styles.mediaItem}>
+                <label>Preview Image (Full View)</label>
+                <div className={styles.mediaPreview}>
+                  {previewFile ? (
+                    <img src={URL.createObjectURL(previewFile)} alt="New Preview" />
+                  ) : resource?.previewUrl ? (
+                    <img src={resource.previewUrl} alt="Current Preview" />
+                  ) : (
+                    <div className={styles.noMedia}>No Preview Image</div>
+                  )}
+                  <button 
+                    type="button" 
+                    className={styles.mediaActionBtn}
+                    onClick={() => previewInputRef.current?.click()}
+                  >
+                    {resource?.previewUrl || previewFile ? "Change" : "Upload"}
+                  </button>
+                  {previewFile && (
+                    <button 
+                      type="button" 
+                      className={styles.removeMediaBtn}
+                      onClick={() => setPreviewFile(null)}
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+                <input 
+                  type="file" 
+                  ref={previewInputRef} 
+                  onChange={(e) => setPreviewFile(e.target.files[0])} 
+                  accept="image/*" 
+                  style={{ display: "none" }} 
+                />
+              </div>
             </div>
           </div>
 

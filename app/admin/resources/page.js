@@ -84,6 +84,14 @@ export default function AdminResources() {
         ]);
         
         setResources(resData);
+        if (resData && resData.length > 0) {
+          console.log("DEBUG: First resource sample:", {
+            name: resData[0].name,
+            thumbnailUrl: resData[0].thumbnailUrl,
+            previewUrl: resData[0].previewUrl,
+            category: resData[0].category
+          });
+        }
         setFolders(folderData);
         setCategories(catData);
         setTags(tagsData);
@@ -501,8 +509,15 @@ export default function AdminResources() {
     };
   };
 
-  const isAudio = (cat) => ["sound-effects", "music"].includes(cat);
-  const isVisual = (cat) => ["video-meme", "green-screen", "animation", "image-overlay", "font"].includes(cat);
+  const isAudio = (cat) => {
+    const slug = typeof cat === 'string' ? cat : cat?.slug;
+    return ["sound-effects", "music"].includes(slug);
+  };
+  
+  const isVisual = (cat) => {
+    const slug = typeof cat === 'string' ? cat : cat?.slug;
+    return ["video-meme", "green-screen", "animation", "image-overlay", "font"].includes(slug);
+  };
 
   return (
     <>
@@ -665,7 +680,19 @@ export default function AdminResources() {
                         />
                       </div>
                       <div className={styles.cardPreview} onClick={() => toggleSelect(r.id)}>
-                        <div className={styles.cardIcon}>
+                        {(r.thumbnailUrl || r.previewUrl) ? (
+                          <img 
+                            src={r.thumbnailUrl || r.previewUrl} 
+                            alt={r.name} 
+                            className={styles.previewImage}
+                            loading="lazy"
+                            onError={(e) => {
+                              e.target.style.display = 'none';
+                              e.target.nextSibling.style.display = 'flex';
+                            }}
+                          />
+                        ) : null}
+                        <div className={styles.cardIcon} style={{ display: (r.thumbnailUrl || r.previewUrl) ? 'none' : 'flex' }}>
                           <LayoutGrid size={48} strokeWidth={1} />
                         </div>
                         <div className={styles.cardOverlay}>
@@ -755,7 +782,20 @@ export default function AdminResources() {
                       </div>
                       <div className={styles.listColName}>
                         <div className={styles.listIconSmall}>
-                          <LayoutGrid size={20} strokeWidth={1.5} />
+                          {(r.thumbnailUrl || r.previewUrl) ? (
+                            <img 
+                              src={r.thumbnailUrl || r.previewUrl} 
+                              alt={r.name} 
+                              className={styles.listPreviewImg}
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                                e.target.nextSibling.style.display = 'flex';
+                              }}
+                            />
+                          ) : null}
+                          <div className={styles.listIconFallback} style={{ display: (r.thumbnailUrl || r.previewUrl) ? 'none' : 'flex' }}>
+                            <LayoutGrid size={20} strokeWidth={1.5} />
+                          </div>
                         </div>
                         <div className={styles.listNameInfo}>
                           {renamingResourceId === r.id ? (

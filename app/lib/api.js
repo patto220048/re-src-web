@@ -267,6 +267,79 @@ export async function getCategories() {
   return data;
 }
 
+/**
+ * Add a new category.
+ */
+export async function addCategory(categoryData) {
+  const now = new Date().toISOString();
+  const { data, error } = await supabase
+    .from('categories')
+    .insert([{
+      name: categoryData.name,
+      slug: categoryData.slug,
+      order: categoryData.order || 0,
+      description: categoryData.description || null,
+      created_at: now
+    }])
+    .select();
+
+  if (error) {
+    console.error('Error adding category:', error);
+    throw error;
+  }
+  return data[0];
+}
+
+/**
+ * Update a category.
+ */
+export async function updateCategory(id, updateData) {
+  const { data, error } = await supabase
+    .from('categories')
+    .update({
+      ...updateData
+    })
+    .eq('id', id)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error updating category:', error);
+    throw error;
+  }
+  return data;
+}
+
+/**
+ * Delete a category.
+ */
+export async function deleteCategory(id) {
+  // First, check if there are resources assigned to this category
+  const { data: category } = await supabase.from('categories').select('slug').eq('id', id).single();
+  
+  if (category) {
+    const { count, error: countError } = await supabase
+      .from('resources')
+      .select('id', { count: 'exact', head: true })
+      .eq('category_id', category.slug);
+
+    if (count > 0) {
+      throw new Error(`Cannot delete category "${category.slug}" because it has ${count} resources assigned to it.`);
+    }
+  }
+
+  const { error } = await supabase
+    .from('categories')
+    .delete()
+    .eq('id', id);
+
+  if (error) {
+    console.error('Error deleting category:', error);
+    throw error;
+  }
+  return true;
+}
+
 /* ========================================
    FOLDERS
    ======================================== */
