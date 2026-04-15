@@ -867,6 +867,7 @@ export default function AdminResources() {
         isOpen={isBulkEditOpen}
         onClose={() => setIsBulkEditOpen(false)}
         selectedResources={resources.filter(r => selectedIds.includes(r.id))}
+        allResources={resources}
         folders={folders}
         categories={categories}
         onSave={handleBulkEditSave}

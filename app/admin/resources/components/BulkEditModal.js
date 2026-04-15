@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { X, Save, Copy } from "lucide-react";
+import { X, Save, Copy, Trash2, Search as SearchIcon, Plus } from "lucide-react";
 import TagInput from "@/app/components/ui/TagInput";
 import TreeSelect from "@/app/components/ui/TreeSelect";
 import styles from "./BulkEditModal.module.css";
@@ -12,9 +12,12 @@ export default function BulkEditModal({
   selectedResources, 
   folders = [], 
   categories = [], 
+  allResources = [], // New prop
   onSave 
 }) {
   const [items, setItems] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showSearchResults, setShowSearchResults] = useState(false);
 
   useEffect(() => {
     if (isOpen && selectedResources) {
@@ -27,6 +30,25 @@ export default function BulkEditModal({
       })));
     }
   }, [isOpen, selectedResources]);
+
+  // Handle adding a resource from search
+  const addItem = (resource) => {
+    if (items.find(i => i.id === resource.id)) return;
+    
+    setItems(prev => [...prev, {
+      id: resource.id,
+      name: resource.name || resource.fileName || "",
+      tags: resource.tags || [],
+      categoryId: resource.categoryId || "",
+      folderId: resource.folderId || ""
+    }]);
+    setSearchQuery("");
+    setShowSearchResults(false);
+  };
+
+  const removeItem = (id) => {
+    setItems(prev => prev.filter(i => i.id !== id));
+  };
 
   // Pre-calculate hierarchical folders for each category (or global)
   // This avoids re-calculating on every row render and ensures TreeSelect labels (indentation)
@@ -61,6 +83,18 @@ export default function BulkEditModal({
     });
     return trees;
   }, [folders, categories]);
+
+  const availableToAdd = useMemo(() => {
+    if (!searchQuery) return [];
+    const currentIds = new Set(items.map(i => i.id));
+    return allResources
+      .filter(r => !currentIds.has(r.id))
+      .filter(r => 
+        r.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (r.fileName && r.fileName.toLowerCase().includes(searchQuery.toLowerCase()))
+      )
+      .slice(0, 5);
+  }, [allResources, items, searchQuery]);
 
   if (!isOpen) return null;
 
@@ -148,7 +182,7 @@ export default function BulkEditModal({
                       </button>
                     </div>
                   </th>
-                  <th className={styles.colFolder}>
+                   <th className={styles.colFolder}>
                     <div className={styles.headerCell}>
                       <span>Thư mục</span>
                       <button 
@@ -160,6 +194,7 @@ export default function BulkEditModal({
                       </button>
                     </div>
                   </th>
+                  <th className={styles.colAction}>Hành động</th>
                 </tr>
               </thead>
               <tbody>
@@ -199,8 +234,56 @@ export default function BulkEditModal({
                         placeholder="Chọn thư mục..."
                       />
                     </td>
+                    <td className={styles.actionCell}>
+                      <button 
+                        onClick={() => removeItem(item.id)}
+                        className={styles.removeItemBtn}
+                        title="Xóa khỏi danh sách sửa"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </td>
                   </tr>
                 ))}
+                
+                {/* Add Resource Row */}
+                <tr className={styles.addRow}>
+                  <td colSpan="5">
+                    <div className={styles.addSection}>
+                      <div className={styles.searchBox}>
+                        <SearchIcon size={16} className={styles.searchIcon} />
+                        <input 
+                          type="text" 
+                          placeholder="Tìm và thêm tài nguyên khác vào danh sách..." 
+                          value={searchQuery}
+                          onChange={(e) => {
+                            setSearchQuery(e.target.value);
+                            setShowSearchResults(true);
+                          }}
+                          onFocus={() => setShowSearchResults(true)}
+                        />
+                        {showSearchResults && availableToAdd.length > 0 && (
+                          <div className={styles.searchResults}>
+                            {availableToAdd.map(r => (
+                              <button 
+                                key={r.id} 
+                                onClick={() => addItem(r)}
+                                className={styles.searchResultItem}
+                              >
+                                <Plus size={14} />
+                                <span>{r.name}</span>
+                                <small>{r.categoryId}</small>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                        {showSearchResults && searchQuery && availableToAdd.length === 0 && (
+                          <div className={styles.noResults}>Không tìm thấy tài nguyên nào chưa có trong danh sách</div>
+                        )}
+                      </div>
+                    </div>
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
