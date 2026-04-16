@@ -764,3 +764,55 @@ export async function syncAllTagsFromResources() {
     throw e;
   }
 }
+
+/* ========================================
+   SITE SETTINGS
+   ======================================== */
+
+/**
+ * Get global site settings (version, name, status, etc.)
+ * Cached for performance.
+ */
+export const getSiteSettings = unstable_cache(
+  async () => {
+    const { data, error } = await supabase
+      .from('site_settings')
+      .select('*')
+      .eq('id', 1)
+      .single();
+
+    if (error) {
+      console.warn('Cannot fetch site settings, using defaults:', error);
+      return {
+        site_name: 'EditerLor',
+        tagline: 'Free Resources for Video Editors',
+        project_version: 'v 0.1.16.4',
+        status_text: 'System Online'
+      };
+    }
+    return data;
+  },
+  ['site-settings'],
+  { revalidate: 3600, tags: ['settings'] }
+);
+
+/**
+ * Update site settings.
+ */
+export async function updateSiteSettings(updateData) {
+  const { data, error } = await supabase
+    .from('site_settings')
+    .update({
+      ...updateData,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', 1)
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error updating site settings:', error);
+    throw error;
+  }
+  return data;
+}

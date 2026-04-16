@@ -3,6 +3,8 @@ import "./globals.css";
 import "./animations.css";
 import LayoutShell from "@/app/components/layout/LayoutShell";
 import { getCategories } from "@/app/lib/api";
+import { ToastProvider } from "@/app/context/ToastContext";
+import { ToastContainer } from "@/app/components/ui/ToastContainer";
 
 export const metadata = {
   title: "EditerLor — Free Resources for Video Editors",
@@ -30,7 +32,10 @@ export default async function RootLayout({ children }) {
           disableTransitionOnChange
           scriptProps={{ async: true }}
         >
-          <LayoutShell initialCategories={categories}>{children}</LayoutShell>
+          <ToastProvider>
+            <LayoutShell initialCategories={categories}>{children}</LayoutShell>
+            <ToastContainer />
+          </ToastProvider>
         </ThemeProvider>
       </body>
     </html>
