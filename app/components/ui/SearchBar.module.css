@@ -1,3 +1,9 @@
+.wrapper {
+  position: relative;
+  width: 100%;
+  max-width: 580px;
+}
+
 .form {
   display: flex;
   align-items: center;
@@ -7,18 +13,17 @@
   border-radius: 0px;
   padding: var(--space-2) var(--space-4);
   transition: all 0.2s ease;
-  max-width: 580px;
   width: 100%;
 }
 
 .form:focus-within {
-  border-color: var(--text-primary);
-  box-shadow: 4px 4px 0px var(--text-primary);
+  border-color: var(--neon-cyan);
+  box-shadow: 4px 4px 0px var(--neon-cyan);
 }
 
 .form.large {
-  padding: var(--space-3) var(--space-6);
   max-width: 640px;
+  padding: var(--space-3) var(--space-6);
 }
 
 .icon {
@@ -27,7 +32,7 @@
 }
 
 .form:focus-within .icon {
-  color: var(--text-primary);
+  color: var(--neon-cyan);
 }
 
 .input {
@@ -47,7 +52,17 @@
 .input:focus {
   outline: none;
   box-shadow: none;
-  border: none;
+}
+
+.loader {
+  color: var(--neon-cyan);
+  animation: spin 1s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 
 .button {
@@ -67,10 +82,93 @@
 
 .button:hover {
   transform: translate(-2px, -2px);
-  box-shadow: 4px 4px 0px var(--text-primary);
+  box-shadow: 4px 4px 0px var(--neon-cyan);
+  background: var(--neon-cyan);
+  color: #000;
 }
 
-.form.large .button {
-  padding: var(--space-3) var(--space-8);
-  font-size: 0.9rem;
+.dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  background: rgba(10, 10, 10, 0.85);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-default);
+  z-index: 100;
+  list-style: none;
+  padding: var(--space-2) 0;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.dropdownItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-5);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.dropdownItem:hover,
+.dropdownItem.active {
+  background: rgba(0, 240, 255, 0.1);
+}
+
+.dropdownItem.active {
+  border-left: 3px solid var(--neon-cyan);
+  padding-left: calc(var(--space-5) - 3px);
+}
+
+.itemIcon {
+  width: 32px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--neon-cyan);
+  flex-shrink: 0;
+}
+
+.itemContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  overflow: hidden;
+  text-align: left;
+}
+
+.itemName {
+  color: var(--text-primary);
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.itemMeta {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  font-family: var(--font-mono);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  letter-spacing: 0.5px;
+}
+
+.dot {
+  opacity: 0.3;
+  font-size: 10px;
+}
+
+.folder {
+  color: var(--neon-cyan);
+  opacity: 0.8;
+}
+
+.action {
+  opacity: 0.6;
 }

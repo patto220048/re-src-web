@@ -2,32 +2,56 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Search, Menu, X } from "lucide-react";
 import ThemeToggle from "@/app/components/ui/ThemeToggle";
 import GlobalAudioSettings from "@/app/components/ui/GlobalAudioSettings";
 import { getCategories } from "@/app/lib/api";
 import styles from "./Navbar.module.css";
 
-export default function Navbar() {
+export default function Navbar({ initialCategories = [] }) {
+  const pathname = usePathname();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [categories, setCategories] = useState([]);
+  const [categories, setCategories] = useState(initialCategories);
+  const [isNavigating, setIsNavigating] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", handleScroll);
-    
-    // Fetch categories
-    const fetchCats = async () => {
-      const data = await getCategories();
-      // Sort by order
-      const sorted = (data || []).sort((a, b) => (a.order || 0) - (b.order || 0));
-      setCategories(sorted);
-    };
-    fetchCats();
+
+    // Sync state if initialCategories change significantly
+    if (initialCategories.length > 0 && categories.length === 0) {
+      setCategories(initialCategories);
+    }
 
     return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  }, [initialCategories, categories.length]);
+
+  // Reset navigating state when pathname changes
+  useEffect(() => {
+    setIsNavigating(false);
+  }, [pathname]);
+
+  const handleLinkClick = (e, href) => {
+    // 1. Prevent if currently on the same page
+    if (pathname === href) {
+      e.preventDefault();
+      // Optionally scroll to top
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    // 2. Prevent rapid multiple clicks to different pages
+    if (isNavigating) {
+      e.preventDefault();
+      return;
+    }
+
+    setIsNavigating(true);
+    // Timeout as a safety measure if navigation fails/takes too long
+    setTimeout(() => setIsNavigating(false), 2000);
+  };
 
   return (
     <nav
@@ -36,7 +60,11 @@ export default function Navbar() {
     >
       <div className={styles.inner}>
         {/* Logo */}
-        <Link href="/" className={styles.logo}>
+        <Link 
+          href="/" 
+          className={styles.logo}
+          onClick={(e) => handleLinkClick(e, "/")}
+        >
           <span className={styles.logoText}>
             EditerLor
           </span>
@@ -46,7 +74,11 @@ export default function Navbar() {
         <ul className={styles.links}>
           {categories.slice(0, 5).map((cat) => (
             <li key={cat.slug}>
-              <Link href={`/${cat.slug}`} className={styles.link}>
+              <Link 
+                href={`/${cat.slug}`} 
+                className={styles.link}
+                onClick={(e) => handleLinkClick(e, `/${cat.slug}`)}
+              >
                 {cat.name}
               </Link>
             </li>
@@ -56,7 +88,11 @@ export default function Navbar() {
             <ul className={styles.dropdown}>
               {categories.slice(5).map((cat) => (
                 <li key={cat.slug}>
-                  <Link href={`/${cat.slug}`} className={styles.dropdownLink}>
+                  <Link 
+                    href={`/${cat.slug}`} 
+                    className={styles.dropdownLink}
+                    onClick={(e) => handleLinkClick(e, `/${cat.slug}`)}
+                  >
                     {cat.name}
                   </Link>
                 </li>
@@ -93,7 +129,10 @@ export default function Navbar() {
                 <Link
                   href={`/${cat.slug}`}
                   className={styles.mobileLink}
-                  onClick={() => setMobileOpen(false)}
+                  onClick={(e) => {
+                    handleLinkClick(e, `/${cat.slug}`);
+                    setMobileOpen(false);
+                  }}
                 >
                   {cat.name}
                 </Link>

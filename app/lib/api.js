@@ -1,8 +1,19 @@
 import { supabase } from './supabase';
+import { unstable_cache } from 'next/cache';
 
 /* ========================================
    RESOURCES
    ======================================== */
+
+/**
+ * Essential columns for listing/grid view to minimize database egress and JSON payload size.
+ */
+export const RESOURCE_SUMMARY_COLUMNS = 'id, name, slug, category_id, folder_id, file_format, file_size, file_name, tags, download_count, preview_url, thumbnail_url, download_url, created_at, categories!inner(slug, name), folders(name)';
+
+/**
+ * Full details for single resource page or edit mode.
+ */
+export const RESOURCE_DETAIL_COLUMNS = '*, categories(slug, name), folders(name)';
 
 /**
  * Helper to map DB resource to Frontend resource
@@ -53,7 +64,7 @@ export async function getResource(id) {
 export async function getResources({ categorySlug, folderId, limit = 20, offset = 0 } = {}) {
   let query = supabase
     .from('resources')
-    .select('id, name, description, slug, category_id, folder_id, file_format, file_size, file_name, file_type, tags, download_url, preview_url, thumbnail_url, storage_path, download_count, is_published, created_at, updated_at, categories!inner(slug, name), folders(name)')
+    .select(RESOURCE_SUMMARY_COLUMNS)
     .eq('is_published', true)
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1);
@@ -75,24 +86,53 @@ export async function getResources({ categorySlug, folderId, limit = 20, offset 
 }
 
 /**
- * Find resources using PostgreSQL Full-Text Search.
+ * Find resources using a hybrid of Full-Text Search and Trigram Similarity.
+ * This provides the 'loose' search experience requested.
  */
 export async function searchResources(searchQuery) {
+  // Use a hybrid query: match via FTS or Similarity
   const { data, error } = await supabase
     .from('resources')
-    .select('id, name, description, slug, category_id, folder_id, file_format, file_size, file_name, file_type, tags, download_url, preview_url, thumbnail_url, storage_path, download_count, is_published, created_at, updated_at, categories(slug, name)')
+    .select('id, name, description, slug, category_id, folder_id, file_format, file_size, file_name, file_type, tags, download_url, preview_url, thumbnail_url, storage_path, download_count, is_published, created_at, updated_at, categories(slug, name, icon)')
     .eq('is_published', true)
-    .textSearch('fts', searchQuery, {
-      type: 'websearch',
-      config: 'english'
-    })
-    .limit(20);
+    .or(`fts.wwebsearch.${searchQuery},name.ilike.%${searchQuery}%,tags.cs.{${searchQuery}}`)
+    .limit(40);
 
   if (error) {
     console.error('Error searching resources:', error);
     return [];
   }
   return data.map(mapResource);
+}
+
+/**
+ * Lightweight search for auto-suggestions.
+ * Returns minimal data + category icons for performance.
+ */
+export async function getSearchSuggestions(query) {
+  if (!query || query.length < 2) return [];
+
+  const { data, error } = await supabase
+    .from('resources')
+    .select('id, name, slug, category_id, file_format, folder_id, categories(slug, icon), folders(name)')
+    .eq('is_published', true)
+    .or(`name.ilike.%${query}%,tags.cs.{${query}}`)
+    .limit(8);
+
+  if (error) {
+    console.error('Error fetching suggestions:', error);
+    return [];
+  }
+
+  return data.map(item => ({
+    id: item.id,
+    name: item.name,
+    slug: item.slug,
+    categorySlug: item.categories?.slug,
+    categoryIcon: item.categories?.icon || 'box',
+    format: item.file_format,
+    folderName: item.folders?.name
+  }));
 }
 
 /**
@@ -231,29 +271,50 @@ export async function incrementDownloadCount(id) {
 
 /**
  * Get all categories with resource counts using SQL Joins.
- * This is much more efficient than the old Firebase way.
+ * Cached for 1 hour.
  */
-export async function getCategoriesWithCounts() {
-  const { data, error } = await supabase
-    .from('categories')
-    .select(`
-      *,
-      resources:resources(count)
-    `)
-    .order('order', { ascending: true });
+export const getCategoriesWithCounts = unstable_cache(
+  async () => {
+    const { data, error } = await supabase
+      .from('categories')
+      .select(`
+        *,
+        resources:resources(count)
+      `)
+      .order('order', { ascending: true });
 
-  if (error) {
-    console.error('Error fetching categories:', error);
-    return [];
-  }
+    if (error) {
+      console.error('Error fetching categories:', error);
+      return [];
+    }
 
-  // Map resources(count) to resourceCount for the frontend
-  return (data || []).map(cat => ({
-    ...cat,
-    resourceCount: cat.resources?.[0]?.count || 0,
-    formats: cat.formats || [] // Ensure formats is always an array
-  }));
-}
+    // Map resources(count) to resourceCount for the frontend
+    return (data || []).map(cat => ({
+      ...cat,
+      resourceCount: cat.resources?.[0]?.count || 0,
+      formats: cat.formats || [] // Ensure formats is always an array
+    }));
+  },
+  ['categories-with-counts'],
+  { revalidate: 3600, tags: ['categories'] }
+);
+
+export const getCategories = unstable_cache(
+  async () => {
+    const { data, error } = await supabase
+      .from('categories')
+      .select('*')
+      .order('order', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching categories (simple):', error);
+      return [];
+    }
+    return data || [];
+  },
+  ['categories-simple'],
+  { revalidate: 3600, tags: ['categories'] }
+);
 
 export async function getCategoryBySlug(slug) {
   const { data, error } = await supabase
@@ -269,18 +330,6 @@ export async function getCategoryBySlug(slug) {
   return data;
 }
 
-export async function getCategories() {
-  const { data, error } = await supabase
-    .from('categories')
-    .select('*')
-    .order('order', { ascending: true });
-
-  if (error) {
-    console.error('Error fetching categories:', error);
-    return [];
-  }
-  return data;
-}
 
 /**
  * Add a new category.
@@ -366,17 +415,19 @@ export async function deleteCategory(id) {
 /**
  * Get folders for a category, optionally filtered by parent.
  */
-export async function getFolders(categorySlug, parentId = null) {
+export async function getFolders(categorySlug, parentId) {
   let query = supabase
     .from('folders')
     .select('*, category:categories!inner(slug)')
     .eq('categories.slug', categorySlug)
     .order('order', { ascending: true });
 
-  if (parentId) {
-    query = query.eq('parent_id', parentId);
-  } else {
-    query = query.is('parent_id', null);
+  if (parentId !== undefined) {
+    if (parentId === null) {
+      query = query.is('parent_id', null);
+    } else {
+      query = query.eq('parent_id', parentId);
+    }
   }
 
   const { data, error } = await query;

@@ -93,7 +93,26 @@ export default function SoundButton({
     return audio;
   }, [downloadUrl]);
 
-  // Clean up on unmount
+  // Sync volume settings and handle global reset
+  useEffect(() => {
+    return mediaManager.subscribe(({ activeMediaId }) => {
+      // If another item started playing, and we are not that item, but we have progress
+      if (activeMediaId && activeMediaId !== id) {
+        if (isPlaying || currentTime > 0) {
+          setIsPlaying(false);
+          setCurrentTime(0);
+          if (rafRef.current) cancelAnimationFrame(rafRef.current);
+          
+          // Actually stop the audio if it was the one playing
+          if (audioRef.current && !audioRef.current.paused) {
+            audioRef.current.pause();
+            audioRef.current.currentTime = 0;
+          }
+        }
+      }
+    });
+  }, [id, isPlaying, currentTime]);
+
   useEffect(() => {
     return () => {
       const audio = audioRef.current;
@@ -130,7 +149,7 @@ export default function SoundButton({
         setIsPlaying(false);
         setCurrentTime(0); // Sync state when another media overrides
         if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      });
+      }, id);
       const playPromise = audio.play();
       if (playPromise !== undefined) {
         playPromise.then(() => {
@@ -233,14 +252,17 @@ export default function SoundButton({
         disabled={!downloadUrl}
         style={{ '--cat-color': primaryColor }}
       >
-        <span className={styles.ring} style={{ borderColor: primaryColor }} />
+        <span className={styles.ring} style={{ borderColor: (isPlaying || currentTime > 0) ? primaryColor : undefined }} />
         {isPlaying ? (
           <span className={styles.pauseIcon}>
-            <span className={styles.pauseBar} />
-            <span className={styles.pauseBar} />
+            <span className={styles.pauseBar} style={{ backgroundColor: primaryColor }} />
+            <span className={styles.pauseBar} style={{ backgroundColor: primaryColor }} />
           </span>
         ) : (
-          <span className={styles.playIcon} />
+          <span 
+            className={styles.playIcon} 
+            style={{ borderLeftColor: (isPlaying || currentTime > 0) ? primaryColor : undefined }} 
+          />
         )}
       </button>
 
@@ -263,7 +285,10 @@ export default function SoundButton({
             {(downloadCount || 0).toLocaleString()}
           </span>
           {/* Time display container handles jumpy layout */}
-          <span className={`${styles.time} ${(isPlaying || currentTime > 0) ? styles.timeVisible : ""}`}>
+          <span 
+            className={`${styles.time} ${(isPlaying || currentTime > 0) ? styles.timeVisible : ""}`}
+            style={{ color: isPlaying ? primaryColor : 'inherit' }}
+          >
             {duration > 0 ? `${formatTime(currentTime)} / ${formatTime(duration)}` : ""}
           </span>
         </div>

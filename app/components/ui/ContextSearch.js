@@ -1,20 +1,13 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Search, FileAudio, Film, Image, Type, SlidersHorizontal, Loader2 } from "lucide-react";
-import { searchResourcesClient, getOrBuildSearchIndex } from "@/app/lib/searchUtils";
+import { Search, Loader2 } from "lucide-react";
+import { getIcon } from "@/app/components/ui/IconLib";
 import styles from "./ContextSearch.module.css";
 
-function getCategoryIcon(cat) {
-  const size = 14;
-  switch (cat) {
-    case "sound-effects": case "music": return <FileAudio size={size} />;
-    case "video-meme": case "green-screen": case "animation": return <Film size={size} />;
-    case "image-overlay": return <Image size={size} />;
-    case "font": return <Type size={size} />;
-    case "preset-lut": return <SlidersHorizontal size={size} />;
-    default: return <FileAudio size={size} />;
-  }
+function getCategoryIcon(iconName, size = 16) {
+  const Icon = getIcon(iconName);
+  return <Icon size={size} />;
 }
 
 // Helper to highlight matched text
@@ -63,6 +56,8 @@ export default function ContextSearch() {
     setQuery("");
     setResults([]);
     setActiveIndex(0);
+    // Clear page filter too
+    window.dispatchEvent(new CustomEvent("local-search", { detail: "" }));
   }, []);
 
   // Debounced search when query changes
@@ -82,15 +77,16 @@ export default function ContextSearch() {
     setLoading(true);
     debounceRef.current = setTimeout(async () => {
       try {
-        const data = await searchResourcesClient(query.trim(), 8);
-        setResults(data);
+        const response = await fetch(`/api/search/suggestions?q=${encodeURIComponent(query.trim())}`);
+        const data = await response.json();
+        setResults(data.results || []);
         setActiveIndex(0);
       } catch (e) {
         console.error("Search error:", e);
         setResults([]);
       }
       setLoading(false);
-    }, 50); // Mức debounce rất nhỏ vì tìm kiếm local cực nhanh
+    }, 300); // 300ms debounce for API calls
 
     return () => {
       if (debounceRef.current) {
@@ -152,7 +148,8 @@ export default function ContextSearch() {
       case "Enter":
         e.preventDefault();
         if (results[activeIndex]) {
-          window.location.href = `/${results[activeIndex].category}`;
+          const item = results[activeIndex];
+          window.location.href = `/${item.categorySlug}?res=${item.slug}`;
           close();
         } else if (query.trim()) {
           // Fallback: go to search page
@@ -179,8 +176,11 @@ export default function ContextSearch() {
           placeholder="Quick search..."
           value={query}
           onChange={(e) => {
-            setQuery(e.target.value);
+            const val = e.target.value;
+            setQuery(val);
             setActiveIndex(0);
+            // Dispatch a custom event for in-page filtering
+            window.dispatchEvent(new CustomEvent("local-search", { detail: val }));
           }}
           onKeyDown={handleKeyDown}
           className={styles.input}
@@ -204,17 +204,27 @@ export default function ContextSearch() {
               className={`${styles.resultItem} ${idx === activeIndex ? styles.active : ""}`}
               onMouseEnter={() => setActiveIndex(idx)}
               onClick={() => {
-                window.location.href = `/${item.category}`;
+                window.location.href = `/${item.categorySlug}?res=${item.slug}`;
                 close();
               }}
             >
               <span className={styles.resultIcon}>
-                {getCategoryIcon(item.category)}
+                {getCategoryIcon(item.categoryIcon)}
               </span>
-              <span className={styles.resultName}>
-                {highlightText(item.name, item.matches, "name")}
-              </span>
-              <span className={styles.resultFormat}>{item.fileFormat || item.format}</span>
+              <div className={styles.resultItemContent}>
+                <div className={styles.resultName}>{item.name}</div>
+                <div className={styles.resultMeta}>
+                  {item.format && <span className={styles.resultFormat}>{item.format.toUpperCase()}</span>}
+                  {item.folderName && (
+                    <>
+                      <span className={styles.dot}>•</span>
+                      <span className={styles.folder}>{item.folderName.toUpperCase()}</span>
+                    </>
+                  )}
+                  <span className={styles.dot}>•</span>
+                  <span className={styles.action}>CLICK TO OPEN</span>
+                </div>
+              </div>
             </li>
           ))}
         </ul>

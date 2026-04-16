@@ -153,7 +153,14 @@ export default function ResourceCard({
                     preload="none"
                   />
                 ) : (
-                  <Image fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" src={thumbnailUrl} alt={displayName} className={styles.thumbnail} />
+                  <Image 
+                    fill 
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" 
+                    src={thumbnailUrl} 
+                    alt={displayName} 
+                    className={styles.thumbnail} 
+                    priority={index < 4}
+                  />
                 )}
               </>
             ) : resolvedUrl ? (
@@ -236,7 +243,8 @@ export default function ResourceCard({
                 src={previewUrl || thumbnailUrl || resolvedUrl}
                 alt={displayName}
                 className={styles.thumbnail}
-                loading="lazy"
+                loading={index < 4 ? undefined : "lazy"}
+                priority={index < 4}
               />
             ) : (
               <div className={styles.placeholderThumb}>
@@ -269,7 +277,8 @@ export default function ResourceCard({
                 src={previewUrl || thumbnailUrl}
                 alt={displayName}
                 className={styles.thumbnail}
-                loading="lazy"
+                loading={index < 4 ? undefined : "lazy"}
+                priority={index < 4}
               />
             ) : (
               <div className={styles.placeholderThumb}>
@@ -293,7 +302,15 @@ export default function ResourceCard({
         return (
           <div className={styles.preview}>
             {thumbnailUrl ? (
-              <Image fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" src={thumbnailUrl} alt={displayName} className={styles.thumbnail} loading="lazy" />
+              <Image 
+                fill 
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" 
+                src={thumbnailUrl} 
+                alt={displayName} 
+                className={styles.thumbnail} 
+                loading={index < 4 ? undefined : "lazy"}
+                priority={index < 4}
+              />
             ) : (
               <div className={styles.placeholderThumb}>
                 <span className={styles.formatBig}>{fileFormat?.toUpperCase()}</span>

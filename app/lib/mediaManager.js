@@ -6,6 +6,7 @@
 let activeMedia = null;
 let activeCallback = null;
 let activeType = null;
+let activeMediaId = null;
 
 // Settings structure
 const settings = {
@@ -39,7 +40,7 @@ if (typeof window !== 'undefined') {
 }
 
 function notify() {
-  listeners.forEach(cb => cb({ ...settings }));
+  listeners.forEach(cb => cb({ ...settings, activeMediaId }));
 }
 
 export const mediaManager = {
@@ -58,8 +59,9 @@ export const mediaManager = {
    * @param {HTMLAudioElement|HTMLVideoElement} element
    * @param {string} type - 'video' or 'audio'
    * @param {Function} onStopped - callback when this media is stopped by another
+   * @param {string} id - unique resource ID
    */
-  play(element, type = 'video', onStopped) {
+  play(element, type = 'video', onStopped, id = null) {
     // 1. Stop currently active media
     if (activeMedia && activeMedia !== element) {
       try {
@@ -75,9 +77,13 @@ export const mediaManager = {
     activeMedia = element;
     activeCallback = onStopped;
     activeType = type;
+    activeMediaId = id;
 
     // 3. Apply global volume settings for this type
     this.applySettings(element, type);
+    
+    // 4. Notify subscribers of ID change
+    notify();
   },
 
   /**

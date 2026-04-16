@@ -4,7 +4,6 @@ import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { Search as SearchIcon } from "lucide-react";
-import { searchResourcesClient } from "@/app/lib/searchUtils";
 import SearchBar from "@/app/components/ui/SearchBar";
 import ResourceCard from "@/app/components/ui/ResourceCard";
 import PreviewOverlay from "@/app/components/ui/PreviewOverlay";
@@ -28,8 +27,9 @@ function SearchContent() {
       setLoading(true);
       setSearched(true);
       try {
-        const found = await searchResourcesClient(initialQuery.trim(), 200);
-        setResults(found);
+        const response = await fetch(`/api/search?q=${encodeURIComponent(initialQuery.trim())}`);
+        const data = await response.json();
+        setResults(data.results || []);
       } catch (e) {
         console.error("Search error:", e.message);
       }
