@@ -38,6 +38,17 @@ export default function Footer() {
     load();
   }, []);
 
+  const getBrandColor = (name) => {
+    const n = name.toLowerCase();
+    if (n.includes('facebook')) return '#1877F2';
+    if (n.includes('youtube')) return '#FF0000';
+    if (n.includes('twitter') || n.includes(' x ')) return '#1da1f2';
+    if (n.includes('instagram')) return '#E4405F';
+    if (n.includes('discord')) return '#5865F2';
+    if (n.includes('github')) return '#333333';
+    return 'var(--neon-cyan)'; // Default fallback
+  };
+
   return (
     <footer className={styles.footer} id="main-footer">
       <div className={styles.mainContent}>
@@ -56,14 +67,20 @@ export default function Footer() {
                     href={social.url} 
                     target="_blank" 
                     rel="noopener noreferrer" 
-                    className={styles.socialIcon} 
+                    className={styles.socialIconWrapper} 
                     title={social.name}
                   >
-                    {social.icon_url ? (
-                      <img src={social.icon_url} alt={social.name} className={styles.svgIcon} />
-                    ) : (
-                      <span className={styles.fallbackIcon}>{social.name.charAt(0)}</span>
-                    )}
+                    <span className={styles.socialIconContainer}>
+                      {social.icon_url ? (
+                        <img src={social.icon_url} alt={social.name} className={styles.svgIcon} />
+                      ) : (
+                        <span className={styles.fallbackIcon}>{social.name.charAt(0)}</span>
+                      )}
+                    </span>
+                    <span 
+                      className={styles.socialBg} 
+                      style={{ backgroundColor: getBrandColor(social.name) }}
+                    ></span>
                   </a>
                 ))}
               </div>
