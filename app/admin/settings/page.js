@@ -192,7 +192,7 @@ export default function AdminSettings() {
                       width: 32, height: 32, background: "black", border: "1px solid var(--border-default)",
                       display: "flex", alignItems: "center", justifyContent: "center"
                     }}>
-                      {social.icon_url ? <img src={social.icon_url} alt="icon" style={{ width: 20, height: 20, filter: "invert(1)" }} /> : <span style={{fontSize: 10, color: "#333"}}>UI</span>}
+                      {social.icon_url ? <img src={social.icon_url} alt="icon" style={{ width: 20, height: 20 }} /> : <span style={{fontSize: 10, color: "#333"}}>UI</span>}
                     </div>
                     <label style={{ 
                       cursor: "pointer", padding: "4px 8px", background: "var(--bg-hover)", border: "1px solid var(--border-default)", fontSize: "0.7rem" 

@@ -96,8 +96,7 @@
 .svgIcon {
   width: 20px;
   height: 20px;
-  filter: invert(1);
-  /* Ensure icons are white in dark theme if they are black SVGs */
+  /* Removed inversion to preserve original colors of uploaded icons */
   transition: transform 0.3s;
 }
 
