@@ -102,12 +102,12 @@ export default function Footer() {
               <h4 className={styles.colTitle}>Legal</h4>
               <ul className={styles.links}>
                 <li>
-                  <Link href="/terms" className={styles.legalLink}>
+                  <Link href="/terms" className={styles.legalLink} target="_blank" rel="noopener noreferrer">
                     Terms of Service
                   </Link>
                 </li>
                 <li>
-                  <Link href="/privacy" className={styles.legalLink}>
+                  <Link href="/privacy" className={styles.legalLink} target="_blank" rel="noopener noreferrer">
                     Privacy Policy
                   </Link>
                 </li>

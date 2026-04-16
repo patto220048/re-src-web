@@ -1,12 +1,20 @@
 .container {
+  width: 100%;
+  padding: var(--space-20) 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+}
+
+.content {
   max-width: 800px;
-  margin: var(--space-12) auto var(--space-20);
+  width: 100%;
   background: var(--bg-card);
   border: 1px solid var(--border-default);
   padding: var(--space-16) var(--space-10);
-  min-height: auto;
+  margin: 0 auto;
 }
-
 .title {
   font-family: var(--font-heading);
   font-size: 3rem;

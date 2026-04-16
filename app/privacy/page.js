@@ -6,8 +6,7 @@ import styles from './privacy.module.css';
 export default function PrivacyPolicy() {
   return (
     <div className={styles.container}>
-      <main className={styles.main}>
-        <div className={styles.content}>
+      <div className={styles.content}>
           <h1 className={styles.title}>Privacy Policy</h1>
           <p className={styles.lastUpdated}>Last Updated: April 16, 2026</p>
 
@@ -88,9 +87,7 @@ export default function PrivacyPolicy() {
               If you have any questions about this Privacy Policy, please contact us at support@editerlor.com.
             </p>
           </section>
-        </div>
-      </main>
-     
+      </div>
     </div>
   );
 }
