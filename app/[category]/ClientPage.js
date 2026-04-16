@@ -6,7 +6,6 @@ import Sidebar from "@/app/components/layout/Sidebar";
 import ResourceCard from "@/app/components/ui/ResourceCard";
 import SoundButton from "@/app/components/ui/SoundButton";
 import FilterBar from "@/app/components/ui/FilterBar";
-import InitialLoader from "@/app/components/ui/InitialLoader";
 import PreviewOverlay from "@/app/components/ui/PreviewOverlay";
 import styles from "./page.module.css";
 
@@ -18,20 +17,11 @@ export default function ClientPage({ slug, info, folders, resources }) {
   const [selectedFormat, setSelectedFormat] = useState(null);
   const [sortBy, setSortBy] = useState("newest");
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
-  const [isReady, setIsReady] = useState(false);
   const [isMoreLoading, setIsMoreLoading] = useState(false);
   const [previewResource, setPreviewResource] = useState(null);
   const [inPageSearch, setInPageSearch] = useState("");
   const searchParams = useSearchParams();
   const resSlug = searchParams.get("res");
-
-  // Initial mount ready state
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsReady(true);
-    }, 1000); // 1s buffer for browser to settle rendering
-    return () => clearTimeout(timer);
-  }, []);
 
   // Handle deep-link to resource via ?res=slug
   useEffect(() => {
@@ -41,7 +31,7 @@ export default function ClientPage({ slug, info, folders, resources }) {
         setPreviewResource(resource);
       }
     }
-  }, [resSlug, resources, isReady]);
+  }, [resSlug, resources]);
 
   // Listen for in-page search from ContextSearch
   useEffect(() => {
@@ -202,9 +192,7 @@ export default function ClientPage({ slug, info, folders, resources }) {
   };
 
   return (
-    <>
-      <InitialLoader isReady={isReady} />
-      <div className={styles.page} style={{ "--cat-color": info.color }}>
+    <div className={styles.page} style={{ "--cat-color": info.color }}>
       <Sidebar
         categoryName={info.name}
         folders={folders}
@@ -242,14 +230,14 @@ export default function ClientPage({ slug, info, folders, resources }) {
 
         {renderResources()}
       </div>
+
+      {previewResource && (
+        <PreviewOverlay 
+          resource={previewResource} 
+          onClose={() => setPreviewResource(null)} 
+          showDownload={true} 
+        />
+      )}
     </div>
-    {previewResource && (
-      <PreviewOverlay 
-        resource={previewResource} 
-        onClose={() => setPreviewResource(null)} 
-        showDownload={true} 
-      />
-    )}
-    </>
   );
 }

@@ -38,8 +38,8 @@ const getCachedCategoryData = unstable_cache(
     // 2. Fetch folders for this category
     const fetchedFolders = await getFolders(slug);
     
-    // 3. Fetch resources for this category
-    const fetchedResources = await getResources({ categorySlug: slug, limit: 1000 });
+    // 3. Fetch resources for this category - Limit reduced for better performance
+    const fetchedResources = await getResources({ categorySlug: slug, limit: 200 });
 
     return {
       categoryInfo: info,
@@ -49,7 +49,7 @@ const getCachedCategoryData = unstable_cache(
   },
   ['category-data'],
   { 
-    revalidate: 3600, 
+    revalidate: 86400, 
     tags: ['resources', 'categories'] 
   }
 );

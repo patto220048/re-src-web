@@ -71,6 +71,8 @@ CREATE INDEX idx_resources_category ON resources(category_id);
 CREATE INDEX idx_resources_folder ON resources(folder_id);
 CREATE INDEX idx_resources_fts ON resources USING gin(fts);
 CREATE INDEX idx_resources_name_trgm ON resources USING gin (name gin_trgm_ops); -- Fast fuzzy search for Names
+CREATE INDEX idx_resources_published ON resources(is_published);
+CREATE INDEX idx_resources_created_at ON resources(created_at DESC);
 
 -- 6. Seed dữ liệu cho Categories
 INSERT INTO categories (name, slug, icon_name) VALUES

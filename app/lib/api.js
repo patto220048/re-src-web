@@ -5,6 +5,16 @@ import { supabase } from './supabase';
    ======================================== */
 
 /**
+ * Essential columns for listing/grid view to minimize database egress and JSON payload size.
+ */
+export const RESOURCE_SUMMARY_COLUMNS = 'id, name, slug, category_id, folder_id, file_format, file_size, file_name, tags, download_count, preview_url, thumbnail_url, download_url, created_at, categories!inner(slug, name), folders(name)';
+
+/**
+ * Full details for single resource page or edit mode.
+ */
+export const RESOURCE_DETAIL_COLUMNS = '*, categories(slug, name), folders(name)';
+
+/**
  * Helper to map DB resource to Frontend resource
  */
 function mapResource(res) {
@@ -53,7 +63,7 @@ export async function getResource(id) {
 export async function getResources({ categorySlug, folderId, limit = 20, offset = 0 } = {}) {
   let query = supabase
     .from('resources')
-    .select('id, name, description, slug, category_id, folder_id, file_format, file_size, file_name, file_type, tags, download_url, preview_url, thumbnail_url, storage_path, download_count, is_published, created_at, updated_at, categories!inner(slug, name), folders(name)')
+    .select(RESOURCE_SUMMARY_COLUMNS)
     .eq('is_published', true)
     .order('created_at', { ascending: false })
     .range(offset, offset + limit - 1);
