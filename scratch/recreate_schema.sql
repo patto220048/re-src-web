@@ -50,12 +50,15 @@ CREATE TABLE resources (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- 4. Thiết lập Full-Text Search trigger
+-- 4. Thiết lập Full-Text Search trigger (Enhanced with Tags)
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+
 CREATE OR REPLACE FUNCTION resources_fts_trigger() RETURNS trigger AS $$
 begin
   new.fts :=
     setweight(to_tsvector('english', coalesce(new.name, '')), 'A') ||
-    setweight(to_tsvector('english', coalesce(new.description, '')), 'B');
+    setweight(to_tsvector('english', coalesce(new.description, '')), 'B') ||
+    setweight(to_tsvector('english', coalesce(array_to_string(new.tags, ' '), '')), 'A');
   return new;
 end
 $$ LANGUAGE plpgsql;
@@ -67,6 +70,7 @@ ON resources FOR EACH ROW EXECUTE FUNCTION resources_fts_trigger();
 CREATE INDEX idx_resources_category ON resources(category_id);
 CREATE INDEX idx_resources_folder ON resources(folder_id);
 CREATE INDEX idx_resources_fts ON resources USING gin(fts);
+CREATE INDEX idx_resources_name_trgm ON resources USING gin (name gin_trgm_ops); -- Fast fuzzy search for Names
 
 -- 6. Seed dữ liệu cho Categories
 INSERT INTO categories (name, slug, icon_name) VALUES

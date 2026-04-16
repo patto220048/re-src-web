@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
+import { useSearchParams } from "next/navigation";
 import Sidebar from "@/app/components/layout/Sidebar";
 import ResourceCard from "@/app/components/ui/ResourceCard";
 import SoundButton from "@/app/components/ui/SoundButton";
@@ -20,6 +21,9 @@ export default function ClientPage({ slug, info, folders, resources }) {
   const [isReady, setIsReady] = useState(false);
   const [isMoreLoading, setIsMoreLoading] = useState(false);
   const [previewResource, setPreviewResource] = useState(null);
+  const [inPageSearch, setInPageSearch] = useState("");
+  const searchParams = useSearchParams();
+  const resSlug = searchParams.get("res");
 
   // Initial mount ready state
   useEffect(() => {
@@ -29,10 +33,29 @@ export default function ClientPage({ slug, info, folders, resources }) {
     return () => clearTimeout(timer);
   }, []);
 
+  // Handle deep-link to resource via ?res=slug
+  useEffect(() => {
+    if (resSlug && resources.length > 0) {
+      const resource = resources.find(r => r.slug === resSlug);
+      if (resource) {
+        setPreviewResource(resource);
+      }
+    }
+  }, [resSlug, resources, isReady]);
+
+  // Listen for in-page search from ContextSearch
+  useEffect(() => {
+    const handleLocalSearch = (e) => {
+      setInPageSearch(e.detail || "");
+    };
+    window.addEventListener("local-search", handleLocalSearch);
+    return () => window.removeEventListener("local-search", handleLocalSearch);
+  }, []);
+
   // Reset pagination when filters change
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
-  }, [selectedFolderId, selectedFormat, sortBy]);
+  }, [selectedFolderId, selectedFormat, sortBy, inPageSearch]);
 
   const filteredResources = useMemo(() => {
     let results = [...resources];
@@ -48,6 +71,14 @@ export default function ClientPage({ slug, info, folders, resources }) {
       );
     }
 
+    if (inPageSearch) {
+      const q = inPageSearch.toLowerCase();
+      results = results.filter(r => 
+        r.name?.toLowerCase().includes(q) || 
+        r.tags?.some(t => t.toLowerCase().includes(q))
+      );
+    }
+
     switch (sortBy) {
       case "popular":
         results.sort((a, b) => (b.downloadCount || 0) - (a.downloadCount || 0));
@@ -59,7 +90,7 @@ export default function ClientPage({ slug, info, folders, resources }) {
         break;
     }
     return results;
-  }, [resources, selectedFolderId, selectedFormat, sortBy]);
+  }, [resources, selectedFolderId, selectedFormat, sortBy, inPageSearch]);
 
   const handleSelectFolder = (folder) => {
     if (folder === null) {

@@ -10,7 +10,7 @@
   align-items: center;
   text-align: center;
   padding: 120px var(--space-6) 60px;
-  overflow: hidden;
+  /* overflow: hidden; Removed to allow search dropdown visibility */
   border-bottom: 1px solid var(--border-default);
 }
 

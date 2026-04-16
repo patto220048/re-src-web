@@ -75,24 +75,53 @@ export async function getResources({ categorySlug, folderId, limit = 20, offset 
 }
 
 /**
- * Find resources using PostgreSQL Full-Text Search.
+ * Find resources using a hybrid of Full-Text Search and Trigram Similarity.
+ * This provides the 'loose' search experience requested.
  */
 export async function searchResources(searchQuery) {
+  // Use a hybrid query: match via FTS or Similarity
   const { data, error } = await supabase
     .from('resources')
-    .select('id, name, description, slug, category_id, folder_id, file_format, file_size, file_name, file_type, tags, download_url, preview_url, thumbnail_url, storage_path, download_count, is_published, created_at, updated_at, categories(slug, name)')
+    .select('id, name, description, slug, category_id, folder_id, file_format, file_size, file_name, file_type, tags, download_url, preview_url, thumbnail_url, storage_path, download_count, is_published, created_at, updated_at, categories(slug, name, icon)')
     .eq('is_published', true)
-    .textSearch('fts', searchQuery, {
-      type: 'websearch',
-      config: 'english'
-    })
-    .limit(20);
+    .or(`fts.wwebsearch.${searchQuery},name.ilike.%${searchQuery}%,tags.cs.{${searchQuery}}`)
+    .limit(40);
 
   if (error) {
     console.error('Error searching resources:', error);
     return [];
   }
   return data.map(mapResource);
+}
+
+/**
+ * Lightweight search for auto-suggestions.
+ * Returns minimal data + category icons for performance.
+ */
+export async function getSearchSuggestions(query) {
+  if (!query || query.length < 2) return [];
+
+  const { data, error } = await supabase
+    .from('resources')
+    .select('id, name, slug, category_id, file_format, folder_id, categories(slug, icon), folders(name)')
+    .eq('is_published', true)
+    .or(`name.ilike.%${query}%,tags.cs.{${query}}`)
+    .limit(8);
+
+  if (error) {
+    console.error('Error fetching suggestions:', error);
+    return [];
+  }
+
+  return data.map(item => ({
+    id: item.id,
+    name: item.name,
+    slug: item.slug,
+    categorySlug: item.categories?.slug,
+    categoryIcon: item.categories?.icon || 'box',
+    format: item.file_format,
+    folderName: item.folders?.name
+  }));
 }
 
 /**
