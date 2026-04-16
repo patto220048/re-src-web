@@ -296,6 +296,7 @@ export async function addCategory(categoryData) {
       description: categoryData.description || null,
       layout: categoryData.layout || 'media',
       color: categoryData.color || '#00F0FF',
+      icon: categoryData.icon || 'box',
       formats: categoryData.formats || [],
       created_at: now
     }])

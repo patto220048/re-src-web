@@ -24,6 +24,7 @@ export default function RootLayout({ children }) {
           defaultTheme="dark"
           enableSystem
           disableTransitionOnChange
+          scriptProps={{ async: true }}
         >
           <LayoutShell>{children}</LayoutShell>
         </ThemeProvider>

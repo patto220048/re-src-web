@@ -18,6 +18,7 @@ import {
   deleteCategory 
 } from "@/app/lib/api";
 import { revalidateCategoryData } from "@/app/lib/actions";
+import { ICON_LIST, getIcon } from "@/app/components/ui/IconLib";
 import styles from "./page.module.css";
 
 export default function CategoriesPage() {
@@ -34,6 +35,7 @@ export default function CategoriesPage() {
     description: "",
     layout: "media",
     color: "#00F0FF",
+    icon: "box",
     formats: []
   });
   const [saving, setSaving] = useState(false);
@@ -64,6 +66,7 @@ export default function CategoriesPage() {
       description: "",
       layout: "media",
       color: "#00F0FF",
+      icon: "box",
       formats: []
     });
     setError("");
@@ -79,6 +82,7 @@ export default function CategoriesPage() {
       description: cat.description || "",
       layout: cat.layout || "media",
       color: cat.color || "#00F0FF",
+      icon: cat.icon || "box",
       formats: cat.formats || []
     });
     setError("");
@@ -181,6 +185,10 @@ export default function CategoriesPage() {
                       className={styles.colorIndicator} 
                       style={{ backgroundColor: cat.color || '#00F0FF' }} 
                     />
+                    {(() => {
+                      const CategoryIcon = getIcon(cat.icon);
+                      return <CategoryIcon size={16} className={styles.tableIcon} style={{ color: cat.color }} />;
+                    })()}
                     <strong>{cat.name}</strong>
                   </div>
                 </td>
@@ -337,6 +345,23 @@ export default function CategoriesPage() {
                   rows={2}
                   placeholder="Short description for this category..."
                 />
+              </div>
+
+              <div className={styles.inputGroup}>
+                <label>Category Icon</label>
+                <div className={styles.iconGrid}>
+                  {ICON_LIST.map(({ id, Icon }) => (
+                    <button
+                      key={id}
+                      type="button"
+                      className={`${styles.iconItem} ${formData.icon === id ? styles.active : ""}`}
+                      onClick={() => setFormData(p => ({ ...p, icon: id }))}
+                      title={id}
+                    >
+                      <Icon size={20} />
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {error && (

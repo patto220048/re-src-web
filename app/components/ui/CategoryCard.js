@@ -1,25 +1,9 @@
-"use client";
-
 import Link from "next/link";
-import {
-  Volume2, Music, Film, Monitor,
-  Sparkles, ImageIcon, Type, SlidersHorizontal,
-} from "lucide-react";
+import { getIcon } from "./IconLib";
 import styles from "./CategoryCard.module.css";
 
-const iconMap = {
-  "volume-2": Volume2,
-  music: Music,
-  film: Film,
-  monitor: Monitor,
-  sparkles: Sparkles,
-  image: ImageIcon,
-  type: Type,
-  sliders: SlidersHorizontal,
-};
-
 export default function CategoryCard({ name, slug, icon, color, resourceCount = 0, index = 0 }) {
-  const IconComponent = iconMap[icon] || Volume2;
+  const IconComponent = getIcon(icon);
 
   return (
     <Link
