@@ -788,8 +788,23 @@ export default function AdminResources() {
                               e.target.nextSibling.style.display = 'flex';
                             }}
                           />
+                        ) : isVideoFormat(r) ? (
+                          <video 
+                            src={`${r.downloadUrl || r.fileUrl}#t=0.1`} 
+                            className={styles.previewImage}
+                            muted
+                            playsInline
+                            preload="metadata"
+                          />
+                        ) : isImageFormat(r) ? (
+                          <img 
+                            src={r.downloadUrl || r.fileUrl} 
+                            alt={r.name} 
+                            className={styles.previewImage}
+                            loading="lazy"
+                          />
                         ) : null}
-                        <div className={styles.cardIcon} style={{ display: (r.thumbnailUrl || r.previewUrl) ? 'none' : 'flex' }}>
+                        <div className={styles.cardIcon} style={{ display: (r.thumbnailUrl || r.previewUrl || isVideoFormat(r) || isImageFormat(r)) ? 'none' : 'flex' }}>
                           <LayoutGrid size={48} strokeWidth={1} />
                         </div>
                         <div className={styles.cardOverlay}>

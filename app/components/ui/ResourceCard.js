@@ -159,12 +159,12 @@ export default function ResourceCard({
             ) : resolvedUrl ? (
               <video
                 ref={videoRef}
-                src={resolvedUrl}
+                src={`${resolvedUrl}#t=0.1`}
                 className={styles.videoPreview}
                 loop
                 muted
                 playsInline
-                preload="none"
+                preload="metadata"
               />
             ) : (
               <div className={styles.placeholderThumb}>
