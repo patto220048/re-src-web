@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Plus, Search, Trash2, Edit2, MoreVertical, LayoutGrid, List as ListIcon, FolderPlus, Loader2, Play, Pause, Eye } from "lucide-react";
-import { revalidateResourceData } from "@/app/lib/actions";
+import { revalidateResourceData, revalidateCategoryData } from "@/app/lib/actions";
 import { 
   getAllAdminFolders, 
   getCategories, 
@@ -260,8 +260,11 @@ export default function AdminResources() {
       // 3. Clear selection
       setSelectedIds([]);
       
-      // 4. Revalidate frontend
-      await revalidateResourceData();
+      // 4. Revalidate frontend (both resources and category counts)
+      await Promise.all([
+        revalidateResourceData(),
+        revalidateCategoryData()
+      ]);
     } catch (e) {
       console.error("Move failed:", e);
       alert("Không thể di chuyển tài nguyên.");

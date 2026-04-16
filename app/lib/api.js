@@ -544,29 +544,31 @@ export async function deleteFolder(id) {
 export async function bulkUpdateResources(updates) {
   if (!updates || updates.length === 0) return [];
 
-  // Check if all updates are targeting the same folder_id (common case: Move)
+  // Check if all updates are targeting the same folder_id AND same category_id (common case: Move)
   const first = updates[0];
   const allSameFolder = updates.every(u => u.folder_id === first.folder_id);
+  const allSameCategory = updates.every(u => u.category_id === first.category_id);
 
-  if (allSameFolder) {
+  if (allSameFolder && allSameCategory) {
     const ids = updates.map(u => u.id);
     const { data, error } = await supabase
       .from('resources')
       .update({
         folder_id: first.folder_id,
+        category_id: first.category_id,
         updated_at: new Date().toISOString()
       })
       .in('id', ids)
       .select();
 
     if (error) {
-      console.error('Error in bulk update (allSameFolder):', error);
+      console.error('Error in bulk update (optimized):', error);
       throw error;
     }
     return data;
   }
 
-  // Fallback for heterogeneous updates: Run in parallel (Supabase doesn't support bulk heterogeneous updates easily in one call)
+  // Fallback for heterogeneous updates: Run in parallel
   const promises = updates.map(u => {
     const dbEntry = mapToDB(u);
     return supabase
@@ -575,7 +577,8 @@ export async function bulkUpdateResources(updates) {
         ...dbEntry,
         updated_at: new Date().toISOString()
       })
-      .eq('id', u.id);
+      .eq('id', u.id)
+      .select(); // Added select() to get back data
   });
 
   const results = await Promise.all(promises);
@@ -586,7 +589,7 @@ export async function bulkUpdateResources(updates) {
     throw errors[0].error;
   }
   
-  return results.map(r => r.data);
+  return results.map(r => r.data?.[0]); // Flatten data results
 }
 
 /**

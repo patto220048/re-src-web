@@ -282,7 +282,9 @@ export default function CategoriesPage() {
                     onChange={(e) => setFormData(p => ({ ...p, layout: e.target.value }))}
                     className={styles.select}
                   >
-                    <option value="media">Media Grid (Video/Image)</option>
+                    <option value="video">Video Grid</option>
+                    <option value="image">Image Grid</option>
+                    <option value="media">General Media (Auto-detect)</option>
                     <option value="audio">Audio List (Sound Player)</option>
                     <option value="font">Font Grid (Type Preview)</option>
                   </select>

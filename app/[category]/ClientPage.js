@@ -133,7 +133,9 @@ export default function ClientPage({ slug, info, folders, resources }) {
               {...resource}
               downloadUrl={resource.downloadUrl || resource.fileUrl}
               cardType={
-                slug === "image-overlay"
+                info.layout === "video" || info.layout === "image"
+                  ? info.layout
+                  : slug === "image-overlay"
                   ? "image"
                   : slug === "preset-lut"
                   ? "preview"
