@@ -499,18 +499,7 @@ export default function AdminResources() {
     if (!confirm(`Xóa ${selectedIds.length} tài nguyên đã chọn? Thao tác này không thể hoàn tác.`)) return;
 
     try {
-      const deletedTags = [];
-      selectedIds.forEach(id => {
-        const res = resources.find(r => r.id === id);
-        if (res && res.tags) deletedTags.push(...res.tags);
-      });
-
       await bulkDeleteResources(selectedIds);
-
-      // Đồng bộ tag count: Giảm usageCount của các tag bị xóa
-      if (deletedTags.length > 0) {
-        await syncTagsCount([], deletedTags);
-      }
 
       setResources(prev => prev.filter(r => !selectedIds.includes(r.id)));
       setSelectedIds([]);

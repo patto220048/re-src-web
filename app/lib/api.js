@@ -1,5 +1,6 @@
 import { supabase } from './supabase';
 import { unstable_cache } from 'next/cache';
+import { deleteFile } from './storage';
 
 /* ========================================
    RESOURCES
@@ -243,15 +244,38 @@ export async function updateResource(id, updateData) {
  * Delete a resource.
  */
 export async function deleteResource(id) {
+  try {
+    // 1. Fetch storage_path before deleting
+    const { data: res } = await supabase
+      .from('resources')
+      .select('storage_path')
+      .eq('id', id)
+      .single();
+
+    if (res?.storage_path) {
+      // 2. Clear from storage (background failure ignored as per user request)
+      deleteFile(res.storage_path).catch(err => 
+        console.error(`Storage cleanup failed for resource ${id}:`, err)
+      );
+    }
+  } catch (e) {
+    console.warn(`Could not fetch storage_path for resource ${id}, proceeding with DB delete:`, e);
+  }
+
+  // 3. Delete DB record
   const { error } = await supabase
     .from('resources')
     .delete()
     .eq('id', id);
 
   if (error) {
-    console.error('Error deleting resource:', error);
+    console.error('Error deleting resource record:', error);
     throw error;
   }
+
+  // 4. Re-sync tags to keep counts accurate
+  await syncAllTagsFromResources().catch(e => console.error("Auto tag sync failed after delete:", e));
+
   return true;
 }
 
@@ -669,15 +693,48 @@ export async function bulkUpdateResources(updates) {
  * Delete multiple resources.
  */
 export async function bulkDeleteResources(ids) {
+  if (!ids || ids.length === 0) return true;
+
+  try {
+    // 1. Fetch all storage paths
+    const { data: items } = await supabase
+      .from('resources')
+      .select('storage_path')
+      .in('id', ids);
+
+    const paths = (items || [])
+      .map(i => i.storage_path)
+      .filter(p => !!p);
+
+    if (paths.length > 0) {
+      // 2. Delete all files from storage
+      // Use supabase.storage directly for efficiency or loop through deleteFile
+      const { error: storageError } = await supabase.storage
+        .from('resources')
+        .remove(paths);
+      
+      if (storageError) {
+        console.error('Error cleaning up storage in bulk delete:', storageError);
+      }
+    }
+  } catch (e) {
+    console.warn('Failed to fetch storage paths for bulk cleanup, skipping to DB delete:', e);
+  }
+
+  // 3. Delete DB records
   const { error } = await supabase
     .from('resources')
     .delete()
     .in('id', ids);
 
   if (error) {
-    console.error('Error in bulk delete:', error);
+    console.error('Error in bulk delete (DB):', error);
     throw error;
   }
+
+  // 4. Re-sync tags
+  await syncAllTagsFromResources().catch(e => console.error("Auto tag sync failed after bulk delete:", e));
+
   return true;
 }
 
