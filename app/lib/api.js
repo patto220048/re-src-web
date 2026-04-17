@@ -62,27 +62,34 @@ export async function getResource(id) {
  * Implements basic limits and ordering.
  */
 export async function getResources({ categorySlug, folderId, limit = 20, offset = 0 } = {}) {
-  let query = supabase
-    .from('resources')
-    .select(RESOURCE_SUMMARY_COLUMNS)
-    .eq('is_published', true)
-    .order('created_at', { ascending: false })
-    .range(offset, offset + limit - 1);
+  // Wrap with unstable_cache for better server-side performance
+  return unstable_cache(
+    async () => {
+      let query = supabase
+        .from('resources')
+        .select(RESOURCE_SUMMARY_COLUMNS)
+        .eq('is_published', true)
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1);
 
-  if (categorySlug) {
-    query = query.eq('categories.slug', categorySlug);
-  }
-  if (folderId) {
-    query = query.eq('folder_id', folderId);
-  }
+      if (categorySlug) {
+        query = query.eq('categories.slug', categorySlug);
+      }
+      if (folderId) {
+        query = query.eq('folder_id', folderId);
+      }
 
-  const { data, error } = await query;
+      const { data, error } = await query;
 
-  if (error) {
-    console.error('Error fetching resources:', error);
-    return [];
-  }
-  return data.map(mapResource);
+      if (error) {
+        console.error('Error fetching resources:', error);
+        return [];
+      }
+      return (data || []).map(mapResource);
+    },
+    [`resources-${categorySlug || 'all'}-${folderId || 'all'}-${limit}-${offset}`],
+    { revalidate: 3600, tags: ['resources'] }
+  )();
 }
 
 /**
@@ -416,45 +423,55 @@ export async function deleteCategory(id) {
  * Get folders for a category, optionally filtered by parent.
  */
 export async function getFolders(categorySlug, parentId) {
-  let query = supabase
-    .from('folders')
-    .select('*, category:categories!inner(slug)')
-    .eq('categories.slug', categorySlug)
-    .order('order', { ascending: true });
+  return unstable_cache(
+    async () => {
+      let query = supabase
+        .from('folders')
+        .select('*, category:categories!inner(slug)')
+        .eq('categories.slug', categorySlug)
+        .order('order', { ascending: true });
 
-  if (parentId !== undefined) {
-    if (parentId === null) {
-      query = query.is('parent_id', null);
-    } else {
-      query = query.eq('parent_id', parentId);
-    }
-  }
+      if (parentId !== undefined) {
+        if (parentId === null) {
+          query = query.is('parent_id', null);
+        } else {
+          query = query.eq('parent_id', parentId);
+        }
+      }
 
-  const { data, error } = await query;
+      const { data, error } = await query;
 
-  if (error) {
-    console.error('Error fetching folders:', error);
-    return [];
-  }
-  return (data || []).map(mapFolder);
+      if (error) {
+        console.error('Error fetching folders:', error);
+        return [];
+      }
+      return (data || []).map(mapFolder);
+    },
+    [`folders-${categorySlug}-${parentId || 'root'}`],
+    { revalidate: 3600, tags: ['folders', 'resources'] } // Also clear folders when resources change if they are tightly coupled
+  )();
 }
 
 /* ========================================
    TAGS
    ======================================== */
 
-export async function getTags() {
-  const { data, error } = await supabase
-    .from('tags')
-    .select('*')
-    .order('usage_count', { ascending: false });
+export const getTags = unstable_cache(
+  async () => {
+    const { data, error } = await supabase
+      .from('tags')
+      .select('*')
+      .order('usage_count', { ascending: false });
 
-  if (error) {
-    console.error('Error fetching tags:', error);
-    return [];
-  }
-  return (data || []).map(t => ({ ...t, usageCount: t.usage_count }));
-}
+    if (error) {
+      console.error('Error fetching tags:', error);
+      return [];
+    }
+    return (data || []).map(t => ({ ...t, usageCount: t.usage_count }));
+  },
+  ['tags-list'],
+  { revalidate: 3600, tags: ['tags'] }
+);
 
 /**
  * Helper to sync tags.
@@ -509,18 +526,22 @@ export async function syncTagsCount(addedTags = [], removedTags = []) {
 /**
  * Get all folders (including unpublished/admin)
  */
-export async function getAllAdminFolders() {
-  const { data, error } = await supabase
-    .from('folders')
-    .select('*')
-    .order('order', { ascending: true });
+export const getAllAdminFolders = unstable_cache(
+  async () => {
+    const { data, error } = await supabase
+      .from('folders')
+      .select('*')
+      .order('order', { ascending: true });
 
-  if (error) {
-    console.error('Error fetching admin folders:', error);
-    return [];
-  }
-  return (data || []).map(mapFolder);
-}
+    if (error) {
+      console.error('Error fetching admin folders:', error);
+      return [];
+    }
+    return (data || []).map(mapFolder);
+  },
+  ['admin-folders-list'],
+  { revalidate: 3600, tags: ['folders'] }
+);
 
 /**
  * Add a new folder.

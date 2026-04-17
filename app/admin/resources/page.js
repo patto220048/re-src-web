@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { Plus, Search, Trash2, Edit2, MoreVertical, LayoutGrid, List as ListIcon, FolderPlus, Loader2, Play, Pause, Eye } from "lucide-react";
-import { revalidateResourceData, revalidateCategoryData } from "@/app/lib/actions";
+import { revalidateResourceData, revalidateCategoryData, revalidateFolderData, revalidateTagData } from "@/app/lib/actions";
 import { 
   getAllAdminFolders, 
   getCategories, 
@@ -263,7 +263,9 @@ export default function AdminResources() {
       // 4. Revalidate frontend (both resources and category counts)
       await Promise.all([
         revalidateResourceData(),
-        revalidateCategoryData()
+        revalidateCategoryData(),
+        revalidateFolderData(),
+        revalidateTagData()
       ]);
     } catch (e) {
       console.error("Move failed:", e);
@@ -320,6 +322,7 @@ export default function AdminResources() {
       
       // Refresh frontend cache
       await revalidateResourceData();
+      await revalidateFolderData();
     } catch (e) {
       alert("Lỗi khi thêm thư mục: " + e.message);
     }
@@ -330,6 +333,7 @@ export default function AdminResources() {
       await updateFolder(folderId, { name: newName });
       setFolders(prev => prev.map(f => f.id === folderId ? { ...f, name: newName } : f));
       await revalidateResourceData();
+      await revalidateFolderData();
     } catch (e) {
       console.error("Rename failed:", e);
       alert("Đổi tên thư mục thất bại.");
@@ -354,6 +358,7 @@ export default function AdminResources() {
 
       // Revalidate frontend
       await revalidateResourceData();
+      await revalidateFolderData();
     } catch (e) {
       console.error("Move folder failed:", e);
       alert("Không thể di chuyển thư mục.");
@@ -397,6 +402,7 @@ export default function AdminResources() {
       
       // 7. Refresh frontend
       await revalidateResourceData();
+      await revalidateFolderData();
     } catch (e) {
       alert("Xóa thư mục thất bại: " + e.message);
     }
@@ -451,6 +457,7 @@ export default function AdminResources() {
       setResources(prev => prev.map(r => r.id === id ? { ...r, name: newName } : r));
       setRenamingResourceId(null);
       await revalidateResourceData();
+      await revalidateTagData();
     } catch (e) {
       console.error("Rename failed:", e);
       alert("Đổi tên thất bại.");
@@ -465,6 +472,7 @@ export default function AdminResources() {
       setResources((prev) => prev.filter((r) => r.id !== id));
       setSelectedIds(prev => prev.filter(sid => sid !== id));
       await revalidateResourceData();
+      await revalidateTagData();
     } catch (e) {
       console.error("Delete failed:", e);
       alert("Xóa thất bại: " + e.message);
@@ -507,6 +515,7 @@ export default function AdminResources() {
       setResources(prev => prev.filter(r => !selectedIds.includes(r.id)));
       setSelectedIds([]);
       await revalidateResourceData();
+      await revalidateTagData();
     } catch (e) {
       console.error("Bulk delete failed:", e);
       alert("Xóa hàng loạt thất bại.");
@@ -561,6 +570,7 @@ export default function AdminResources() {
       setIsBulkEditOpen(false);
       setSelectedIds([]);
       await revalidateResourceData();
+      await revalidateTagData();
     } catch (e) {
       console.error("Bulk edit failed:", e);
       alert("Lưu thay đổi hàng loạt thất bại.");

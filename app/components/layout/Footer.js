@@ -1,42 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { memo } from "react";
 import Link from "next/link";
 import { Activity } from "lucide-react";
-import { getSiteSettings, getCategories } from "@/app/lib/api";
+import { useSiteData } from "@/app/context/SiteContext";
 import styles from "./Footer.module.css";
 
-export default function Footer() {
-  const [settings, setSettings] = useState({
-    site_name: "EditerLor",
-    tagline: "Free Resources for Video Editors",
-    project_version: "v 0.1.16.4",
-    status_text: "System Online",
-    social_links: []
-  });
-  const [categories, setCategories] = useState([]);
+function Footer() {
+  const { settings, categories } = useSiteData();
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const [settingsData, categoriesData] = await Promise.all([
-          getSiteSettings(),
-          getCategories()
-        ]);
-        
-        if (settingsData) {
-          setSettings({
-            ...settingsData,
-            social_links: settingsData.social_links || []
-          });
-        }
-        if (categoriesData) setCategories(categoriesData);
-      } catch (err) {
-        console.error("Failed to load footer data:", err);
-      }
-    }
-    load();
-  }, []);
+  if (!settings) return null;
 
   const getBrandColor = (name) => {
     const n = name.toLowerCase();
@@ -48,6 +21,11 @@ export default function Footer() {
     if (n.includes('github')) return '#333333';
     return 'var(--neon-cyan)'; // Default fallback
   };
+
+  // Logic to split resources if more than 4
+  const footerCategories = categories || [];
+  const initialResources = footerCategories.slice(0, 4);
+  const moreResources = footerCategories.length > 4 ? footerCategories.slice(4) : [];
 
   return (
     <footer className={styles.footer} id="main-footer">
@@ -88,56 +66,42 @@ export default function Footer() {
           </div>
 
           <div className={styles.linksGrid}>
-            <div className={styles.col}>
+            <div className={styles.linkCol}>
               <h4 className={styles.colTitle}>Resources</h4>
-              <ul className={styles.links}>
-                {categories.length > 0 ? (
-                  categories.slice(0, 4).map((cat) => (
-                    <li key={cat.id}>
-                      <Link href={`/${cat.slug}`}>{cat.name}</Link>
-                    </li>
-                  ))
-                ) : (
-                  <>
-                    <li><Link href="/sound-effects">Sound Effects</Link></li>
-                    <li><Link href="/video-overlay">Video & Overlay</Link></li>
-                  </>
-                )}
+              <ul className={styles.linkList}>
+                {initialResources.map((cat) => (
+                  <li key={cat.slug}>
+                    <Link href={`/${cat.slug}`} className={styles.footerLink}>{cat.name}</Link>
+                  </li>
+                ))}
               </ul>
             </div>
 
-            {categories.length > 4 && (
-              <div className={styles.col}>
+            {moreResources.length > 0 && (
+              <div className={styles.linkCol}>
                 <h4 className={styles.colTitle}>More</h4>
-                <ul className={styles.links}>
-                  {categories.slice(4).map((cat) => (
-                    <li key={cat.id}>
-                      <Link href={`/${cat.slug}`}>{cat.name}</Link>
+                <ul className={styles.linkList}>
+                  {moreResources.map((cat) => (
+                    <li key={cat.slug}>
+                      <Link href={`/${cat.slug}`} className={styles.footerLink}>{cat.name}</Link>
                     </li>
                   ))}
                 </ul>
               </div>
             )}
 
-            <div className={styles.col}>
-              <h4 className={styles.colTitle}>Support</h4>
-              <ul className={styles.links}>
-                <li><Link href="/contact">Contact Us</Link></li>
-                <li><Link href="/faq">FAQ</Link></li>
-                <li><Link href="/submit">Submit Resource</Link></li>
-              </ul>
-            </div>
-
-            <div className={styles.col}>
-              <h4 className={styles.colTitle}>Legal</h4>
-              <ul className={styles.links}>
+            <div className={styles.linkCol}>
+              <h4 className={styles.colTitle}>Company</h4>
+              <ul className={styles.linkList}>
+                <li><Link href="/about" className={styles.footerLink}>About Us</Link></li>
+                <li><Link href="/contact" className={styles.footerLink}>Contact</Link></li>
                 <li>
-                  <Link href="/terms" className={styles.legalLink} target="_blank" rel="noopener noreferrer">
+                  <Link href="/terms" className={styles.footerLink} target="_blank" rel="noopener noreferrer">
                     Terms of Service
                   </Link>
                 </li>
                 <li>
-                  <Link href="/privacy" className={styles.legalLink} target="_blank" rel="noopener noreferrer">
+                  <Link href="/privacy" className={styles.footerLink} target="_blank" rel="noopener noreferrer">
                     Privacy Policy
                   </Link>
                 </li>
@@ -147,7 +111,6 @@ export default function Footer() {
         </div>
       </div>
 
-      {/* Layer 3: Bottom Credits */}
       <div className={styles.bottomBar}>
         <div className={styles.innerBottom}>
           <div className={styles.copyright}>
@@ -159,9 +122,12 @@ export default function Footer() {
             </div>
             <Activity size={14} className={styles.versionIcon} />
             <span>Version {settings.project_version}</span>
+            <span className={styles.statusText}>{settings.status_text}</span>
           </div>
         </div>
       </div>
     </footer>
   );
 }
+
+export default memo(Footer);

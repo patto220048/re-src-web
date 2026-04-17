@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { getSiteSettings, updateSiteSettings } from "@/app/lib/api";
+import { revalidateSettings } from "@/app/lib/actions";
 import { uploadFile } from "@/app/lib/storage";
 import { useToast } from "@/app/context/ToastContext";
 
@@ -41,6 +42,7 @@ export default function AdminSettings() {
     setSaving(true);
     try {
       await updateSiteSettings(settings);
+      await revalidateSettings();
       showToast("Settings saved successfully!", "success");
     } catch (err) {
       showToast("Error: Failed to save settings.", "error");

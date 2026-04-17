@@ -2,9 +2,10 @@ import { ThemeProvider } from "@/app/components/providers/ThemeProvider";
 import "./globals.css";
 import "./animations.css";
 import LayoutShell from "@/app/components/layout/LayoutShell";
-import { getCategories } from "@/app/lib/api";
+import { getCategories, getSiteSettings } from "@/app/lib/api";
 import { ToastProvider } from "@/app/context/ToastContext";
 import { ToastContainer } from "@/app/components/ui/ToastContainer";
+import { SiteProvider } from "@/app/context/SiteContext";
 
 export const metadata = {
   title: "EditerLor — Free Resources for Video Editors",
@@ -19,8 +20,11 @@ export const metadata = {
 };
 
 export default async function RootLayout({ children }) {
-  // Fetch categories on the server (cached)
-  const categories = await getCategories();
+  // Fetch categories and settings on the server (cached)
+  const [categories, settings] = await Promise.all([
+    getCategories(),
+    getSiteSettings()
+  ]);
 
   return (
     <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
@@ -32,8 +36,10 @@ export default async function RootLayout({ children }) {
           disableTransitionOnChange
         >
           <ToastProvider>
-            <LayoutShell initialCategories={categories}>{children}</LayoutShell>
-            <ToastContainer />
+            <SiteProvider initialSettings={settings} initialCategories={categories}>
+              <LayoutShell initialCategories={categories}>{children}</LayoutShell>
+              <ToastContainer />
+            </SiteProvider>
           </ToastProvider>
         </ThemeProvider>
       </body>

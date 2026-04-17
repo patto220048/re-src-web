@@ -165,7 +165,7 @@
 
 .linksGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   gap: var(--space-16);
 }
 
@@ -188,22 +188,25 @@
   margin-top: var(--space-2);
 }
 
-.links {
-  list-style: none;
+.linkList {
+  list-style-type: none;
+  padding: 0;
+  margin: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
 }
 
-.links a {
+.footerLink {
   font-size: 0.9rem;
+  font-family: var(--font-body);
   color: var(--text-secondary);
   text-decoration: none;
   transition: all 0.2s;
   display: block;
 }
 
-.links a:hover {
+.footerLink:hover {
   color: var(--text-primary);
   transform: translateX(4px);
 }
