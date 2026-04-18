@@ -68,6 +68,11 @@
   --z-sidebar: 900;
   --z-header: 1000;
   --z-overlay: 1100;
+
+  /* Auth accent */
+  --neon-cyan: #00F0FF;
+  --bg-secondary: #141414;
+  --bg-tertiary: #1C1C1C;
 }
 
 [data-theme='light'] {
@@ -83,6 +88,11 @@
   
   --border-default: #DDDDDD;
   --border-active: #000000;
+
+  /* Auth accent (light) */
+  --neon-cyan: #0094A6;
+  --bg-secondary: #FFFFFF;
+  --bg-tertiary: #F0F0F0;
 }
 
 /* ---------- CSS Reset ---------- */

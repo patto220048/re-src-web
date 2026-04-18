@@ -2,28 +2,28 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/app/lib/supabase";
 import { useAuth } from "@/app/lib/auth-context";
-import { LogIn, Eye, EyeOff } from "lucide-react";
+import { LogIn, Eye, EyeOff, AlertCircle } from "lucide-react";
 import styles from "./page.module.css";
 
 export default function AdminLogin() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, profile, isAdmin, loginWithEmail } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Already logged in — redirect to dashboard
+  // Already logged in as admin — redirect to dashboard
   useEffect(() => {
-    if (user) {
+    if (user && isAdmin) {
       router.replace("/admin/dashboard");
+    } else if (user && profile && !isAdmin) {
+      // Logged in but not admin — show error
+      setError("You do not have admin privileges.");
     }
-  }, [user, router]);
-
-  if (user) return null;
+  }, [user, profile, isAdmin, router]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -31,20 +31,17 @@ export default function AdminLogin() {
     setLoading(true);
 
     try {
-      const { error: authError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-      
-      if (authError) throw authError;
-      
-      router.push("/admin/dashboard");
+      await loginWithEmail(email, password);
+      // Auth context will update, useEffect will handle redirect
     } catch (err) {
       setError(err.message || "Invalid email or password");
     } finally {
       setLoading(false);
     }
   };
+
+  // If already admin, don't show login form (redirect happening)
+  if (user && isAdmin) return null;
 
   return (
     <div className={styles.page}>
@@ -54,7 +51,12 @@ export default function AdminLogin() {
           <p className={styles.subtitle}>EditerLor Management</p>
         </div>
 
-        {error && <div className={styles.error}>{error}</div>}
+        {error && (
+          <div className={styles.error}>
+            <AlertCircle size={16} />
+            {error}
+          </div>
+        )}
 
         <div className={styles.field}>
           <label className={styles.label}>Email</label>

@@ -1,6 +1,5 @@
 "use client";
 
-import { AuthProvider } from "@/app/lib/auth-context";
 import AdminGuard from "@/app/components/admin/AdminGuard";
 import AdminSidebar from "@/app/components/admin/AdminSidebar";
 import { useAuth } from "@/app/lib/auth-context";
@@ -29,10 +28,8 @@ function AdminContent({ children }) {
 
 export default function AdminLayout({ children }) {
   return (
-    <AuthProvider>
-      <AdminGuard>
-        <AdminContent>{children}</AdminContent>
-      </AdminGuard>
-    </AuthProvider>
+    <AdminGuard>
+      <AdminContent>{children}</AdminContent>
+    </AdminGuard>
   );
 }

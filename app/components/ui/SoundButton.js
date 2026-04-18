@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Download, Eye } from "lucide-react";
+import { useAuth } from "@/app/lib/auth-context";
 import { incrementDownloadCount } from "@/app/lib/api";
 import { mediaManager } from "@/app/lib/mediaManager";
 import { isVideoFormat, isImageFormat, isFontFormat } from "@/app/lib/mediaUtils";
@@ -32,12 +34,17 @@ export default function SoundButton({
   index = 0,
   onPreview,
   primaryColor = "#00F0FF",
+  isPremium,
   ...otherProps
 }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  
+  const { user, isPremium: userIsPremium, isAdmin } = useAuth();
+  const router = useRouter();
+
   const audioRef = useRef(null);
   const rafRef = useRef(null);
 
@@ -187,6 +194,13 @@ export default function SoundButton({
 
   const handleDownload = async (e) => {
     e.stopPropagation();
+
+    // Premium check - All resources now require Premium
+    if (!isAdmin && !userIsPremium) {
+      window.dispatchEvent(new CustomEvent("need-premium"));
+      return;
+    }
+
     if (isDownloading || !downloadUrl) return;
 
     setIsDownloading(true);

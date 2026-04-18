@@ -1,12 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Download, Check, Loader2 } from "lucide-react";
 import { incrementDownloadCount } from "@/app/lib/api";
+import { useAuth } from "@/app/lib/auth-context";
 import styles from "./DownloadButton.module.css";
 
-export default function DownloadButton({ downloadUrl, fileUrl, fileName, fileFormat, resourceId, size }) {
+export default function DownloadButton({ downloadUrl, fileUrl, fileName, fileFormat, resourceId, size, isPremiumResource }) {
   const [state, setState] = useState("idle"); // idle | downloading | done
+  const { user, isPremium, isAdmin } = useAuth();
+  const router = useRouter();
 
   // Resolve URL: prefer downloadUrl, fallback to fileUrl
   const resolvedUrl = downloadUrl || fileUrl;
@@ -21,6 +25,12 @@ export default function DownloadButton({ downloadUrl, fileUrl, fileName, fileFor
   const handleClick = async (e) => {
     e.preventDefault();
     e.stopPropagation();
+
+    // Premium Check - All resources now require Premium
+    if (!isAdmin && !isPremium) {
+      window.dispatchEvent(new CustomEvent("need-premium"));
+      return;
+    }
 
     if (state !== "idle" || !resolvedUrl) return;
     setState("downloading");

@@ -5,15 +5,26 @@ import { useRouter, usePathname } from "next/navigation";
 import { useEffect } from "react";
 
 export default function AdminGuard({ children }) {
-  const { user, loading } = useAuth();
+  const { user, profile, loading, isAdmin } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!loading && !user && pathname !== "/admin/login") {
+    if (loading) return; // Still loading, don't redirect yet
+
+    const isLoginPage = pathname === "/admin/login";
+
+    if (!user && !isLoginPage) {
       router.replace("/admin/login");
+      return;
     }
-  }, [user, loading, pathname, router]);
+
+    // If user is logged in but NOT admin, and NOT on login page — kick out
+    if (user && !isAdmin && !isLoginPage) {
+      router.replace("/");
+      return;
+    }
+  }, [user, profile, loading, isAdmin, pathname, router]);
 
   // Still loading auth state
   if (loading) {
@@ -47,11 +58,16 @@ export default function AdminGuard({ children }) {
     return children;
   }
 
-  // Not logged in, not on login page — redirect (handled by useEffect)
+  // Not logged in, not on login page — redirect is happening in useEffect
   if (!user) {
     return null;
   }
 
-  // Logged in — show admin content
+  // Logged in but not admin — redirect is happening in useEffect
+  if (!isAdmin) {
+    return null;
+  }
+
+  // Admin verified — show admin content
   return children;
 }

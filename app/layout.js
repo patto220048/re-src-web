@@ -6,6 +6,7 @@ import { getCategories, getSiteSettings } from "@/app/lib/api";
 import { ToastProvider } from "@/app/context/ToastContext";
 import { ToastContainer } from "@/app/components/ui/ToastContainer";
 import { SiteProvider } from "@/app/context/SiteContext";
+import { AuthProvider } from "@/app/lib/auth-context";
 
 export const metadata = {
   title: "EditerLor — Free Resources for Video Editors",
@@ -28,7 +29,7 @@ export default async function RootLayout({ children }) {
 
   return (
     <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
-      <body>
+      <body suppressHydrationWarning>
         <ThemeProvider
           attribute="data-theme"
           defaultTheme="dark"
@@ -36,10 +37,12 @@ export default async function RootLayout({ children }) {
           disableTransitionOnChange
         >
           <ToastProvider>
-            <SiteProvider initialSettings={settings} initialCategories={categories}>
-              <LayoutShell initialCategories={categories}>{children}</LayoutShell>
-              <ToastContainer />
-            </SiteProvider>
+            <AuthProvider>
+              <SiteProvider initialSettings={settings} initialCategories={categories}>
+                <LayoutShell initialCategories={categories}>{children}</LayoutShell>
+                <ToastContainer />
+              </SiteProvider>
+            </AuthProvider>
           </ToastProvider>
         </ThemeProvider>
       </body>

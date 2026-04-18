@@ -9,7 +9,7 @@ import { deleteFile } from './storage';
 /**
  * Essential columns for listing/grid view to minimize database egress and JSON payload size.
  */
-export const RESOURCE_SUMMARY_COLUMNS = 'id, name, slug, category_id, folder_id, file_format, file_size, file_name, tags, download_count, preview_url, thumbnail_url, download_url, created_at, categories!inner(slug, name), folders(name)';
+export const RESOURCE_SUMMARY_COLUMNS = 'id, name, slug, category_id, folder_id, file_format, file_size, file_name, tags, download_count, preview_url, thumbnail_url, download_url, is_premium, created_at, categories!inner(slug, name), folders(name)';
 
 /**
  * Full details for single resource page or edit mode.
@@ -28,6 +28,7 @@ function mapResource(res) {
     fileFormat: res.file_format,
     fileSize: res.file_size,
     fileName: res.file_name,
+    isPremium: res.is_premium,
     downloadCount: res.download_count,
     isPublished: res.is_published,
     downloadUrl: res.download_url,

@@ -161,6 +161,54 @@
   border-bottom: 1px solid var(--border-default);
 }
 
+/* ---------- Sign In Button ---------- */
+.signInBtn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: var(--neon-cyan);
+  color: var(--bg-primary);
+  border: none;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.signInBtn:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
+}
+
+.signInText {
+  display: inline;
+}
+
+.mobileSignIn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: var(--space-4) var(--space-6) 0;
+  padding: 12px;
+  background: var(--neon-cyan);
+  color: var(--bg-primary);
+  border: none;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  width: calc(100% - var(--space-6) * 2);
+}
+
+@media (max-width: 768px) {
+  .signInText {
+    display: none;
+  }
+}
+
 @media (max-width: 1024px) {
   .links {
     display: none;

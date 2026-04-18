@@ -22,8 +22,13 @@ export default function AdminSidebar() {
   const { logout, user } = useAuth();
 
   const handleLogout = async () => {
-    await logout();
-    router.push("/admin/login");
+    try {
+      await logout();
+    } catch (e) {
+      console.warn("Logout error:", e);
+    } finally {
+      router.push("/admin/login");
+    }
   };
 
   return (

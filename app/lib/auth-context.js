@@ -1,47 +1,254 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { useToast } from "@/app/context/ToastContext";
 import { supabase } from "@/app/lib/supabase";
 
-const AuthContext = createContext({ user: null, loading: true, login: () => {}, logout: () => {} });
+const AuthContext = createContext({
+  user: null,
+  profile: null,
+  loading: true,
+  isAdmin: false,
+  isPremium: false,
+  loginWithGoogle: () => {},
+  loginWithEmail: () => {},
+  signup: () => {},
+  logout: () => {},
+  resetPassword: () => {},
+  updatePassword: () => {},
+  resendVerificationEmail: () => {},
+  refreshProfile: () => {},
+});
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
+  const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const { showToast } = useToast();
 
+  // Fetch user profile from profiles table
+  const fetchProfile = useCallback(async (userId) => {
+    if (!userId) {
+      setProfile(null);
+      return null;
+    }
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", userId)
+        .single();
+
+      if (error) {
+        console.warn("Failed to fetch profile:", error.message);
+        setProfile(null);
+        return null;
+      }
+      setProfile(data);
+      return data;
+    } catch (e) {
+      console.warn("Profile fetch error:", e);
+      setProfile(null);
+      return null;
+    }
+  }, [supabase]);
+
+  // Handle URL hash/params for auth errors and successful email verification redirects
   useEffect(() => {
-    // 1. Check current session on mount
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    if (typeof window === "undefined") return;
 
-    // 2. Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
+    // Supabase often sets errors in the URL hash (e.g. #error=access_denied&error_description=...)
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const searchParams = new URLSearchParams(window.location.search);
+    let shouldCleanUrl = false;
 
-    return () => subscription.unsubscribe();
+    const errorDesc = hashParams.get("error_description");
+    const errorString = hashParams.get("error");
+    const authError = searchParams.get("auth_error");
+    const authSuccess = searchParams.get("auth_success");
+    const crossDeviceEmail = searchParams.get("email");
+    const authType = searchParams.get("type");
+
+    if (errorDesc) {
+      showToast(errorDesc.replace(/\+/g, " "), "error");
+      shouldCleanUrl = true;
+    } else if (errorString) {
+      showToast("Authentication error: " + errorString, "error");
+      shouldCleanUrl = true;
+    } else if (authError && crossDeviceEmail) {
+      // Cross-browser/device verification handled locally without native confirm for professional UX
+      setTimeout(() => {
+        window.dispatchEvent(
+          new CustomEvent("need-auth", { 
+            detail: { mode: "login", email: crossDeviceEmail, successMsg: "✅ Email verified successfully. Please log in." } 
+          })
+        );
+      }, 300);
+      shouldCleanUrl = true;
+    } else if (authError && authType === "recovery") {
+      setTimeout(() => {
+        window.dispatchEvent(
+          new CustomEvent("need-auth", { 
+            detail: { mode: "forgot", error: "Reset link invalid or opened on a different browser. Please request a new one." } 
+          })
+        );
+      }, 300);
+      shouldCleanUrl = true;
+    } else if (authError) {
+      showToast("Authentication link is invalid or has expired.", "error");
+      shouldCleanUrl = true;
+    } 
+    
+    if (authSuccess === "true" || authSuccess === "recovery") {
+      showToast(
+        authSuccess === "recovery" 
+          ? "Please reset your password." 
+          : "Email verified successfully! You are now logged in.",
+        "success"
+      );
+      shouldCleanUrl = true;
+    }
+
+    if (shouldCleanUrl) {
+      // Clean up the URL without triggering a page reload
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState(null, "", cleanUrl);
+    }
   }, []);
 
-  const login = async (email, password) => {
+  useEffect(() => {
+    let mounted = true;
+
+    // Listen for auth state changes (this automatically fires on mount with INITIAL_SESSION)
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!mounted) return;
+      const sessionUser = session?.user ?? null;
+      setUser(sessionUser);
+      if (sessionUser) {
+        await fetchProfile(sessionUser.id);
+      } else {
+        setProfile(null);
+      }
+      if (mounted) setLoading(false);
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, [supabase, fetchProfile]);
+
+  // ─── Auth Methods ───
+
+  const loginWithGoogle = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+    if (error) throw error;
+  };
+
+  const loginWithEmail = async (email, password) => {
     const { data, error } = await supabase.auth.signInWithPassword({
-      email,
+      email: email.trim(),
       password,
     });
     if (error) throw error;
     return data;
   };
 
-  const logout = async () => {
-    const { error } = await supabase.auth.signOut();
+  const signup = async (email, password, fullName = "") => {
+    const { data, error } = await supabase.auth.signUp({
+      email: email.trim(),
+      password,
+      options: {
+        data: { full_name: fullName },
+        emailRedirectTo: `${window.location.origin}/auth/callback?verify_email=${encodeURIComponent(email.trim())}`,
+      },
+    });
+    
     if (error) throw error;
-    setUser(null);
+
+    // When "Prevent email enumeration" is enabled, Supabase obfuscates the error
+    // and returns a fake user with an empty identities array if the email already exists.
+    if (data?.user?.identities?.length === 0) {
+      throw new Error("This email is already registered.");
+    }
+
+    return data;
   };
 
+  const logout = async () => {
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.warn("SignOut error:", error);
+    } finally {
+      setUser(null);
+      setProfile(null);
+      // Hard refresh to clear all client-side state and avoid UI hanging
+      window.location.reload();
+    }
+  };
+
+  const resetPassword = async (email) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: `${window.location.origin}/auth/callback?type=recovery`,
+    });
+    if (error) throw error;
+  };
+
+  const resendVerificationEmail = async (email) => {
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email: email.trim(),
+      options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback?verify_email=${encodeURIComponent(email.trim())}`,
+      },
+    });
+    if (error) throw error;
+  };
+
+  const updatePassword = async (newPassword) => {
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword,
+    });
+    if (error) throw error;
+  };
+
+  const refreshProfile = () => {
+    if (user?.id) return fetchProfile(user.id);
+    return Promise.resolve(null);
+  };
+
+  // ─── Derived State ───
+  const isAdmin = profile?.role === "admin";
+  const isPremium =
+    profile?.role === "premium" ||
+    profile?.subscription_status === "active";
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        profile,
+        loading,
+        isAdmin,
+        isPremium,
+        loginWithGoogle,
+        loginWithEmail,
+        signup,
+        logout,
+        resetPassword,
+        updatePassword,
+        resendVerificationEmail,
+        refreshProfile,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );
