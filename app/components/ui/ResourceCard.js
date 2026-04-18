@@ -30,7 +30,7 @@ export default function ResourceCard({
   cardType = "default",
   index = 0,
   onPreview,
-  primaryColor = "#00F0FF",
+  primaryColor = "#FFFFFF",
   ...otherProps
 }) {
   const resourceObj = { id, name, fileName, fileFormat, downloadUrl, ...otherProps };

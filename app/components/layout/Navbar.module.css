@@ -166,13 +166,14 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 14px;
   background: var(--text-primary);
   color: var(--bg-primary);
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 0.85rem;
-  font-weight: 600;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -196,9 +197,11 @@
   background: var(--text-primary);
   color: var(--bg-primary);
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 0.95rem;
-  font-weight: 600;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
   cursor: pointer;
   width: calc(100% - var(--space-6) * 2);
 }

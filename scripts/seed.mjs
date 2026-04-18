@@ -20,14 +20,14 @@ const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
 const CATEGORIES = [
-  { slug: "sound-effects", name: "Sound Effects", icon: "volume-2", color: "#00F0FF", order: 0, formats: ["mp3", "wav", "ogg"] },
-  { slug: "music", name: "Music", icon: "music", color: "#A855F7", order: 1, formats: ["mp3", "wav", "flac"] },
-  { slug: "video-meme", name: "Video Meme", icon: "film", color: "#FBBF24", order: 2, formats: ["mp4", "webm", "gif"] },
-  { slug: "green-screen", name: "Green Screen", icon: "monitor", color: "#22C55E", order: 3, formats: ["mp4", "mov", "webm"] },
-  { slug: "animation", name: "Animation", icon: "sparkles", color: "#F43F5E", order: 4, formats: ["mp4", "gif", "webm"] },
-  { slug: "image-overlay", name: "Image & Overlay", icon: "image", color: "#F97316", order: 5, formats: ["png", "jpg", "webp"] },
-  { slug: "font", name: "Font", icon: "type", color: "#E2E8F0", order: 6, formats: ["ttf", "otf", "woff2"] },
-  { slug: "preset-lut", name: "Preset & LUT", icon: "sliders", color: "#6366F1", order: 7, formats: ["cube", "xmp", "lut"] },
+  { slug: "sound-effects", name: "Sound Effects", icon: "volume-2", color: "#FFFFFF", order: 0, formats: ["mp3", "wav", "ogg"] },
+  { slug: "music", name: "Music", icon: "music", color: "#E5E7EB", order: 1, formats: ["mp3", "wav", "flac"] },
+  { slug: "video-meme", name: "Video Meme", icon: "film", color: "#D1D5DB", order: 2, formats: ["mp4", "webm", "gif"] },
+  { slug: "green-screen", name: "Green Screen", icon: "monitor", color: "#9CA3AF", order: 3, formats: ["mp4", "mov", "webm"] },
+  { slug: "animation", name: "Animation", icon: "sparkles", color: "#6B7280", order: 4, formats: ["mp4", "gif", "webm"] },
+  { slug: "image-overlay", name: "Image & Overlay", icon: "image", color: "#4B5563", order: 5, formats: ["png", "jpg", "webp"] },
+  { slug: "font", name: "Font", icon: "type", color: "#374151", order: 6, formats: ["ttf", "otf", "woff2"] },
+  { slug: "preset-lut", name: "Preset & LUT", icon: "sliders", color: "#1F2937", order: 7, formats: ["cube", "xmp", "lut"] },
 ];
 
 const FOLDERS = [];

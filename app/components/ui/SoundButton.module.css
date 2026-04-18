@@ -1,15 +1,15 @@
 /* ========================================
-   SoundButton — Minimal dark play button
+   SoundButton — Stark Monochrome Edition
    ======================================== */
 
 .item {
   display: flex;
   align-items: center;
-  gap: 0; /* Changed to 0 to control gaps via margins and avoid jumps */
+  gap: 0;
   padding: var(--space-3) var(--space-4);
   background: var(--bg-card);
   border: 1px solid var(--border-default);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-md);
   transition: all var(--transition-base);
   cursor: default;
 
@@ -20,13 +20,14 @@
 }
 
 .item:hover {
-  border-color: rgba(255, 255, 255, 0.1);
-  background: var(--bg-hover, rgba(255, 255, 255, 0.03));
+  border-color: var(--border-active);
+  background: var(--bg-hover);
 }
 
 .item.playing {
-  border-color: rgba(0, 240, 255, 0.15);
-  box-shadow: 0 0 16px rgba(0, 240, 255, 0.05);
+  border-color: var(--text-primary) !important;
+  background: var(--bg-surface);
+  box-shadow: 0 0 16px rgba(var(--neon-cyan-rgb), 0.05);
 }
 
 /* ---------- Play Button ---------- */
@@ -35,7 +36,7 @@
   width: 44px;
   height: 44px;
   min-width: 44px;
-  margin-right: var(--space-3); /* Fixed margin to avoid jump */
+  margin-right: var(--space-3);
   border-radius: 50%;
   border: none;
   background: var(--text-primary);
@@ -56,16 +57,17 @@
 }
 
 .playBtn:hover .ring {
-  border-color: rgba(255, 255, 255, 0.25);
+  border-color: var(--border-active);
 }
 
 .playing .playBtn .ring {
-  border-color: rgba(0, 240, 255, 0.3);
+  border-color: var(--text-primary);
   animation: pulseRing 2s ease-in-out infinite;
 }
 
 .playBtn:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--text-primary);
+  opacity: 0.9;
   transform: scale(1.05);
 }
 
@@ -90,14 +92,6 @@
   transition: border-color var(--transition-fast);
 }
 
-.playBtn:hover .playIcon {
-  border-left-color: var(--bg-primary);
-}
-
-.playing .playBtn .playIcon {
-  border-left-color: var(--neon-cyan, #00F0FF);
-}
-
 /* Pause icon (two bars) */
 .pauseIcon {
   display: flex;
@@ -110,7 +104,7 @@
   width: 3px;
   height: 14px;
   border-radius: 1px;
-  background: var(--neon-cyan, #00F0FF);
+  background: var(--bg-primary);
 }
 
 /* ---------- Sound Wave Bars ---------- */
@@ -119,7 +113,7 @@
   align-items: center;
   gap: 2px;
   height: 20px;
-  width: 0; /* Hidden by default */
+  width: 0;
   opacity: 0;
   overflow: hidden;
   margin-right: 0;
@@ -129,14 +123,14 @@
 .playing .waveBars {
   width: 20px;
   opacity: 1;
-  margin-right: var(--space-3); /* Expand margin when playing */
+  margin-right: var(--space-3);
 }
 
 .bar {
-  flex-shrink: 0; /* Don't squash bars */
+  flex-shrink: 0;
   width: 3px;
   border-radius: 2px;
-  background: var(--neon-cyan, #00F0FF);
+  background: var(--text-primary);
   opacity: 0.6;
 }
 
@@ -162,20 +156,20 @@
 .time {
   font-family: var(--font-mono);
   font-size: 0.65rem;
-  color: var(--neon-cyan, #00F0FF);
+  color: var(--text-primary);
   opacity: 0;
   max-width: 0;
   overflow: hidden;
   white-space: nowrap;
   letter-spacing: 0.5px;
-  background: rgba(0, 240, 255, 0.05);
+  background: rgba(var(--neon-cyan-rgb), 0.05);
   padding: 0;
   border-radius: 4px;
   transition: all 0.25s ease;
 }
 
 .timeVisible {
-  opacity: 0.9;
+  opacity: 1;
   max-width: 120px;
   padding: 1px 6px;
   margin-left: 8px;
@@ -190,7 +184,7 @@
 
 .progressWrapper {
   width: 100%;
-  padding: 8px 0; /* Increase hit area */
+  padding: 8px 0;
   cursor: pointer;
   margin-top: -4px;
 }
@@ -213,7 +207,7 @@
 .progressFill {
   height: 100%;
   border-radius: 2px;
-  background: var(--neon-cyan, #00F0FF);
+  background: var(--text-primary);
   opacity: 0.7;
   transition: width 0.1s linear;
 }
@@ -224,7 +218,7 @@
 
 .name {
   font-size: 0.85rem;
-  font-weight: 500;
+  font-weight: 600;
   color: var(--text-primary);
   white-space: nowrap;
   overflow: hidden;
@@ -252,7 +246,6 @@
   font-family: var(--font-mono);
   font-size: 0.65rem;
   color: var(--text-muted);
-  opacity: 0.7;
 }
 
 .dlCount {
@@ -262,7 +255,6 @@
   font-family: var(--font-mono);
   font-size: 0.65rem;
   color: var(--text-muted);
-  opacity: 0.7;
 }
 
 .downloadBtn,
@@ -287,14 +279,9 @@
 
 .downloadBtn:hover,
 .previewBtn:hover {
-  border-color: rgba(255, 255, 255, 0.2);
+  border-color: var(--border-active);
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.04);
-}
-
-.previewBtn:hover {
-  color: var(--neon-cyan, #00F0FF);
-  border-color: rgba(0, 240, 255, 0.3);
+  background: var(--bg-hover);
 }
 
 .downloadBtn:active,
@@ -315,8 +302,8 @@
 }
 
 @keyframes pulseRing {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(0, 240, 255, 0); }
-  50%      { box-shadow: 0 0 0 6px rgba(0, 240, 255, 0.08); }
+  0%, 100% { box-shadow: 0 0 0 0 rgba(var(--neon-cyan-rgb), 0); }
+  50%      { box-shadow: 0 0 0 6px rgba(var(--neon-cyan-rgb), 0.08); }
 }
 
 @keyframes waveBar {

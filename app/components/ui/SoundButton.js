@@ -33,7 +33,7 @@ export default function SoundButton({
   downloadCount = 0,
   index = 0,
   onPreview,
-  primaryColor = "#00F0FF",
+  primaryColor = "#FFFFFF",
   isPremium,
   ...otherProps
 }) {

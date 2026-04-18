@@ -27,13 +27,13 @@
 
 .badge {
   font-size: 0.6rem;
-  font-weight: 600;
+  font-weight: 700;
   text-transform: uppercase;
   padding: 2px 8px;
-  border-radius: var(--radius-full);
-  background: rgba(0, 240, 255, 0.1);
-  color: var(--neon-cyan);
-  border: 1px solid rgba(0, 240, 255, 0.2);
+  border-radius: var(--radius-sm);
+  background: var(--text-primary);
+  color: var(--bg-primary);
+  border: 1px solid var(--text-primary);
 }
 
 .nav {
@@ -52,7 +52,7 @@
   color: var(--text-secondary);
   text-decoration: none;
   font-size: 0.9rem;
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   transition: all var(--transition-fast);
 }
 
@@ -62,8 +62,9 @@
 }
 
 .link.active {
-  color: var(--neon-cyan);
-  background: rgba(0, 240, 255, 0.08);
+  color: var(--bg-primary);
+  background: var(--text-primary);
+  font-weight: 600;
 }
 
 .bottom {

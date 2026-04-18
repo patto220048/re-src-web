@@ -47,14 +47,13 @@
 }
 
 .row:hover {
-  background: var(--cat-color, rgba(0, 240, 255, 0.04));
-  color: #000;
-  filter: brightness(1.2);
+  background: var(--bg-hover);
+  color: var(--text-primary);
 }
 
 .row.active {
-  background: var(--cat-color, rgba(0, 240, 255, 0.08));
-  color: #000;
+  background: var(--text-primary);
+  color: var(--bg-primary);
   font-weight: 700;
 }
 
@@ -66,9 +65,8 @@
   transform: translateY(-50%);
   width: 3px;
   height: 60%;
-  background: var(--cat-color, var(--neon-cyan));
-  border-radius: var(--radius-full);
-  box-shadow: 0 0 8px var(--cat-color, rgba(0, 240, 255, 0.4));
+  background: var(--bg-primary);
+  border-radius: 0;
 }
 
 .chevron {

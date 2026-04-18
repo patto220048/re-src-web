@@ -10,7 +10,7 @@ export default function Sidebar({
   folders = [],
   selectedFolderId,
   onSelectFolder,
-  primaryColor = "#00F0FF",
+  primaryColor = "#FFFFFF",
 }) {
   const [mobileOpen, setMobileOpen] = useState(false);
 

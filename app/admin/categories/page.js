@@ -34,7 +34,7 @@ export default function CategoriesPage() {
     order: 0,
     description: "",
     layout: "media",
-    color: "#00F0FF",
+    color: "#FFFFFF",
     icon: "box",
     formats: []
   });
@@ -65,7 +65,7 @@ export default function CategoriesPage() {
       order: categories.length, 
       description: "",
       layout: "media",
-      color: "#00F0FF",
+      color: "#FFFFFF",
       icon: "box",
       formats: []
     });
@@ -81,7 +81,7 @@ export default function CategoriesPage() {
       order: cat.order || 0,
       description: cat.description || "",
       layout: cat.layout || "media",
-      color: cat.color || "#00F0FF",
+      color: cat.color || "#FFFFFF",
       icon: cat.icon || "box",
       formats: cat.formats || []
     });
@@ -183,7 +183,7 @@ export default function CategoriesPage() {
                   <div className={styles.categoryNameCell}>
                     <div 
                       className={styles.colorIndicator} 
-                      style={{ backgroundColor: cat.color || '#00F0FF' }} 
+                      style={{ backgroundColor: cat.color || '#FFFFFF' }} 
                     />
                     {(() => {
                       const CategoryIcon = getIcon(cat.icon);
@@ -303,13 +303,13 @@ export default function CategoriesPage() {
                   <div className={styles.colorInputWrap}>
                     <input 
                       type="color" 
-                      value={formData.color || "#00F0FF"} 
+                      value={formData.color || "#FFFFFF"} 
                       onChange={(e) => setFormData(p => ({ ...p, color: e.target.value }))} 
                       className={styles.colorPicker}
                     />
                     <input 
                       type="text" 
-                      value={formData.color || "#00F0FF"} 
+                      value={formData.color || "#FFFFFF"} 
                       onChange={(e) => setFormData(p => ({ ...p, color: e.target.value }))}
                       className={styles.colorText}
                     />

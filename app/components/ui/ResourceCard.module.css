@@ -142,10 +142,11 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--bg-overlay);
   backdrop-filter: blur(8px);
   padding: 4px 10px;
-  border-radius: 20px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
   z-index: 20;
   opacity: 0;
   animation: fadeIn 0.3s ease forwards;

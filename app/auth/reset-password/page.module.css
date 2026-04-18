@@ -10,11 +10,12 @@
 .card {
   width: 100%;
   max-width: 420px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-default);
-  border-radius: 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-active);
+  border-radius: var(--radius-sm);
   padding: var(--space-8);
   text-align: center;
+  box-shadow: 12px 12px 0px rgba(0, 0, 0, 0.4);
 }
 
 .iconWrap {
@@ -24,14 +25,16 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg-tertiary);
-  border-radius: 12px;
-  color: var(--neon-cyan);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
 }
 
 .title {
   font-size: 1.5rem;
-  font-weight: 700;
+  font-weight: 800;
+  text-transform: uppercase;
   color: var(--text-primary);
   margin-bottom: var(--space-2);
 }
@@ -70,9 +73,9 @@
 .input {
   width: 100%;
   padding: 10px 14px;
-  background: var(--bg-primary);
+  background: var(--bg-surface);
   border: 1px solid var(--border-default);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   color: var(--text-primary);
   font-size: 0.95rem;
   outline: none;
@@ -80,7 +83,7 @@
 }
 
 .input:focus {
-  border-color: var(--neon-cyan);
+  border-color: var(--border-active);
 }
 
 .eyeBtn {
@@ -98,18 +101,21 @@
 .submitBtn {
   width: 100%;
   padding: 12px;
-  background: var(--neon-cyan);
+  background: var(--text-primary);
   color: var(--bg-primary);
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   font-size: 1rem;
-  font-weight: 600;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
   cursor: pointer;
-  transition: opacity 0.2s;
+  transition: all 0.2s;
 }
 
 .submitBtn:hover {
-  opacity: 0.9;
+  transform: translate(-3px, -3px);
+  box-shadow: 6px 6px 0px rgba(255, 255, 255, 0.2);
 }
 
 .submitBtn:disabled {
@@ -122,11 +128,13 @@
   align-items: center;
   gap: var(--space-2);
   padding: 10px 14px;
-  background: rgba(255, 80, 80, 0.1);
-  border: 1px solid rgba(255, 80, 80, 0.3);
-  border-radius: 8px;
-  color: #ff5050;
+  background: var(--bg-surface);
+  border: 1px solid var(--text-primary);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
   font-size: 0.85rem;
+  font-weight: 700;
+  text-transform: uppercase;
 }
 
 .successMsg {
@@ -135,10 +143,11 @@
   justify-content: center;
   gap: var(--space-2);
   padding: 14px;
-  background: rgba(0, 240, 255, 0.1);
-  border: 1px solid rgba(0, 240, 255, 0.3);
-  border-radius: 8px;
-  color: var(--neon-cyan);
+  background: var(--text-primary);
+  border: 1px solid var(--text-primary);
+  border-radius: var(--radius-sm);
+  color: var(--bg-primary);
   font-size: 0.95rem;
-  font-weight: 500;
+  font-weight: 700;
+  text-transform: uppercase;
 }

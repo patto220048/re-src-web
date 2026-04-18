@@ -74,7 +74,7 @@ export default async function CategoryPage({ params }) {
 
   if (!info) {
     // Fallback if not in DB
-    info = { name: slug, color: "#00F0FF", formats: [], layout: "media" };
+    info = { name: slug, color: "#FFFFFF", formats: [], layout: "media" };
   }
 
   const folderTree = buildFolderTree(flatFolders);

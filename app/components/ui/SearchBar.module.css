@@ -17,8 +17,8 @@
 }
 
 .form:focus-within {
-  border-color: var(--neon-cyan);
-  box-shadow: 4px 4px 0px var(--neon-cyan);
+  border-color: var(--text-primary);
+  box-shadow: 4px 4px 0px var(--text-primary);
 }
 
 .form.large {
@@ -32,7 +32,7 @@
 }
 
 .form:focus-within .icon {
-  color: var(--neon-cyan);
+  color: var(--text-primary);
 }
 
 .input {
@@ -55,7 +55,7 @@
 }
 
 .loader {
-  color: var(--neon-cyan);
+  color: var(--text-primary);
   animation: spin 1s linear infinite;
   flex-shrink: 0;
 }
@@ -82,9 +82,9 @@
 
 .button:hover {
   transform: translate(-2px, -2px);
-  box-shadow: 4px 4px 0px var(--neon-cyan);
-  background: var(--neon-cyan);
-  color: #000;
+  box-shadow: 4px 4px 0px var(--text-primary);
+  background: var(--text-primary);
+  color: var(--bg-primary);
 }
 
 .dropdown {
@@ -92,13 +92,12 @@
   top: calc(100% + 8px);
   left: 0;
   right: 0;
-  background: rgba(10, 10, 10, 0.85);
-  backdrop-filter: blur(12px);
+  background: var(--bg-primary);
   border: 1px solid var(--border-default);
   z-index: 100;
   list-style: none;
   padding: var(--space-2) 0;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  box-shadow: 8px 8px 0px rgba(0, 0, 0, 0.1);
   max-height: 400px;
   overflow-y: auto;
 }
@@ -114,23 +113,23 @@
 
 .dropdownItem:hover,
 .dropdownItem.active {
-  background: rgba(0, 240, 255, 0.1);
+  background: var(--bg-hover);
 }
 
 .dropdownItem.active {
-  border-left: 3px solid var(--neon-cyan);
+  border-left: 3px solid var(--text-primary);
   padding-left: calc(var(--space-5) - 3px);
 }
 
 .itemIcon {
   width: 32px;
   height: 32px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 6px;
+  background: var(--bg-surface);
+  border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--neon-cyan);
+  color: var(--text-primary);
   flex-shrink: 0;
 }
 
@@ -165,7 +164,7 @@
 }
 
 .folder {
-  color: var(--neon-cyan);
+  color: var(--text-secondary);
   opacity: 0.8;
 }
 

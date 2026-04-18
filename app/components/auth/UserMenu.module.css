@@ -30,8 +30,9 @@
   width: 34px;
   height: 34px;
   border-radius: 50%;
-  background: var(--bg-tertiary);
+  background: var(--bg-surface);
   color: var(--text-primary);
+  border: 1px solid var(--border-default);
   font-weight: 700;
   font-size: 0.9rem;
   display: flex;
@@ -45,13 +46,13 @@
   right: -2px;
   width: 16px;
   height: 16px;
-  background: linear-gradient(135deg, #FFD700, #FFA500);
+  background: var(--border-active);
   border-radius: 50%;
-  border: 2px solid var(--bg-secondary);
+  border: 2px solid var(--bg-card);
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #000;
+  color: var(--bg-primary);
 }
 
 /* ─── Dropdown ─── */
@@ -61,11 +62,11 @@
   top: calc(100% + 8px);
   right: 0;
   min-width: 220px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-default);
-  border-radius: 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-active);
+  border-radius: var(--radius-sm);
   padding: var(--space-2);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+  box-shadow: 12px 12px 0px rgba(0, 0, 0, 0.4);
   z-index: 1000;
   animation: dropdownIn 0.15s ease;
 }
@@ -79,7 +80,8 @@
 
 .userName {
   font-size: 0.95rem;
-  font-weight: 600;
+  font-weight: 700;
+  text-transform: uppercase;
   color: var(--text-primary);
 }
 
@@ -95,12 +97,12 @@
   width: fit-content;
   margin-top: 4px;
   padding: 2px 8px;
-  background: linear-gradient(135deg, rgba(255, 215, 0, 0.15), rgba(255, 165, 0, 0.15));
-  border: 1px solid rgba(255, 215, 0, 0.3);
-  border-radius: 6px;
+  background: var(--text-primary);
+  border: 1px solid var(--text-primary);
+  border-radius: var(--radius-sm);
   font-size: 0.7rem;
-  font-weight: 600;
-  color: #FFD700;
+  font-weight: 700;
+  color: var(--bg-primary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
@@ -110,9 +112,9 @@
   width: fit-content;
   margin-top: 4px;
   padding: 2px 8px;
-  background: var(--bg-primary);
+  background: var(--bg-surface);
   border: 1px solid var(--border-default);
-  border-radius: 6px;
+  border-radius: var(--radius-sm);
   font-size: 0.7rem;
   font-weight: 600;
   color: var(--text-primary);
@@ -134,7 +136,7 @@
   padding: 10px var(--space-3);
   background: none;
   border: none;
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   color: var(--text-secondary);
   font-size: 0.9rem;
   cursor: pointer;
@@ -143,17 +145,18 @@
 }
 
 .menuItem:hover {
-  background: var(--bg-tertiary);
+  background: var(--bg-hover);
   color: var(--text-primary);
 }
 
 .upgradeItem {
-  color: #FFD700;
+  color: var(--text-primary);
+  font-weight: 700;
 }
 
 .upgradeItem:hover {
-  background: rgba(255, 215, 0, 0.1);
-  color: #FFD700;
+  background: var(--text-primary);
+  color: var(--bg-primary);
 }
 
 @keyframes dropdownIn {

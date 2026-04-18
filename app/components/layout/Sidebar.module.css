@@ -44,9 +44,8 @@
 }
 
 .allBtn:hover {
-  background: var(--cat-color, rgba(255, 255, 255, 0.04));
-  filter: brightness(1.2);
-  color: #000;
+  background: var(--bg-hover);
+  color: var(--text-primary);
 }
 
 .allBtn.allActive {
@@ -63,7 +62,7 @@
   padding: var(--space-2) var(--space-4);
   background: var(--bg-card);
   border: 1px solid var(--border-default);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   color: var(--text-secondary);
   font-size: 0.85rem;
   cursor: pointer;
