@@ -1,0 +1,171 @@
+"use client";
+
+import { useState, useTransition } from "react";
+import { Search, Shield, User, Crown, ChevronDown } from "lucide-react";
+import toast from "react-hot-toast";
+import styles from "./page.module.css";
+
+function formatDate(d) {
+  if (!d) return "—";
+  return new Date(d).toLocaleDateString("en-US", { year: "numeric", month: "short", day: "numeric" });
+}
+
+const ROLE_CONFIG = {
+  admin:   { label: "Admin",   color: "#f59e0b", icon: Shield },
+  premium: { label: "Premium", color: "#a855f7", icon: Crown  },
+  user:    { label: "User",    color: "#64748b", icon: User   },
+};
+
+const SUB_STATUS_CONFIG = {
+  active:    { label: "Active",    color: "#22c55e" },
+  free:      { label: "Free",      color: "#64748b" },
+  cancelled: { label: "Cancelled", color: "#f43f5e" },
+  expired:   { label: "Expired",   color: "#94a3b8" },
+};
+
+function RoleBadge({ role }) {
+  const cfg = ROLE_CONFIG[role] || ROLE_CONFIG.user;
+  const Icon = cfg.icon;
+  return (
+    <span className={styles.badge} style={{ color: cfg.color, borderColor: cfg.color + "44" }}>
+      <Icon size={12} /> {cfg.label}
+    </span>
+  );
+}
+
+function SubBadge({ status }) {
+  const cfg = SUB_STATUS_CONFIG[status] || SUB_STATUS_CONFIG.free;
+  return (
+    <span className={styles.badge} style={{ color: cfg.color, borderColor: cfg.color + "44" }}>
+      {cfg.label}
+    </span>
+  );
+}
+
+async function updateUserRole(userId, newRole) {
+  const res = await fetch("/api/admin/users/role", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ userId, role: newRole }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Failed");
+}
+
+export default function UsersClient({ users }) {
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState("all");
+  const [userList, setUserList] = useState(users);
+  const [isPending, startTransition] = useTransition();
+
+  const filtered = userList.filter((u) => {
+    const matchSearch =
+      u.email?.toLowerCase().includes(query.toLowerCase()) ||
+      u.full_name?.toLowerCase().includes(query.toLowerCase());
+    const matchFilter =
+      filter === "all" ||
+      (filter === "premium" && (u.role === "premium" || u.subscription_status === "active")) ||
+      (filter === "admin" && u.role === "admin") ||
+      (filter === "user" && u.role === "user");
+    return matchSearch && matchFilter;
+  });
+
+  const handleRoleChange = (userId, newRole) => {
+    startTransition(async () => {
+      const toastId = toast.loading("Updating role...");
+      try {
+        await updateUserRole(userId, newRole);
+        setUserList((prev) => prev.map((u) => u.id === userId ? { ...u, role: newRole } : u));
+        toast.success("Role updated", { id: toastId });
+      } catch (err) {
+        toast.error(err.message, { id: toastId });
+      }
+    });
+  };
+
+  return (
+    <div className={styles.container}>
+      <div className={styles.header}>
+        <h1 className={styles.title}>Users</h1>
+        <span className={styles.count}>{userList.length} total</span>
+      </div>
+
+      {/* Filters */}
+      <div className={styles.toolbar}>
+        <div className={styles.searchWrap}>
+          <Search size={16} className={styles.searchIcon} />
+          <input
+            type="text"
+            placeholder="Search by name or email..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className={styles.searchInput}
+          />
+        </div>
+        <div className={styles.filters}>
+          {["all", "admin", "premium", "user"].map((f) => (
+            <button
+              key={f}
+              className={`${styles.filterBtn} ${filter === f ? styles.active : ""}`}
+              onClick={() => setFilter(f)}
+            >
+              {f.charAt(0).toUpperCase() + f.slice(1)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className={styles.tableWrap}>
+        <table className={styles.table}>
+          <thead>
+            <tr>
+              <th>User</th>
+              <th>Role</th>
+              <th>Subscription</th>
+              <th>Expires</th>
+              <th>Joined</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.length === 0 ? (
+              <tr><td colSpan={6} className={styles.empty}>No users found</td></tr>
+            ) : filtered.map((u) => (
+              <tr key={u.id}>
+                <td>
+                  <div className={styles.userCell}>
+                    <div className={styles.avatar}>{(u.full_name || u.email || "?")[0].toUpperCase()}</div>
+                    <div>
+                      <div className={styles.userName}>{u.full_name || "—"}</div>
+                      <div className={styles.userEmail}>{u.email}</div>
+                    </div>
+                  </div>
+                </td>
+                <td><RoleBadge role={u.role} /></td>
+                <td><SubBadge status={u.subscription_status || "free"} /></td>
+                <td className={styles.dateCell}>{formatDate(u.subscription_expires_at)}</td>
+                <td className={styles.dateCell}>{formatDate(u.created_at)}</td>
+                <td>
+                  <div className={styles.roleSelect}>
+                    <select
+                      value={u.role || "user"}
+                      onChange={(e) => handleRoleChange(u.id, e.target.value)}
+                      className={styles.select}
+                      disabled={isPending}
+                    >
+                      <option value="user">User</option>
+                      <option value="premium">Premium</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                    <ChevronDown size={14} className={styles.selectIcon} />
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}

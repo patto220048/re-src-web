@@ -44,7 +44,7 @@ DO UPDATE SET setting_value = EXCLUDED.setting_value;
 -- Bảng lưu trữ Subscriptions của người dùng
 CREATE TABLE IF NOT EXISTS public.subscriptions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID REFERENCES auth.users(id) NOT NULL,
+    user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
     paypal_subscription_id TEXT UNIQUE NOT NULL,
     plan_id TEXT NOT NULL,
     status TEXT NOT NULL,
