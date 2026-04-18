@@ -1,0 +1,149 @@
+.container {
+  padding: 2rem;
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.title {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.saveBtn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  background: var(--text-primary);
+  color: var(--bg-primary);
+  border: 2px solid var(--text-primary);
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 4px 4px 0px var(--text-primary);
+}
+
+.saveBtn:hover:not(:disabled) {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0px var(--text-primary);
+}
+
+.saveBtn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  box-shadow: 2px 2px 0px var(--text-primary);
+  transform: none;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+.alertBox {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  background: var(--bg-primary);
+  border: 2px solid var(--text-primary);
+  padding: 1rem;
+  margin-bottom: 2rem;
+  box-shadow: 4px 4px 0px var(--text-primary);
+}
+
+.alertIcon {
+  color: var(--text-primary);
+  margin-top: 2px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+  gap: 2rem;
+}
+
+.card {
+  background: var(--bg-primary);
+  border: 2px solid var(--text-primary);
+  padding: 2rem;
+  margin-bottom: 2rem;
+  box-shadow: 6px 6px 0px var(--text-primary);
+}
+
+.sectionTitle {
+  font-size: 1.25rem;
+  font-weight: 800;
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  border-bottom: 2px solid var(--text-primary);
+  padding-bottom: 0.5rem;
+  text-transform: uppercase;
+}
+
+.toggleGroup {
+  display: flex;
+  gap: 1rem;
+}
+
+.toggleLabel {
+  flex: 1;
+  text-align: center;
+  padding: 1rem;
+  border: 2px solid var(--text-primary);
+  font-weight: 700;
+  cursor: pointer;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  transition: all 0.2s;
+  box-shadow: 4px 4px 0px var(--text-primary);
+}
+
+.toggleLabel.active {
+  background: var(--text-primary);
+  color: var(--bg-primary);
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0px var(--text-primary);
+}
+
+.formGroup {
+  margin-bottom: 1.5rem;
+}
+
+.formGroup label {
+  display: block;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  color: var(--text-secondary);
+}
+
+.input {
+  width: 100%;
+  padding: 0.75rem;
+  border: 2px solid var(--text-primary);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 1rem;
+  transition: box-shadow 0.2s;
+}
+
+.input:focus {
+  outline: none;
+  box-shadow: 4px 4px 0px var(--text-primary);
+}
