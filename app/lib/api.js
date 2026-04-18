@@ -60,37 +60,53 @@ export async function getResource(id) {
 }
 
 /**
- * Get resources with optional category and folder filtering.
- * Implements basic limits and ordering.
+ * Get resources with pagination, search and filtering.
  */
-export async function getResources({ categorySlug, folderId, limit = 20, offset = 0 } = {}) {
-  // Wrap with unstable_cache for better server-side performance
+export async function getResources({ 
+  categorySlug, 
+  folderId, 
+  searchTerm, 
+  isAdmin = false,
+  limit = 25, 
+  offset = 0 
+} = {}) {
+  // Key for cache should include all parameters
+  const cacheKey = `resources-${categorySlug || "all"}-${folderId || "all"}-${searchTerm || "none"}-${isAdmin ? "admin" : "public"}-${limit}-${offset}`;
+  
   return unstable_cache(
     async () => {
       let query = supabase
-        .from('resources')
-        .select(RESOURCE_SUMMARY_COLUMNS)
-        .eq('is_published', true)
-        .order('created_at', { ascending: false })
+        .from("resources")
+        .select(RESOURCE_SUMMARY_COLUMNS, { count: "exact" })
+        .order("created_at", { ascending: false })
         .range(offset, offset + limit - 1);
 
+      if (!isAdmin) {
+        query = query.eq("is_published", true);
+      }
+
       if (categorySlug) {
-        query = query.eq('categories.slug', categorySlug);
+        query = query.eq("category_id", categorySlug);
       }
       if (folderId) {
-        query = query.eq('folder_id', folderId);
+        query = query.eq("folder_id", folderId);
+      }
+
+      if (searchTerm) {
+        // Simple ilike search for performance, FTS is in searchResources
+        query = query.or(`name.ilike.%${searchTerm}%,tags.cs.{${searchTerm}}`);
       }
 
       const { data, error } = await query;
 
       if (error) {
-        console.error('Error fetching resources:', error);
+        console.error("Error fetching resources:", error);
         return [];
       }
       return (data || []).map(mapResource);
     },
-    [`resources-${categorySlug || 'all'}-${folderId || 'all'}-${limit}-${offset}`],
-    { revalidate: 3600, tags: ['resources'] }
+    [cacheKey],
+    { revalidate: 600, tags: ["resources"] } // Reduced TTL for admin responsiveness
   )();
 }
 

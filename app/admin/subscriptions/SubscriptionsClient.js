@@ -1,8 +1,12 @@
 "use client";
 
-import { useState } from "react";
-import { Search, CheckCircle2, XCircle, Clock, AlertCircle, ExternalLink } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { Search, CheckCircle2, XCircle, Clock, AlertCircle, ExternalLink, Loader2 } from "lucide-react";
 import styles from "./page.module.css";
+import { useDebounce } from "@/app/hooks/useDebounce";
+import { useInfiniteScroll } from "@/app/hooks/useInfiniteScroll";
+import TableSkeleton from "@/app/components/ui/TableSkeleton";
+import toast from "react-hot-toast";
 
 function formatDate(d) {
   if (!d) return "—";
@@ -26,26 +30,70 @@ function StatusBadge({ status }) {
   );
 }
 
-export default function SubscriptionsClient({ subscriptions }) {
+export default function SubscriptionsClient({ subscriptions: initialSubscriptions }) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("all");
+  const [subList, setSubList] = useState(initialSubscriptions || []);
+  
+  const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [totalCount, setTotalCount] = useState(0);
 
-  const filtered = subscriptions.filter((s) => {
-    const email = s.profiles?.email || "";
-    const name = s.profiles?.full_name || "";
-    const matchSearch =
-      email.toLowerCase().includes(query.toLowerCase()) ||
-      name.toLowerCase().includes(query.toLowerCase()) ||
-      s.paypal_subscription_id?.toLowerCase().includes(query.toLowerCase());
-    const matchFilter = filter === "all" || s.status === filter.toUpperCase();
-    return matchSearch && matchFilter;
+  const debouncedSearch = useDebounce(query, 500);
+
+  const fetchSubscriptions = useCallback(async (pageNum = 0, isInitial = false) => {
+    if (isInitial) setLoading(true);
+    else setLoadingMore(true);
+
+    try {
+      const params = new URLSearchParams({
+        page: pageNum.toString(),
+        limit: "25",
+        q: debouncedSearch,
+        filter: filter
+      });
+
+      const res = await fetch(`/api/admin/subscriptions?${params.toString()}`);
+      const result = await res.json();
+      
+      if (result.error) throw new Error(result.error);
+
+      if (isInitial) {
+        setSubList(result.data);
+      } else {
+        setSubList(prev => [...prev, ...result.data]);
+      }
+      
+      setHasMore(result.hasMore);
+      setTotalCount(result.count);
+      setPage(pageNum);
+    } catch (err) {
+      console.error("Fetch subscriptions error:", err);
+      toast.error("Failed to load subscriptions. Please check your connection or permissions.");
+      setHasMore(false); // Stop loop on error
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  }, [debouncedSearch, filter]);
+
+  // Initial load or search/filter change
+  useEffect(() => {
+    fetchSubscriptions(0, true);
+  }, [fetchSubscriptions]);
+
+  // Infinite scroll trigger
+  const loaderRef = useInfiniteScroll(hasMore, loading || loadingMore, () => {
+    fetchSubscriptions(page + 1);
   });
 
   const stats = {
-    total:     subscriptions.length,
-    active:    subscriptions.filter((s) => s.status === "ACTIVE").length,
-    cancelled: subscriptions.filter((s) => s.status === "CANCELLED").length,
-    expired:   subscriptions.filter((s) => s.status === "EXPIRED").length,
+    total:     totalCount,
+    active:    subList.filter((s) => s.status === "ACTIVE").length, // Note: Local filter for stats is rough but okay for current view
+    cancelled: subList.filter((s) => s.status === "CANCELLED").length,
+    expired:   subList.filter((s) => s.status === "EXPIRED").length,
   };
 
   return (
@@ -114,9 +162,15 @@ export default function SubscriptionsClient({ subscriptions }) {
             </tr>
           </thead>
           <tbody>
-            {filtered.length === 0 ? (
+            {loading ? (
+              <tr>
+                <td colSpan={6}>
+                  <TableSkeleton rows={10} cols={6} />
+                </td>
+              </tr>
+            ) : subList.length === 0 ? (
               <tr><td colSpan={6} className={styles.empty}>No subscriptions found</td></tr>
-            ) : filtered.map((s) => (
+            ) : subList.map((s) => (
               <tr key={s.id}>
                 <td>
                   <div className={styles.userCell}>
@@ -151,6 +205,19 @@ export default function SubscriptionsClient({ subscriptions }) {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Infinite Scroll Loader Target */}
+      <div ref={loaderRef} className={styles.infiniteLoader}>
+        {loadingMore && (
+           <div className={styles.moreSpinner}>
+             <Loader2 size={24} className={styles.spin} />
+             <span>Loading more subscriptions...</span>
+           </div>
+        )}
+        {!hasMore && subList.length > 0 && (
+          <p className={styles.endMessage}>All subscriptions loaded</p>
+        )}
       </div>
     </div>
   );

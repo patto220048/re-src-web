@@ -1,9 +1,12 @@
 "use client";
 
-import { useState, useTransition } from "react";
-import { Search, Shield, User, Crown, ChevronDown } from "lucide-react";
+import { useState, useTransition, useEffect, useCallback } from "react";
+import { Search, Shield, User, Crown, ChevronDown, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 import styles from "./page.module.css";
+import { useDebounce } from "@/app/hooks/useDebounce";
+import { useInfiniteScroll } from "@/app/hooks/useInfiniteScroll";
+import TableSkeleton from "@/app/components/ui/TableSkeleton";
 
 function formatDate(d) {
   if (!d) return "—";
@@ -52,22 +55,63 @@ async function updateUserRole(userId, newRole) {
   if (!res.ok) throw new Error(data.error || "Failed");
 }
 
-export default function UsersClient({ users }) {
+export default function UsersClient({ users: initialUsers }) {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("all");
-  const [userList, setUserList] = useState(users);
+  const [userList, setUserList] = useState(initialUsers || []);
   const [isPending, startTransition] = useTransition();
+  
+  const [loading, setLoading] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [totalCount, setTotalCount] = useState(0);
 
-  const filtered = userList.filter((u) => {
-    const matchSearch =
-      u.email?.toLowerCase().includes(query.toLowerCase()) ||
-      u.full_name?.toLowerCase().includes(query.toLowerCase());
-    const matchFilter =
-      filter === "all" ||
-      (filter === "premium" && (u.role === "premium" || u.subscription_status === "active")) ||
-      (filter === "admin" && u.role === "admin") ||
-      (filter === "user" && u.role === "user");
-    return matchSearch && matchFilter;
+  const debouncedSearch = useDebounce(query, 500);
+
+  const fetchUsers = useCallback(async (pageNum = 0, isInitial = false) => {
+    if (isInitial) setLoading(true);
+    else setLoadingMore(true);
+
+    try {
+      const params = new URLSearchParams({
+        page: pageNum.toString(),
+        limit: "25",
+        q: debouncedSearch,
+        filter: filter
+      });
+
+      const res = await fetch(`/api/admin/users?${params.toString()}`);
+      const result = await res.json();
+      
+      if (result.error) throw new Error(result.error);
+
+      if (isInitial) {
+        setUserList(result.data);
+      } else {
+        setUserList(prev => [...prev, ...result.data]);
+      }
+      
+      setHasMore(result.hasMore);
+      setTotalCount(result.count);
+      setPage(pageNum);
+    } catch (err) {
+      console.error("Fetch users error:", err);
+      toast.error("Failed to load users");
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  }, [debouncedSearch, filter]);
+
+  // Initial load or search/filter change
+  useEffect(() => {
+    fetchUsers(0, true);
+  }, [fetchUsers]);
+
+  // Infinite scroll trigger
+  const loaderRef = useInfiniteScroll(hasMore, loading || loadingMore, () => {
+    fetchUsers(page + 1);
   });
 
   const handleRoleChange = (userId, newRole) => {
@@ -87,7 +131,9 @@ export default function UsersClient({ users }) {
     <div className={styles.container}>
       <div className={styles.header}>
         <h1 className={styles.title}>Users</h1>
-        <span className={styles.count}>{userList.length} total</span>
+        <span className={styles.count}>
+          {loading ? "Loading..." : `${totalCount} total`}
+        </span>
       </div>
 
       {/* Filters */}
@@ -129,9 +175,15 @@ export default function UsersClient({ users }) {
             </tr>
           </thead>
           <tbody>
-            {filtered.length === 0 ? (
+            {loading ? (
+              <tr>
+                <td colSpan={6}>
+                  <TableSkeleton rows={10} cols={6} />
+                </td>
+              </tr>
+            ) : userList.length === 0 ? (
               <tr><td colSpan={6} className={styles.empty}>No users found</td></tr>
-            ) : filtered.map((u) => (
+            ) : userList.map((u) => (
               <tr key={u.id}>
                 <td>
                   <div className={styles.userCell}>
@@ -165,6 +217,19 @@ export default function UsersClient({ users }) {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Infinite Scroll Loader Target */}
+      <div ref={loaderRef} className={styles.infiniteLoader}>
+        {loadingMore && (
+           <div className={styles.moreSpinner}>
+             <Loader2 size={24} className={styles.spin} />
+             <span>Loading more users...</span>
+           </div>
+        )}
+        {!hasMore && userList.length > 0 && (
+          <p className={styles.endMessage}>All users loaded</p>
+        )}
       </div>
     </div>
   );

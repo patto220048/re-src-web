@@ -21,7 +21,7 @@ export default async function AdminSubscriptionsPage() {
       current_period_end,
       created_at,
       user_id,
-      profiles:user_id ( email, full_name )
+      profiles ( email, full_name )
     `)
     .order("created_at", { ascending: false });
 

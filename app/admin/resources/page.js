@@ -23,6 +23,9 @@ import styles from "./page.module.css";
 import { mediaManager } from "@/app/lib/mediaManager";
 import PreviewOverlay from "@/app/components/ui/PreviewOverlay";
 import { isAudioFormat, isVideoFormat, isImageFormat, isFontFormat } from "@/app/lib/mediaUtils";
+import { useDebounce } from "@/app/hooks/useDebounce";
+import { useInfiniteScroll } from "@/app/hooks/useInfiniteScroll";
+import TableSkeleton from "@/app/components/ui/TableSkeleton";
 
 // New Components & Hooks
 import { useAdminUpload } from "./hooks/useAdminUpload";
@@ -51,6 +54,12 @@ export default function AdminResources() {
   const [categories, setCategories] = useState([]);
   const [tags, setTags] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [totalCount, setTotalCount] = useState(0);
+  
+  const debouncedSearch = useDebounce(searchQuery, 500);
   
   const [selectedFolderId, setSelectedFolderId] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -138,42 +147,72 @@ export default function AdminResources() {
     uploadAll 
   } = useAdminUpload();
 
+  // Load folders & categories once
   useEffect(() => {
-    async function loadInitial() {
+    async function loadMeta() {
       try {
-        const [resData, folderData, catData, tagsData] = await Promise.all([
-          getResources({ limit: 1000 }), // Fetch more for admin list
+        const [folderData, catData, tagsData] = await Promise.all([
           getAllAdminFolders(),
           getCategories(),
           getTags()
         ]);
-        
-        setResources(resData);
-        if (resData && resData.length > 0) {
-          console.log("DEBUG: First resource sample:", {
-            name: resData[0].name,
-            thumbnailUrl: resData[0].thumbnailUrl,
-            previewUrl: resData[0].previewUrl,
-            category: resData[0].category
-          });
-        }
         setFolders(folderData);
         setCategories(catData);
         setTags(tagsData);
       } catch (e) {
-        console.error("Failed to load initial data:", e.message);
+        console.error("Failed to load metadata:", e.message);
       }
-      setLoading(false);
     }
-    loadInitial();
-    
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-        mediaManager.stop(audioRef.current);
+    loadMeta();
+  }, []);
+
+  // Fetch resources (paginated)
+  const fetchResources = useCallback(async (pageNum = 0, isInitial = false) => {
+    if (isInitial) {
+      setLoading(true);
+    } else {
+      setLoadingMore(true);
+    }
+
+    try {
+      const params = new URLSearchParams({
+        page: pageNum.toString(),
+        limit: "25",
+        q: debouncedSearch,
+        folder: selectedFolderId || ""
+      });
+
+      const res = await fetch(`/api/admin/resources?${params.toString()}`);
+      const result = await res.json();
+
+      if (result.error) throw new Error(result.error);
+
+      if (isInitial) {
+        setResources(result.data);
+      } else {
+        setResources(prev => [...prev, ...result.data]);
       }
-    };
-  }, [stagingFiles.length]); // Reload when uploads finish
+      
+      setHasMore(result.hasMore);
+      setTotalCount(result.count);
+      setPage(pageNum);
+    } catch (e) {
+      console.error("Fetch resources failed:", e);
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  }, [debouncedSearch, selectedFolderId]);
+
+  // Handle re-fetch on filter change
+  useEffect(() => {
+    fetchResources(0, true);
+  }, [fetchResources]);
+
+  // Infinite Scroll Trigger
+  const loaderRef = useInfiniteScroll(hasMore, loading || loadingMore, () => {
+    fetchResources(page + 1);
+  });
 
   // Handle Global Drag and Drop (Files from OS)
   const handleDragEnter = useCallback((e) => {
@@ -273,38 +312,7 @@ export default function AdminResources() {
     }
   };
 
-  const filtered = useMemo(() => {
-    let result = Array.isArray(resources) ? [...resources] : [];
-    
-    // 1. Filter by Tree Selection (Category or Folder)
-    if (selectedFolderId) {
-      if (selectedFolderId.startsWith('cat-')) {
-        const catSlug = selectedFolderId.replace('cat-', '');
-        result = result.filter(r => 
-          r.category?.slug === catSlug || 
-          r.categoryId === catSlug || 
-          r.category_id === catSlug
-        );
-      } else {
-        result = result.filter(r => r.folderId === selectedFolderId || r.folder_id === selectedFolderId);
-      }
-    }
-
-    // 2. Filter by Search Query
-    if (searchQuery && typeof searchQuery === 'string' && searchQuery.trim() !== '') {
-      const term = searchQuery.toLowerCase();
-      result = result.filter((r) => {
-        const nameMatch = r.name?.toLowerCase().includes(term);
-        const catMatch = r.category?.name?.toLowerCase().includes(term);
-        const tagMatch = Array.isArray(r.tags) && r.tags.some((t) => 
-          typeof t === 'string' && t.toLowerCase().includes(term)
-        );
-        return nameMatch || catMatch || tagMatch;
-      });
-    }
-
-    return result;
-  }, [resources, searchQuery, selectedFolderId]);
+  const filtered = resources; // Already filtered server-side
 
   const handleAddFolder = async (parentId, categorySlug) => {
     const name = prompt("Nhập tên thư mục mới:");
@@ -659,7 +667,9 @@ export default function AdminResources() {
           <div className={styles.topActions}>
             <div className={styles.titleSection}>
               <h1>Quản lý tài nguyên</h1>
-              <span className={styles.subtitle}>{filtered.length} tài nguyên trong mục này</span>
+              <span className={styles.subtitle}>
+                {loading ? "Đang tải..." : `${totalCount} tài nguyên`}
+              </span>
             </div>
             <div className={styles.headerTools}>
               <button 
@@ -753,8 +763,7 @@ export default function AdminResources() {
             )}
             {loading ? (
               <div className={styles.loadingBox}>
-                <Loader2 size={32} className={styles.loadingIcon} />
-                <p>Đang đồng bộ dữ liệu...</p>
+                <TableSkeleton rows={8} cols={viewMode === 'list' ? 5 : 4} />
               </div>
             ) : filtered.length > 0 ? (
               filtered.map((r) => (
@@ -973,6 +982,19 @@ export default function AdminResources() {
               <div className={styles.emptyBox}>
                 <p>Thư mục này còn trống. Kéo thả file vào để bắt đầu!</p>
               </div>
+            )}
+          </div>
+
+          {/* Infinite Scroll Loader Target */}
+          <div ref={loaderRef} className={styles.infiniteLoader}>
+            {loadingMore && (
+               <div className={styles.moreSpinner}>
+                 <Loader2 size={24} className={styles.spin} />
+                 <span>Đang tải thêm...</span>
+               </div>
+            )}
+            {!hasMore && filtered.length > 0 && (
+              <p className={styles.endMessage}>Đã hiển thị tất cả tài nguyên</p>
             )}
           </div>
         </div>
