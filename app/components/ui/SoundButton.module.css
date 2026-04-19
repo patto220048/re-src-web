@@ -5,13 +5,15 @@
 .item {
   display: flex;
   align-items: center;
-  gap: 0;
+  gap: var(--space-4);
   padding: var(--space-3) var(--space-4);
   background: var(--bg-card);
   border: 1px solid var(--border-default);
   border-radius: var(--radius-md);
   transition: all var(--transition-base);
   cursor: default;
+  position: relative;
+  overflow: hidden;
 
   /* Staggered entrance */
   opacity: 0;
@@ -36,7 +38,6 @@
   width: 44px;
   height: 44px;
   min-width: 44px;
-  margin-right: var(--space-3);
   border-radius: 50%;
   border: none;
   background: var(--text-primary);
@@ -113,17 +114,14 @@
   align-items: center;
   gap: 2px;
   height: 20px;
-  width: 0;
+  width: 24px;
   opacity: 0;
-  overflow: hidden;
-  margin-right: 0;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: opacity 0.3s ease;
+  pointer-events: none;
 }
 
 .playing .waveBars {
-  width: 20px;
   opacity: 1;
-  margin-right: var(--space-3);
 }
 
 .bar {
@@ -158,21 +156,19 @@
   font-size: 0.65rem;
   color: var(--text-primary);
   opacity: 0;
-  max-width: 0;
-  overflow: hidden;
-  white-space: nowrap;
+  visibility: hidden;
   letter-spacing: 0.5px;
-  background: rgba(var(--neon-cyan-rgb), 0.05);
-  padding: 0;
-  border-radius: 4px;
-  transition: all 0.25s ease;
+  background: rgba(var(--text-primary-rgb), 0.1);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  transition: all 0.3s ease;
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .timeVisible {
   opacity: 1;
-  max-width: 120px;
-  padding: 1px 6px;
-  margin-left: 8px;
+  visibility: visible;
 }
 
 .duration {
@@ -183,32 +179,40 @@
 }
 
 .progressWrapper {
+  position: absolute;
+  bottom: 0;
+  left: 0;
   width: 100%;
-  padding: 8px 0;
+  height: 2px;
   cursor: pointer;
-  margin-top: -4px;
+  z-index: 2;
+  transition: height 0.2s ease;
+  opacity: 0;
+  visibility: hidden;
 }
+
+.playing .progressWrapper,
+.item:hover .progressWrapper {
+  /* Keep visible if has progress or is playing */
+}
+
+/* We'll handle visibility via a class in JS to be precise, 
+   but for now, show if active */
 
 .progressTrack {
   width: 100%;
-  height: 3px;
-  border-radius: 2px;
-  background: var(--bg-surface);
+  height: 100%;
+  background: rgba(var(--text-primary-rgb), 0.1);
   overflow: hidden;
-  transition: height 0.15s ease;
-  pointer-events: none;
 }
 
-.progressWrapper:hover .progressTrack {
-  height: 5px;
-  background: var(--bg-hover);
+.progressWrapper:hover {
+  height: 4px;
 }
 
 .progressFill {
   height: 100%;
-  border-radius: 2px;
   background: var(--text-primary);
-  opacity: 0.7;
   transition: width 0.1s linear;
 }
 
@@ -274,7 +278,7 @@
 }
 
 .previewBtn {
-  margin-right: 8px;
+  /* margin-right removed, gap handles it */
 }
 
 .downloadBtn:hover,

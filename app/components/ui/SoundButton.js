@@ -41,12 +41,14 @@ export default function SoundButton({
   const [isDownloading, setIsDownloading] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [isScrubbing, setIsScrubbing] = useState(false);
   
   const { user, isPremium: userIsPremium, isAdmin } = useAuth();
   const router = useRouter();
 
   const audioRef = useRef(null);
   const rafRef = useRef(null);
+  const wasPlayingRef = useRef(false);
 
   const resourceObj = { id, name, fileName, fileFormat, downloadUrl, ...otherProps };
   const hasPreview = isVideoFormat(resourceObj) || isImageFormat(resourceObj) || isFontFormat(resourceObj);
@@ -59,11 +61,11 @@ export default function SoundButton({
   // Update time via requestAnimationFrame for smooth progress
   const updateTime = useCallback(() => {
     const audio = audioRef.current;
-    if (audio && !audio.paused) {
+    if (audio && !audio.paused && !isScrubbing) {
       setCurrentTime(audio.currentTime);
       rafRef.current = requestAnimationFrame(updateTime);
     }
-  }, []);
+  }, [isScrubbing]);
 
   // Helper to initialize audio on demand
   const initAudio = useCallback(() => {
@@ -73,7 +75,11 @@ export default function SoundButton({
     if (audioRef.current) {
       if (audioRef.current.src !== downloadUrl) {
         audioRef.current.src = downloadUrl;
-        audioRef.current.load(); // Force browser to re-track the new source
+        audioRef.current.load();
+      }
+      // Ensure state is synced if duration is already available
+      if (audioRef.current.duration && !isNaN(audioRef.current.duration)) {
+        setDuration(audioRef.current.duration);
       }
       return audioRef.current;
     }
@@ -172,25 +178,83 @@ export default function SoundButton({
     }
   }, [downloadUrl, isPlaying, updateTime, initAudio]);
 
-  // Seek via progress bar click
-  const handleProgressClick = useCallback((e) => {
-    e.stopPropagation();
+  // Global seek logic using clientX for accuracy
+  const seek = useCallback((clientX, target) => {
     const audio = audioRef.current;
     if (!audio) return;
     
-    // Ensure we use the actual native duration to avoid stale closure variables
-    const audioDuration = audio.duration || duration;
-    if (!audioDuration) return;
+    // Use native duration as priority, fallback to state
+    const audioDuration = (audio.duration && !isNaN(audio.duration) && audio.duration > 0) 
+      ? audio.duration 
+      : duration;
 
-    // e.nativeEvent.offsetX is relative to the element that triggered the event
-    // Since child elements have pointer-events: none, this is always relative to progressWrapper
-    const offsetX = e.nativeEvent.offsetX;
-    const totalWidth = e.currentTarget.offsetWidth;
-    const ratio = Math.max(0, Math.min(1, offsetX / totalWidth));
+    // If we still don't have duration, we can't seek
+    if (!audioDuration || isNaN(audioDuration) || audioDuration === 0) {
+      return;
+    }
+
+    const rect = target.getBoundingClientRect();
+    const offsetX = clientX - rect.left;
+    const ratio = Math.max(0, Math.min(1, offsetX / rect.width));
     
-    audio.currentTime = ratio * audioDuration;
-    setCurrentTime(audio.currentTime);
-  }, [duration]);
+    const newTime = ratio * audioDuration;
+    audio.currentTime = newTime;
+    setCurrentTime(newTime);
+  }, [duration, id, isScrubbing]);
+
+  const handleMouseDown = useCallback((e) => {
+    e.stopPropagation();
+    const audio = initAudio();
+    if (!audio) return;
+
+    // YouTube style: Pause while scrubbing, remember if it was playing
+    const isCurrentlyPlaying = !audio.paused;
+    wasPlayingRef.current = isCurrentlyPlaying;
+    
+    if (isCurrentlyPlaying) {
+      audio.pause();
+      setIsPlaying(false);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    }
+
+    setIsScrubbing(true);
+    // Use a small timeout or immediate update to ensure state is processed if needed
+    // but clientX is already available
+    seek(e.clientX, e.currentTarget);
+  }, [seek, initAudio]);
+
+  // Handle global scrubbing events
+  useEffect(() => {
+    if (!isScrubbing) return;
+
+    const handleMouseMove = (e) => {
+      const wrapper = document.querySelector(`#sound-${id} .${styles.progressWrapper}`);
+      if (wrapper) seek(e.clientX, wrapper);
+    };
+
+    const handleMouseUp = () => {
+      setIsScrubbing(false);
+      
+      const audio = audioRef.current;
+      if (audio && wasPlayingRef.current) {
+        mediaManager.play(audio, 'audio', () => {
+          setIsPlaying(false);
+          setCurrentTime(0);
+        }, id);
+        audio.play().then(() => {
+          setIsPlaying(true);
+          if (!rafRef.current) rafRef.current = requestAnimationFrame(updateTime);
+        }).catch(() => {});
+      }
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isScrubbing, id, seek, updateTime]);
 
   const handleDownload = async (e) => {
     e.stopPropagation();
@@ -307,17 +371,23 @@ export default function SoundButton({
           </span>
         </div>
 
-        {/* Progress bar — only on active item */}
-        {(isPlaying || currentTime > 0) && duration > 0 && (
-          <div className={styles.progressWrapper} onClick={handleProgressClick}>
-            <div className={styles.progressTrack}>
-              <div 
-                className={styles.progressFill} 
-                style={{ width: `${progress}%`, backgroundColor: primaryColor }} 
-              />
-            </div>
+        {/* Stable Progress bar structure */}
+        <div 
+          className={`${styles.progressWrapper} ${(isPlaying || currentTime > 0 || isScrubbing) ? styles.timeVisible : ""}`} 
+          onMouseDown={handleMouseDown}
+          style={{ 
+            opacity: (isPlaying || currentTime > 0 || isScrubbing) ? 1 : 0, 
+            visibility: (isPlaying || currentTime > 0 || isScrubbing) ? 'visible' : 'hidden',
+            height: isScrubbing ? '6px' : undefined
+          }}
+        >
+          <div className={styles.progressTrack}>
+            <div 
+              className={styles.progressFill} 
+              style={{ width: `${progress}%`, backgroundColor: primaryColor }} 
+            />
           </div>
-        )}
+        </div>
       </div>
 
       {/* Preview Overlay Trigger */}

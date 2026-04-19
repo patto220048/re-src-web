@@ -46,38 +46,89 @@ export default function ResourceCard({
   const resolvedUrl = downloadUrl || fileUrl;
   const [isHovering, setIsHovering] = useState(false);
   const [videoProgress, setVideoProgress] = useState(0);
+  const [isScrubbing, setIsScrubbing] = useState(false);
   const [isMuted, setIsMuted] = useState(mediaManager.getMuted('video'));
   const [volume, setVolume] = useState(mediaManager.getVolume('video'));
   const videoRef = useRef(null);
   const rafRef = useRef(null);
+  const wasPlayingRef = useRef(false);
   const displayName = (name || fileName || "Untitled").replace(/\.[^/.]+$/, "");
 
   // Video progress updater via rAF
   const updateVideoProgress = useCallback(() => {
     const video = videoRef.current;
-    if (video && !video.paused && video.duration) {
+    if (video && !video.paused && video.duration && !isScrubbing) {
       setVideoProgress((video.currentTime / video.duration) * 100);
       rafRef.current = requestAnimationFrame(updateVideoProgress);
     }
-  }, []);
+  }, [isScrubbing]);
 
-  const handleProgressClick = useCallback((e) => {
-    e.stopPropagation();
+  const seek = useCallback((clientX, target) => {
     const video = videoRef.current;
     if (!video) return;
     
-    // Ensure we use the actual native duration
-    const videoDuration = video.duration;
+    // Use native duration with NaN check
+    const videoDuration = (video.duration && !isNaN(video.duration) && video.duration > 0) 
+      ? video.duration 
+      : null;
+
     if (!videoDuration) return;
 
-    // Utilize native offset
-    const offsetX = e.nativeEvent.offsetX;
-    const totalWidth = e.currentTarget.offsetWidth;
-    const ratio = Math.max(0, Math.min(1, offsetX / totalWidth));
+    const rect = target.getBoundingClientRect();
+    const offsetX = clientX - rect.left;
+    const ratio = Math.max(0, Math.min(1, offsetX / rect.width));
     
     video.currentTime = ratio * videoDuration;
     setVideoProgress(ratio * 100);
   }, []);
+
+  const handleMouseDown = useCallback((e) => {
+    e.stopPropagation();
+    const video = videoRef.current;
+    if (!video) return;
+
+    // Pause while scrubbing
+    wasPlayingRef.current = !video.paused;
+    if (!video.paused) {
+      video.pause();
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    }
+
+    setIsScrubbing(true);
+    seek(e.clientX, e.currentTarget);
+  }, [seek]);
+
+  // Handle global scrubbing events for video
+  useEffect(() => {
+    if (!isScrubbing) return;
+
+    const handleMouseMove = (e) => {
+      // Find the progress wrapper within this specific card
+      const wrapper = document.querySelector(`#resource-${id} .${styles.videoProgressWrapper}`);
+      if (wrapper) seek(e.clientX, wrapper);
+    };
+
+    const handleMouseUp = () => {
+      setIsScrubbing(false);
+      
+      const video = videoRef.current;
+      if (video && wasPlayingRef.current) {
+        mediaManager.play(video, 'video', () => {
+          setVideoProgress(0);
+        });
+        video.play().then(() => {
+          if (!rafRef.current) rafRef.current = requestAnimationFrame(updateVideoProgress);
+        }).catch(() => {});
+      }
+    };
+
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isScrubbing, id, seek]);
 
   // Sync with global settings
   useEffect(() => {
@@ -189,8 +240,12 @@ export default function ResourceCard({
               </div>
             )}
             {/* Video Progress Bar */}
-            {isHovering && (
-              <div className={styles.videoProgressWrapper} onClick={handleProgressClick}>
+            {(isHovering || isScrubbing) && (
+              <div 
+                className={styles.videoProgressWrapper} 
+                onMouseDown={handleMouseDown}
+                style={{ height: isScrubbing ? '6px' : undefined }}
+              >
                 <div className={styles.videoProgressTrack}>
                   <div
                     className={styles.videoProgressFill}
