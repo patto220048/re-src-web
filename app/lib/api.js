@@ -60,6 +60,23 @@ export async function getResource(id) {
 }
 
 /**
+ * Get a single resource by Slug.
+ */
+export async function getResourceBySlug(slug) {
+  const { data, error } = await supabase
+    .from('resources')
+    .select(RESOURCE_SUMMARY_COLUMNS)
+    .eq('slug', slug)
+    .maybeSingle();
+
+  if (error) {
+    console.error('Error fetching resource by slug:', error);
+    return null;
+  }
+  return data ? mapResource(data) : null;
+}
+
+/**
  * Get resources with pagination, search and filtering.
  */
 export async function getResources({ 

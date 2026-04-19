@@ -9,17 +9,27 @@ export default function FilterBar({
   onFormatChange,
   sortBy = "newest",
   onSortChange,
+  resSlug,
+  onClearRes,
 }) {
   return (
     <div className={styles.bar} id="filter-bar">
       <div className={styles.filters}>
         <Filter size={16} className={styles.icon} />
         <button
-          className={`${styles.chip} ${!selectedFormat ? styles.active : ""}`}
-          onClick={() => onFormatChange?.(null)}
+          className={`${styles.chip} ${(!selectedFormat && !resSlug) ? styles.active : ""}`}
+          onClick={() => {
+            onFormatChange?.(null);
+            onClearRes?.();
+          }}
         >
           All
         </button>
+        {resSlug && (
+          <button className={`${styles.chip} ${styles.active}`} onClick={onClearRes}>
+            Focused
+          </button>
+        )}
         {formats.map((format) => (
           <button
             key={format}

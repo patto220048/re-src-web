@@ -72,6 +72,7 @@
   --z-sidebar: 900;
   --z-header: 1000;
   --z-overlay: 1100;
+  --z-context-search: 2000;
 
   /* Stark Accent */
   --neon-cyan: #FFFFFF;

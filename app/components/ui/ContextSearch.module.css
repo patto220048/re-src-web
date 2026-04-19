@@ -9,6 +9,12 @@
   box-shadow: 0 12px 50px rgba(0, 0, 0, 0.3);
   overflow: hidden;
   animation: popIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transition: height 0.3s ease;
+}
+
+.isFocused {
+  border-color: var(--premium-gold);
+  box-shadow: 0 0 20px rgba(250, 203, 17, 0.15);
 }
 
 @keyframes popIn {
@@ -42,9 +48,25 @@
   background: transparent;
   border: none;
   color: var(--text-primary);
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   padding: 0;
   outline: none;
+}
+
+.clearBtn {
+  color: var(--text-muted);
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.clearBtn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.focusIcon {
+  color: var(--premium-gold);
 }
 
 .loader {
@@ -65,6 +87,14 @@
   background: var(--bg-surface);
   color: var(--text-muted);
   border: 1px solid var(--border-default);
+}
+
+.highlight {
+  background: rgba(250, 203, 17, 0.2);
+  color: var(--premium-gold);
+  padding: 0 1px;
+  border-radius: 2px;
+  font-weight: 600;
 }
 
 .results {
@@ -154,8 +184,30 @@
 .empty {
   padding: var(--space-8) var(--space-4);
   text-align: center;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   color: var(--text-muted);
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 16px 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  letter-spacing: 0.1em;
+  opacity: 0.8;
+}
+
+.focusedItem {
+  background: rgba(250, 203, 17, 0.05) !important;
+  border-left: 3px solid var(--premium-gold);
+  padding-left: calc(var(--space-4) - 3px);
 }
 
 .hint {

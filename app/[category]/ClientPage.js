@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef, useCallback } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import Sidebar from "@/app/components/layout/Sidebar";
 import ResourceCard from "@/app/components/ui/ResourceCard";
 import SoundButton from "@/app/components/ui/SoundButton";
 import FilterBar from "@/app/components/ui/FilterBar";
 import PreviewOverlay from "@/app/components/ui/PreviewOverlay";
-import { getResources } from "@/app/lib/api";
+import { getResources, getResourceBySlug } from "@/app/lib/api";
 import styles from "./page.module.css";
 
 const PAGE_SIZE_DISPLAY = 24;
@@ -30,6 +30,8 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
   const [previewResource, setPreviewResource] = useState(null);
   const [inPageSearch, setInPageSearch] = useState("");
   
+  const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const resSlug = searchParams.get("res");
   const loadMoreRef = useRef(null);
@@ -38,10 +40,19 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
 
   // Handle deep-link to resource via ?res=slug
   useEffect(() => {
-    if (resSlug && allLoadedResources.length > 0) {
-      const resource = allLoadedResources.find(r => r.slug === resSlug);
-      if (resource) {
-        setPreviewResource(resource);
+    if (resSlug) {
+      const existing = allLoadedResources.find(r => r.slug === resSlug);
+      if (existing) {
+        // User requested to DISABLE auto-preview for ALL types
+        // setPreviewResource(existing); 
+      } else {
+        // If not in current pool, fetch it specifically
+        getResourceBySlug(resSlug).then(resource => {
+          if (resource) {
+            setAllLoadedResources(prev => [resource, ...prev]);
+            // setPreviewResource(resource); // Disable auto-preview
+          }
+        });
       }
     }
   }, [resSlug, allLoadedResources]);
@@ -73,6 +84,11 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
   // --- Core Filtering ---
   const filteredResources = useMemo(() => {
     let results = [...allLoadedResources];
+
+    if (resSlug) {
+      const target = results.find(r => r.slug === resSlug);
+      if (target) return [target];
+    }
 
     if (selectedFolderId) {
       results = results.filter((r) => r.folderId === selectedFolderId);
@@ -309,6 +325,8 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
           onFormatChange={setSelectedFormat}
           sortBy={sortBy}
           onSortChange={setSortBy}
+          resSlug={resSlug}
+          onClearRes={() => router.push(pathname)}
         />
 
         {renderResources()}
