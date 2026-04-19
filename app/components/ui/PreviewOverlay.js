@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { X, Music } from "lucide-react";
 import { mediaManager } from "@/app/lib/mediaManager";
-import { isVideoFormat, isImageFormat, isFontFormat, isAudioFormat } from "@/app/lib/mediaUtils";
+import { isVideoFormat, isImageFormat, isFontFormat, isAudioFormat, getOptimizedUrl } from "@/app/lib/mediaUtils";
 import DownloadButton from "./DownloadButton";
 import styles from "./PreviewOverlay.module.css";
 
@@ -67,21 +67,25 @@ export default function PreviewOverlay({ resource, onClose, showDownload = false
           {isVideo && (
             <video 
               ref={mediaRef}
-              src={resource.downloadUrl || resource.fileUrl} 
-              poster={resource.thumbnailUrl || resource.previewUrl}
+              src={getOptimizedUrl(resource)} 
+              poster={getOptimizedUrl(resource.thumbnailUrl || resource.previewUrl, { width: 1200 })}
               controls 
               autoPlay 
               muted
               loop
               playsInline 
+              preload="metadata"
               className={styles.largePreviewVideo} 
             />
           )}
           {isImage && (
             <img 
-              src={resource.downloadUrl || resource.fileUrl} 
+              src={getOptimizedUrl(resource, { width: 1200, quality: 85 })} 
               alt={resource.name} 
               className={styles.largePreviewImage} 
+              onError={(e) => {
+                e.target.src = resource.downloadUrl || resource.fileUrl;
+              }}
             />
           )}
           {isFont && (

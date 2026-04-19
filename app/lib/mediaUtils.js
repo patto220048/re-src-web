@@ -45,3 +45,67 @@ export const getMediaType = (res) => {
   if (isFontFormat(res)) return 'font';
   return 'other';
 };
+
+/**
+ * Generates an optimized URL for images or retrieves preview URL for videos.
+ * Uses Supabase Image Transformation for images.
+ * 
+ * @param {Object|string} resource - The resource object or a direct URL string
+ * @param {Object} options - Optimization options { width, quality, format, url }
+ */
+export const getOptimizedUrl = (resource, options = {}) => {
+  if (!resource) return "";
+  
+  // Toggle this based on your Supabase plan (True = Pro, False = Free)
+  // If False, it will always return the original URL
+  const IS_SUPABASE_PRO = process.env.NEXT_PUBLIC_SUPABASE_TRANSFORM === 'true';
+
+  const { 
+    width, 
+    quality = 80, 
+    format = 'webp',
+    url: manualUrl
+  } = options;
+
+  // Resolve the URL to optimize
+  let urlToOptimize = manualUrl;
+  
+  if (!urlToOptimize) {
+    if (typeof resource === 'string') {
+      urlToOptimize = resource;
+    } else {
+      // It's a resource object
+      if (isVideoFormat(resource)) {
+        return resource.previewUrl || resource.downloadUrl || resource.fileUrl || "";
+      }
+      urlToOptimize = resource.downloadUrl || resource.fileUrl || "";
+    }
+  }
+
+  if (!urlToOptimize) return "";
+
+  // If not Pro or not a Supabase URL, return original
+  if (!IS_SUPABASE_PRO || !urlToOptimize.includes(".supabase.co/storage/v1/object/public/")) {
+    return urlToOptimize;
+  }
+
+  // Strict check for image extensions supported by Supabase Transformation
+  const supportedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'avif'];
+  const ext = urlToOptimize.split('.').pop()?.toLowerCase();
+  
+  if (supportedExtensions.includes(ext)) {
+    let transformedUrl = urlToOptimize.replace("/object/public/", "/render/image/public/");
+    
+    const params = [];
+    if (width) params.push(`width=${width}`);
+    if (quality) params.push(`quality=${quality}`);
+    if (format) params.push(`format=${format}`);
+    
+    if (params.length > 0) {
+      transformedUrl += (transformedUrl.includes("?") ? "&" : "?") + params.join("&");
+    }
+    return transformedUrl;
+  }
+
+  return urlToOptimize;
+};

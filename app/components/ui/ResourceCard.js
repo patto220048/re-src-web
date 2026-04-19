@@ -5,7 +5,7 @@ import Image from "next/image";
 import { Download as DownloadCount, Play, Eye, Volume2, VolumeX } from "lucide-react";
 import DownloadButton from "./DownloadButton";
 import { mediaManager } from "@/app/lib/mediaManager";
-import { isVideoFormat, isImageFormat, isFontFormat } from "@/app/lib/mediaUtils";
+import { isVideoFormat, isImageFormat, isFontFormat, getOptimizedUrl } from "@/app/lib/mediaUtils";
 import styles from "./ResourceCard.module.css";
 
 function formatSize(bytes) {
@@ -145,21 +145,25 @@ export default function ResourceCard({
                 {isHovering && resolvedUrl ? (
                   <video
                     ref={videoRef}
-                    src={resolvedUrl}
                     className={styles.videoPreview}
-                    loop
+                    src={resolvedUrl}
                     muted
                     playsInline
-                    preload="none"
+                    loop
+                    poster={getOptimizedUrl(thumbnailUrl, { width: 480 })}
+                    preload="metadata"
                   />
                 ) : (
-                  <Image 
-                    fill 
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" 
-                    src={thumbnailUrl} 
-                    alt={displayName} 
-                    className={styles.thumbnail} 
+                  <Image
+                    src={getOptimizedUrl(thumbnailUrl || downloadUrl || fileUrl, { width: 480 })}
+                    alt={displayName}
+                    fill
+                    className={styles.cardImage}
                     priority={index < 4}
+                    onError={(e) => {
+                      // Fallback to original URL if optimized one fails
+                      e.target.src = thumbnailUrl || downloadUrl || fileUrl;
+                    }}
                   />
                 )}
               </>
@@ -238,13 +242,15 @@ export default function ResourceCard({
           <div className={styles.preview}>
             {(previewUrl || thumbnailUrl || resolvedUrl) ? (
               <Image
-                fill
-                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                src={previewUrl || thumbnailUrl || resolvedUrl}
+                src={getOptimizedUrl(previewUrl || thumbnailUrl || resolvedUrl, { width: 480 })}
                 alt={displayName}
-                className={styles.thumbnail}
-                loading={index < 4 ? undefined : "lazy"}
+                fill
+                className={styles.cardImage}
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                 priority={index < 4}
+                onError={(e) => {
+                  e.target.src = previewUrl || thumbnailUrl || resolvedUrl;
+                }}
               />
             ) : (
               <div className={styles.placeholderThumb}>
@@ -274,7 +280,7 @@ export default function ResourceCard({
               <Image
                 fill
                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                src={previewUrl || thumbnailUrl}
+                src={getOptimizedUrl(previewUrl || thumbnailUrl, { width: 480 })}
                 alt={displayName}
                 className={styles.thumbnail}
                 loading={index < 4 ? undefined : "lazy"}
@@ -305,7 +311,7 @@ export default function ResourceCard({
               <Image 
                 fill 
                 sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" 
-                src={thumbnailUrl} 
+                src={getOptimizedUrl(thumbnailUrl, { width: 480 })} 
                 alt={displayName} 
                 className={styles.thumbnail} 
                 loading={index < 4 ? undefined : "lazy"}
