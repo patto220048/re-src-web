@@ -19,7 +19,7 @@
   max-width: 400px;
   padding: 40px;
   position: relative;
-  box-shadow: 12px 12px 0px rgba(0, 0, 0, 0.5);
+  box-shadow: 12px 12px 0px var(--neo-shadow);
   animation: modalEnter 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   text-align: center;
 }
@@ -95,7 +95,7 @@
   justify-content: center;
   gap: 8px;
   background: var(--premium-gold);
-  color: var(--bg-primary);
+  color: #000000; /* Force black on gold for readability */
   border: none;
   border-radius: var(--radius-sm);
   font-size: 15px;
@@ -114,22 +114,22 @@
 .loginLink {
   margin-top: 24px;
   font-size: 14px;
-  color: #a1a1aa;
+  color: var(--text-secondary);
 }
 
 .loginLink button {
   background: none;
   border: none;
-  color: #fff;
+  color: var(--text-primary);
   font-weight: 500;
   cursor: pointer;
   padding: 0 4px;
   text-decoration: underline;
-  text-decoration-color: rgba(255, 255, 255, 0.3);
+  text-decoration-color: var(--border-default);
   text-underline-offset: 4px;
   transition: all 0.2s;
 }
 
 .loginLink button:hover {
-  text-decoration-color: #fff;
+  text-decoration-color: var(--text-primary);
 }
