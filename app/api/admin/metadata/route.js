@@ -33,20 +33,22 @@ export async function GET() {
       getAdminTags()
     ]);
 
-    // Additional Stats for Dashboard
-    const { count: totalResources } = await supabaseAdmin
-      .from("resources")
-      .select("*", { count: "exact", head: true });
-
-    const { data: recentResources } = await supabaseAdmin
-      .from("resources")
-      .select("id, name, file_format, download_count, created_at, categories(name)")
-      .order("created_at", { ascending: false })
-      .limit(5);
-
-    const { data: downloadData } = await supabaseAdmin
-      .from("resources")
-      .select("download_count");
+    // Additional Stats for Dashboard & Users
+    const [
+      { count: totalResources },
+      { count: totalUsers },
+      { count: totalPremium },
+      { count: totalAdmins },
+      { data: recentResources },
+      { data: downloadData }
+    ] = await Promise.all([
+      supabaseAdmin.from("resources").select("*", { count: "exact", head: true }),
+      supabaseAdmin.from("profiles").select("*", { count: "exact", head: true }),
+      supabaseAdmin.from("profiles").select("*", { count: "exact", head: true }).eq("role", "premium"),
+      supabaseAdmin.from("profiles").select("*", { count: "exact", head: true }).eq("role", "admin"),
+      supabaseAdmin.from("resources").select("id, name, file_format, download_count, created_at, categories(name)").order("created_at", { ascending: false }).limit(5),
+      supabaseAdmin.from("resources").select("download_count")
+    ]);
 
     const totalDownloads = downloadData?.reduce((sum, r) => sum + (r.download_count || 0), 0) || 0;
 
@@ -54,6 +56,9 @@ export async function GET() {
       totalResources: totalResources || 0,
       totalFolders: folders.length || 0,
       totalDownloads,
+      totalUsers: totalUsers || 0,
+      totalPremium: totalPremium || 0,
+      totalAdmins: totalAdmins || 0,
       recentResources: (recentResources || []).map(r => ({
         id: r.id,
         name: r.name,

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition, useEffect, useCallback, useMemo } from "react";
+import useSWR, { useSWRConfig } from 'swr';
 import useSWRInfinite from 'swr/infinite';
 import { 
   Search, Shield, User, Crown, ChevronDown, Loader2, Plus, 
@@ -105,6 +106,14 @@ export default function UsersClient({ users: initialUsers }) {
     return `/api/admin/users?${params.toString()}`;
   };
 
+  const { mutate: globalMutate } = useSWRConfig();
+  const mutateMeta = () => globalMutate('/api/admin/metadata');
+
+  // Metadata SWR
+  const { data: metaData } = useSWR('/api/admin/metadata', fetcher, {
+    refreshInterval: 30000, // Sync every 30s
+  });
+
   const { data, error, size, setSize, isValidating, mutate } = useSWRInfinite(getKey, fetcher, {
     revalidateFirstPage: false,
     persistSize: true,
@@ -130,7 +139,8 @@ export default function UsersClient({ users: initialUsers }) {
       const toastId = toast.loading("Updating role...");
       try {
         await updateUserRole(userId, newRole);
-        await mutate();
+        // Mutate both users list and global metadata
+        await Promise.all([mutate(), mutateMeta()]);
         toast.success("Role updated", { id: toastId });
 
       } catch (err) {
@@ -150,7 +160,8 @@ export default function UsersClient({ users: initialUsers }) {
           const data = await res.json();
           throw new Error(data.error || "Failed to delete");
         }
-        await mutate();
+        // Mutate both
+        await Promise.all([mutate(), mutateMeta()]);
         toast.success("User deleted permanently", { id: toastId });
         setUserToDelete(null);
       } catch (err) {
@@ -209,10 +220,10 @@ export default function UsersClient({ users: initialUsers }) {
       <AnimatedContainer type="fade">
         <div className={styles.header}>
           <div style={{ flex: 1 }}>
-            <h1 className={styles.title}>Users</h1>
-            <span className={styles.count}>
-              {loading ? "Loading..." : `${totalCount} total`}
-            </span>
+            <h1 className={styles.title}>Users Management</h1>
+            <p className={styles.subtitle}>
+              Monitor and manage user accounts, permissions, and subscriptions.
+            </p>
           </div>
           <div className={styles.headerActions}>
              <div className={styles.exportGroup}>
@@ -227,12 +238,51 @@ export default function UsersClient({ users: initialUsers }) {
                  <option value="all">All Users</option>
                </select>
                <button className={styles.btnExport} onClick={handleExport}>
-                 <Download size={18} /> Export
+                 <Download size={18} /> Export CSV
                </button>
              </div>
              <button className={styles.btnAdd} onClick={openAddModal}>
-               <Plus size={18} /> Add User
+               <Plus size={18} /> New User
              </button>
+          </div>
+        </div>
+
+        {/* Stats Row */}
+        <div className={styles.statsRow}>
+          <div className={`${styles.statsCard} ${styles.totalUsers}`}>
+            <div className={styles.statsIcon}>
+              <User size={24} />
+            </div>
+            <div className={styles.statsInfo}>
+              <span className={styles.statsLabel}>Total Users</span>
+              <span className={styles.statsValue}>
+                {metaData?.stats?.totalUsers ?? totalCount ?? "..."}
+              </span>
+            </div>
+          </div>
+          
+          <div className={`${styles.statsCard} ${styles.premiumUsers}`}>
+            <div className={styles.statsIcon}>
+              <Crown size={24} />
+            </div>
+            <div className={styles.statsInfo}>
+              <span className={styles.statsLabel}>Premium</span>
+              <span className={styles.statsValue}>
+                {metaData?.stats?.totalPremium ?? "..."}
+              </span>
+            </div>
+          </div>
+
+          <div className={`${styles.statsCard} ${styles.adminUsers}`}>
+            <div className={styles.statsIcon}>
+              <Shield size={24} />
+            </div>
+            <div className={styles.statsInfo}>
+              <span className={styles.statsLabel}>Admins</span>
+              <span className={styles.statsValue}>
+                {metaData?.stats?.totalAdmins ?? "..."}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -373,7 +423,10 @@ export default function UsersClient({ users: initialUsers }) {
         <UserModal 
           user={selectedUser} 
           onClose={() => setIsModalOpen(false)} 
-          onSuccess={() => mutate()} 
+          onSuccess={() => {
+            mutate();
+            mutateMeta();
+          }} 
         />
       )}
 
