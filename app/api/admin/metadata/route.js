@@ -33,7 +33,37 @@ export async function GET() {
       getAdminTags()
     ]);
 
-    return NextResponse.json({ folders, categories, tags });
+    // Additional Stats for Dashboard
+    const { count: totalResources } = await supabaseAdmin
+      .from("resources")
+      .select("*", { count: "exact", head: true });
+
+    const { data: recentResources } = await supabaseAdmin
+      .from("resources")
+      .select("id, name, file_format, download_count, created_at, categories(name)")
+      .order("created_at", { ascending: false })
+      .limit(5);
+
+    const { data: downloadData } = await supabaseAdmin
+      .from("resources")
+      .select("download_count");
+
+    const totalDownloads = downloadData?.reduce((sum, r) => sum + (r.download_count || 0), 0) || 0;
+
+    const stats = {
+      totalResources: totalResources || 0,
+      totalFolders: folders.length || 0,
+      totalDownloads,
+      recentResources: (recentResources || []).map(r => ({
+        id: r.id,
+        name: r.name,
+        category: r.categories?.name || "Uncategorized",
+        fileFormat: r.file_format,
+        downloadCount: r.download_count
+      }))
+    };
+
+    return NextResponse.json({ folders, categories, tags, stats });
   } catch (err) {
     console.error("[Admin Metadata GET] Error:", err);
     return NextResponse.json({ error: err.message }, { status: 500 });
