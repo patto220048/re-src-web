@@ -51,7 +51,8 @@ CREATE TABLE IF NOT EXISTS public.subscriptions (
     current_period_start TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     current_period_end TIMESTAMP WITH TIME ZONE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    auto_renew BOOLEAN DEFAULT true
 );
 
 ALTER TABLE public.subscriptions ENABLE ROW LEVEL SECURITY;

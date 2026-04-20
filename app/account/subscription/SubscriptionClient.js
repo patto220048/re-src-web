@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Crown, CalendarDays, XCircle, CheckCircle2, AlertCircle } from "lucide-react";
+import { Crown, CalendarDays, XCircle, CheckCircle2, AlertCircle, RefreshCw } from "lucide-react";
 import toast from "react-hot-toast";
 import styles from "./page.module.css";
 
@@ -20,7 +20,7 @@ function StatusBadge({ status }) {
     ACTIVE: { label: "Active", color: "#22c55e", icon: CheckCircle2 },
     CANCELLED: { label: "Cancelled", color: "#f43f5e", icon: XCircle },
     EXPIRED: { label: "Expired", color: "#94a3b8", icon: XCircle },
-    SUSPENDED: { label: "Suspended", color: "#f59e0b", icon: AlertCircle },
+    SUSPENDED: { label: "Auto-renew Off", color: "#f59e0b", icon: AlertCircle },
   };
   const cfg = map[status] || { label: status, color: "#94a3b8", icon: AlertCircle };
   const Icon = cfg.icon;
@@ -34,37 +34,40 @@ function StatusBadge({ status }) {
 
 export default function SubscriptionClient({ subscription, planLabel, userEmail }) {
   const router = useRouter();
-  const [cancelling, setCancelling] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
+  const [toggling, setToggling] = useState(false);
 
   const isActive = subscription?.status === "ACTIVE";
+  const isSuspended = subscription?.status === "SUSPENDED";
   const isCancelled = subscription?.status === "CANCELLED" || subscription?.status === "EXPIRED";
 
-  const handleCancelRequest = () => setShowConfirm(true);
-  const handleCancelAbort = () => setShowConfirm(false);
-
-  const handleCancelConfirm = async () => {
-    setCancelling(true);
-    setShowConfirm(false);
-    const toastId = toast.loading("Cancelling your subscription...");
+  const handleToggleAutoRenew = async (e) => {
+    const newVal = e.target.checked;
+    setToggling(true);
+    const toastId = toast.loading(newVal ? "Enabling auto-renewal..." : "Disabling auto-renewal...");
 
     try {
-      const res = await fetch("/api/paypal/cancel", {
+      const res = await fetch("/api/paypal/subscription/toggle-auto-renew", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ subscriptionID: subscription.paypal_subscription_id }),
+        body: JSON.stringify({ 
+          subscriptionID: subscription.paypal_subscription_id,
+          autoRenew: newVal
+        }),
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Cancellation failed");
+      if (!res.ok) throw new Error(data.error || "Update failed");
 
-      toast.success("Subscription cancelled. You'll retain access until the end of your billing period.", { id: toastId, duration: 6000 });
-      // Hard reload to update status
-      window.location.reload();
+      toast.success(newVal ? "Auto-renewal enabled!" : "Auto-renewal disabled. You'll retain access until expiry.", { id: toastId });
+      
+      // Refresh to update UI
+      router.refresh();
+      // Also update local state if router.refresh is not immediate
+      setTimeout(() => window.location.reload(), 1000);
     } catch (err) {
       toast.error(err.message, { id: toastId });
     } finally {
-      setCancelling(false);
+      setToggling(false);
     }
   };
 
@@ -114,34 +117,25 @@ export default function SubscriptionClient({ subscription, planLabel, userEmail 
             <span className={styles.valueSmall}>{subscription.paypal_subscription_id}</span>
           </div>
 
-          {isActive && (
-            <>
-              <div className={styles.divider} />
-              {!showConfirm ? (
-                <button
-                  className={styles.cancelBtn}
-                  onClick={handleCancelRequest}
-                  disabled={cancelling}
-                >
-                  <XCircle size={16} />
-                  Cancel Subscription
-                </button>
-              ) : (
-                <div className={styles.confirmBox}>
-                  <p className={styles.confirmText}>
-                    Are you sure? You'll lose Premium access at the end of the current billing period.
-                  </p>
-                  <div className={styles.confirmActions}>
-                    <button className={styles.confirmYes} onClick={handleCancelConfirm} disabled={cancelling}>
-                      Yes, Cancel
-                    </button>
-                    <button className={styles.confirmNo} onClick={handleCancelAbort}>
-                      Keep Premium
-                    </button>
-                  </div>
-                </div>
-              )}
-            </>
+          {!isCancelled && (
+            <div className={styles.switchRow}>
+              <div className={styles.switchLabel}>
+                <span className={styles.switchTitle}>Auto-renewal</span>
+                <span className={styles.switchDesc}>
+                  {isActive ? "Your plan will renew automatically." : "Your plan will not renew."}
+                </span>
+              </div>
+              <label className={`${styles.toggleContainer} ${toggling ? styles.disabled : ""}`}>
+                <input
+                  type="checkbox"
+                  className={styles.toggleInput}
+                  checked={isActive}
+                  onChange={handleToggleAutoRenew}
+                  disabled={toggling}
+                />
+                <span className={styles.toggleSlider}></span>
+              </label>
+            </div>
           )}
 
           {isCancelled && (
