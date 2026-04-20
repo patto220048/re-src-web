@@ -12,45 +12,61 @@
 }
 
 .title {
-  font-size: 1.75rem;
-  font-weight: 800;
+  font-size: 2rem;
+  font-weight: 900;
   color: var(--text-primary);
   margin: 0;
+  text-transform: uppercase;
+  letter-spacing: -0.5px;
 }
 
 .count {
-  font-size: 0.9rem;
-  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #FACB11;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
-/* Stats row (subscriptions only) */
+/* Stats row */
 .statsRow {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 1rem;
-  margin-bottom: 1.5rem;
+  gap: 1.5rem;
+  margin-bottom: 2.5rem;
 }
 
 .statCard {
-  background: var(--bg-card);
-  border: 1px solid var(--border-default);
-  border-radius: 8px;
-  padding: 1.25rem 1.5rem;
+  background: #111;
+  border: 1px solid #222;
+  border-top: 3px solid #333;
+  padding: 1.5rem;
+  transition: all 0.2s ease;
+}
+
+.statCard:first-child {
+  border-top-color: #22c55e;
+}
+
+.statCard:hover {
+  border-color: #333;
+  transform: translateY(-2px);
 }
 
 .statValue {
-  font-size: 2rem;
-  font-weight: 800;
-  color: var(--text-primary);
+  font-size: 2.5rem;
+  font-weight: 900;
+  color: #fff;
   line-height: 1;
+  margin-bottom: 0.5rem;
 }
 
 .statLabel {
-  font-size: 0.8rem;
-  color: var(--text-muted);
-  margin-top: 0.4rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: #666;
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 1.5px;
 }
 
 /* Toolbar */
@@ -118,9 +134,9 @@
 }
 
 .filterBtn.active {
-  background: var(--text-primary);
-  color: var(--bg-primary);
-  border-color: var(--text-primary);
+  background: #FACB11;
+  color: #000;
+  border-color: #FACB11;
 }
 
 /* Table */

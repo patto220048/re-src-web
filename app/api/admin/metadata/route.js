@@ -40,14 +40,20 @@ export async function GET() {
       { count: totalPremium },
       { count: totalAdmins },
       { data: recentResources },
-      { data: downloadData }
+      { data: downloadData },
+      { count: subsActive },
+      { count: subsCancelled },
+      { count: subsExpired }
     ] = await Promise.all([
       supabaseAdmin.from("resources").select("*", { count: "exact", head: true }),
       supabaseAdmin.from("profiles").select("*", { count: "exact", head: true }),
       supabaseAdmin.from("profiles").select("*", { count: "exact", head: true }).eq("role", "premium"),
       supabaseAdmin.from("profiles").select("*", { count: "exact", head: true }).eq("role", "admin"),
       supabaseAdmin.from("resources").select("id, name, file_format, download_count, created_at, categories(name)").order("created_at", { ascending: false }).limit(5),
-      supabaseAdmin.from("resources").select("download_count")
+      supabaseAdmin.from("resources").select("download_count"),
+      supabaseAdmin.from("subscriptions").select("*", { count: "exact", head: true }).eq("status", "ACTIVE"),
+      supabaseAdmin.from("subscriptions").select("*", { count: "exact", head: true }).eq("status", "CANCELLED"),
+      supabaseAdmin.from("subscriptions").select("*", { count: "exact", head: true }).eq("status", "EXPIRED")
     ]);
 
     const totalDownloads = downloadData?.reduce((sum, r) => sum + (r.download_count || 0), 0) || 0;
@@ -59,6 +65,12 @@ export async function GET() {
       totalUsers: totalUsers || 0,
       totalPremium: totalPremium || 0,
       totalAdmins: totalAdmins || 0,
+      subscriptionStats: {
+        active: subsActive || 0,
+        cancelled: subsCancelled || 0,
+        expired: subsExpired || 0,
+        total: (subsActive || 0) + (subsCancelled || 0) + (subsExpired || 0)
+      },
       recentResources: (recentResources || []).map(r => ({
         id: r.id,
         name: r.name,

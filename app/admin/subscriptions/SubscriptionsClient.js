@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import useSWR from 'swr';
 import useSWRInfinite from 'swr/infinite';
 
 import { Search, CheckCircle2, XCircle, Clock, AlertCircle, ExternalLink, Loader2 } from "lucide-react";
@@ -58,11 +59,21 @@ export default function SubscriptionsClient({ subscriptions: initialSubscription
     fallbackData: initialSubscriptions ? [{ data: initialSubscriptions, hasMore: true, count: initialSubscriptions.length }] : undefined
   });
 
+  const { data: meta } = useSWR("/api/admin/metadata", fetcher);
+
   const subList = data ? data.map(page => page.data).flat() : [];
   const loading = !data && !error;
   const loadingMore = size > 0 && data && typeof data[size - 1] === "undefined";
   const hasMore = data ? data[data.length - 1]?.hasMore : true;
-  const totalCount = data ? data[0]?.count : 0;
+  const totalCount = data ? data[0]?.count : (meta?.stats?.subscriptionStats?.total || 0);
+
+  // Global Stats from Metadata
+  const stats = meta?.stats?.subscriptionStats || {
+    active: 0,
+    cancelled: 0,
+    expired: 0,
+    total: totalCount
+  };
 
   // Infinite scroll trigger
   const loaderRef = useInfiniteScroll(hasMore, loading || loadingMore || isValidating, () => {
@@ -72,12 +83,7 @@ export default function SubscriptionsClient({ subscriptions: initialSubscription
   });
 
 
-  const stats = {
-    total:     totalCount,
-    active:    subList.filter((s) => s.status === "ACTIVE").length, // Note: Local filter for stats is rough but okay for current view
-    cancelled: subList.filter((s) => s.status === "CANCELLED").length,
-    expired:   subList.filter((s) => s.status === "EXPIRED").length,
-  };
+  // Removed local rough stats calculation - using global meta instead
 
   return (
     <div className={styles.container}>
@@ -93,16 +99,16 @@ export default function SubscriptionsClient({ subscriptions: initialSubscription
           <div className={styles.statLabel}>Active</div>
         </div>
         <div className={styles.statCard}>
-          <div className={styles.statValue} style={{ color: "#f43f5e" }}>{stats.cancelled}</div>
+          <div className={styles.statValue}>{stats.cancelled}</div>
           <div className={styles.statLabel}>Cancelled</div>
         </div>
         <div className={styles.statCard}>
-          <div className={styles.statValue} style={{ color: "#94a3b8" }}>{stats.expired}</div>
+          <div className={styles.statValue}>{stats.expired}</div>
           <div className={styles.statLabel}>Expired</div>
         </div>
         <div className={styles.statCard}>
           <div className={styles.statValue}>{stats.total}</div>
-          <div className={styles.statLabel}>Total</div>
+          <div className={styles.statLabel}>Total Subs</div>
         </div>
       </div>
 

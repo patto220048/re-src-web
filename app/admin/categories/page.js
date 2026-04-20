@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import useSWR from "swr";
+import useSWR, { useSWRConfig } from "swr";
 import { 
   Plus, 
   Pencil, 
@@ -22,6 +22,7 @@ import styles from "./page.module.css";
 const fetcher = (url) => fetch(url).then((res) => res.json());
 
 export default function CategoriesPage() {
+  const { mutate: globalMutate } = useSWRConfig();
   const { data: categories = [], isLoading: loading, mutate } = useSWR("/api/admin/categories", fetcher);
   
   const [modalOpen, setModalOpen] = useState(false);
@@ -98,10 +99,13 @@ export default function CategoriesPage() {
         await addCategory(dataToSubmit);
       }
       
-      // 1. Invalidate server tags
-      await revalidateCategoryData();
+      // 1. Invalidate server tags & global metadata
+      await Promise.all([
+        revalidateCategoryData(),
+        globalMutate('/api/admin/metadata')
+      ]);
       
-      // 2. Trigger SWR re-fetch
+      // 2. Trigger local SWR re-fetch
       await mutate();
       
       setModalOpen(false);
@@ -111,6 +115,8 @@ export default function CategoriesPage() {
       setSaving(false);
     }
   };
+
+  const { data: meta } = useSWR("/api/admin/metadata", fetcher);
 
   const handleDelete = async (cat) => {
     if (cat.resourceCount > 0) {
@@ -122,7 +128,10 @@ export default function CategoriesPage() {
       setSaving(true); // Reuse saving state for global loading during delete
       try {
         await deleteCategory(cat.id);
-        await revalidateCategoryData();
+        await Promise.all([
+          revalidateCategoryData(),
+          globalMutate('/api/admin/metadata')
+        ]);
         await mutate();
       } catch (err) {
         alert(err.message);
@@ -131,6 +140,27 @@ export default function CategoriesPage() {
       }
     }
   };
+
+  const StatsRow = () => (
+    <div className={styles.statsRow}>
+      <div className={styles.card}>
+        <div className={styles.cardInfo}>
+          <span className={styles.cardTitle}>Total Categories</span>
+          <span className={styles.cardValue}>
+            {meta?.totalFolders || categories.length}
+          </span>
+        </div>
+      </div>
+      <div className={styles.card}>
+        <div className={styles.cardInfo}>
+          <span className={styles.cardTitle}>Total Items</span>
+          <span className={styles.cardValue}>
+            {categories.reduce((acc, cat) => acc + (cat.resourceCount || 0), 0)}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
 
   if (loading && categories.length === 0) {
     return (
@@ -144,12 +174,19 @@ export default function CategoriesPage() {
   return (
     <div className={styles.page}>
       <header className={styles.header}>
-        <h1 className={styles.title}>Manage Categories</h1>
+        <div style={{ flex: 1 }}>
+          <h1 className={styles.title}>Categories</h1>
+          <p className={styles.subtitle}>
+            Organize and structure resources by creating and managing logical categories.
+          </p>
+        </div>
         <button onClick={openAddModal} className={styles.addBtn}>
           <Plus size={18} />
-          Add Category
+          New Category
         </button>
       </header>
+
+      <StatsRow />
 
       <div className={styles.tableContainer}>
         <table className={styles.table}>

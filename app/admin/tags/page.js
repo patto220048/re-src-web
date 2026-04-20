@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
+import useSWR, { useSWRConfig } from "swr";
 import { 
   Search, 
   Trash2, 
@@ -20,10 +21,13 @@ import {
 } from "@/app/lib/api";
 import { revalidateTagData, revalidateTagChanges } from "@/app/lib/actions";
 import styles from "./page.module.css";
+const fetcher = (url) => fetch(url).then((res) => res.json());
 
 export default function AdminTags() {
-  const [tags, setTags] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { mutate: globalMutate } = useSWRConfig();
+  const { data: tags = [], isLoading: loading, mutate } = useSWR("/api/admin/tags", fetcher);
+  const { data: meta } = useSWR("/api/admin/metadata", fetcher);
+  
   const [syncing, setSyncing] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [toast, setToast] = useState(null);
@@ -33,21 +37,7 @@ export default function AdminTags() {
   const [editValue, setEditValue] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
 
-  useEffect(() => {
-    loadTags();
-  }, []);
-
-  async function loadTags() {
-    try {
-      setLoading(true);
-      const data = await getTags();
-      setTags(data);
-    } catch (e) {
-      showToast("Lỗi khi tải danh sách tag", "error");
-    } finally {
-      setLoading(false);
-    }
-  }
+  // Removed useEffect and list loading logic as it's handled by SWR
 
   const showToast = (message, type = "success") => {
     setToast({ message, type });
@@ -67,8 +57,12 @@ export default function AdminTags() {
     try {
       const count = await syncAllTagsFromResources();
       showToast(`Đã đồng bộ thành công ${count} tag độc nhất.`);
-      await revalidateTagData();
-      await loadTags();
+      
+      await Promise.all([
+        revalidateTagData(),
+        globalMutate('/api/admin/metadata'),
+        mutate()
+      ]);
     } catch (e) {
       showToast("Lỗi khi đồng bộ dữ liệu", "error");
     } finally {
@@ -98,8 +92,11 @@ export default function AdminTags() {
       const affected = await renameTagGlobally(oldName, newName);
       showToast(`Đã đổi tên và cập nhật ${affected} tài nguyên.`);
       setEditingId(null);
-      await revalidateTagChanges(); 
-      await loadTags();
+      await Promise.all([
+        revalidateTagChanges(),
+        globalMutate('/api/admin/metadata'),
+        mutate()
+      ]);
     } catch (e) {
       showToast("Lỗi khi đổi tên tag", "error");
     } finally {
@@ -114,8 +111,11 @@ export default function AdminTags() {
     try {
       const affected = await deleteTagGlobally(tagName);
       showToast(`Đã xóa tag và cập nhật ${affected} tài nguyên.`);
-      await revalidateTagChanges();
-      await loadTags();
+      await Promise.all([
+        revalidateTagChanges(),
+        globalMutate('/api/admin/metadata'),
+        mutate()
+      ]);
     } catch (e) {
       showToast("Lỗi khi xóa tag", "error");
     } finally {
@@ -123,14 +123,41 @@ export default function AdminTags() {
     }
   };
 
+  const StatsRow = () => (
+    <div className={styles.statsRow}>
+      <div className={styles.card}>
+        <div className={styles.cardInfo}>
+          <span className={styles.cardTitle}>Total Unique Tags</span>
+          <span className={styles.cardValue}>{tags.length}</span>
+        </div>
+      </div>
+      <div className={styles.card}>
+        <div className={styles.cardInfo}>
+          <span className={styles.cardTitle}>Unused Tags</span>
+          <span className={styles.cardValue}>
+            {tags.filter(t => !t.usageCount || t.usageCount === 0).length}
+          </span>
+        </div>
+      </div>
+      <div className={styles.card}>
+        <div className={styles.cardInfo}>
+          <span className={styles.cardTitle}>Most Used Tag</span>
+          <span className={styles.cardValue} style={{ fontSize: '1.25rem', color: '#FACB11' }}>
+            {tags[0]?.name ? `#${tags[0].name}` : '—'}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className={styles.container}>
       {/* Header */}
-      <div className={styles.header}>
-        <div>
-          <h1>Quản lý Tags</h1>
-          <p style={{ color: "var(--text-muted)", fontSize: "0.9rem", marginTop: "4px" }}>
-            Quản lý tập trung các từ khóa tìm kiếm trên toàn hệ thống.
+      <header className={styles.header}>
+        <div style={{ flex: 1 }}>
+          <h1 className={styles.title}>Tags Management</h1>
+          <p className={styles.subtitle}>
+            Monitor and manage global searchable keywords across all resources.
           </p>
         </div>
         <div className={styles.actions}>
@@ -140,10 +167,12 @@ export default function AdminTags() {
             disabled={syncing || loading}
           >
             {syncing ? <RefreshCw className="animate-spin" size={18} /> : <RefreshCw size={18} />}
-            {syncing ? "Đang đồng bộ..." : "Đồng bộ Database"}
+            {syncing ? "SYNCING..." : "SYNC DATABASE"}
           </button>
         </div>
-      </div>
+      </header>
+
+      <StatsRow />
 
       {/* Toolbar */}
       <div className={styles.toolbar}>
