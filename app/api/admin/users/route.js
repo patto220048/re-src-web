@@ -26,7 +26,7 @@ export async function GET(req) {
 
     let query = supabaseAdmin
       .from("profiles")
-      .select("id, email, full_name, role, subscription_status, subscription_expires_at, created_at", { count: "exact" })
+      .select("id, email, full_name, role, subscription_status, subscription_expires_at, created_at, email_verified_at", { count: "exact" })
       .order("created_at", { ascending: false })
       .range(offset, offset + limit - 1);
 

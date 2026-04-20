@@ -3,7 +3,7 @@
 import { useState, useTransition, useEffect, useCallback } from "react";
 import useSWRInfinite from 'swr/infinite';
 
-import { Search, Shield, User, Crown, ChevronDown, Loader2, Plus, Edit2, Trash2 } from "lucide-react";
+import { Search, Shield, User, Crown, ChevronDown, Loader2, Plus, Edit2, Trash2, CheckCircle2 } from "lucide-react";
 import toast from "react-hot-toast";
 import styles from "./page.module.css";
 import { useDebounce } from "@/app/hooks/useDebounce";
@@ -214,7 +214,12 @@ export default function UsersClient({ users: initialUsers }) {
                     <div className={styles.avatar}>{(u.full_name || u.email || "?")[0].toUpperCase()}</div>
                     <div>
                       <div className={styles.userName}>{u.full_name || "—"}</div>
-                      <div className={styles.userEmail}>{u.email}</div>
+                      <div className={styles.userEmail}>
+                        {u.email}
+                        {u.email_verified_at && (
+                          <CheckCircle2 size={12} className={styles.verifiedIcon} title={`Verified at ${new Date(u.email_verified_at).toLocaleString()}`} />
+                        )}
+                      </div>
                     </div>
                   </div>
                 </td>
