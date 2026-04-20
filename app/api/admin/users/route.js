@@ -19,21 +19,23 @@ export async function GET(req) {
     const { searchParams } = new URL(req.url);
     const page = parseInt(searchParams.get("page") || "0");
     const limit = parseInt(searchParams.get("limit") || "25");
-    const search = searchParams.get("q") || "";
+    const search = searchParams.get("search") || "";
     const filter = searchParams.get("filter") || "all";
+    const sortBy = searchParams.get("sortBy") || "created_at";
+    const order = searchParams.get("order") || "desc";
 
     const offset = page * limit;
 
     let query = supabaseAdmin
       .from("profiles")
-      .select("id, email, full_name, role, subscription_status, subscription_expires_at, created_at, email_verified_at", { count: "exact" })
-      .order("created_at", { ascending: false })
-      .range(offset, offset + limit - 1);
+      .select("id, email, full_name, role, subscription_status, subscription_expires_at, created_at, email_verified_at, last_active_at", { count: "exact" });
 
+    // 1. Apply Search
     if (search) {
       query = query.or(`email.ilike.%${search}%,full_name.ilike.%${search}%`);
     }
 
+    // 2. Apply Filters
     if (filter !== "all") {
       if (filter === "premium") {
         query = query.or('role.eq.premium,subscription_status.eq.active');
@@ -41,6 +43,11 @@ export async function GET(req) {
         query = query.eq("role", filter);
       }
     }
+
+    // 3. Apply Sorting and Pagination
+    query = query
+      .order(sortBy, { ascending: order === "asc" })
+      .range(offset, offset + limit - 1);
 
     const { data, count, error } = await query;
 

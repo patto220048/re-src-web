@@ -6,14 +6,14 @@ import { revalidateTag } from "next/cache";
  * Revalidate the site settings cache.
  */
 export async function revalidateSettings() {
-  revalidateTag('settings', 'max');
+  revalidateTag('settings');
 }
 
 /**
  * Revalidate categories cache.
  */
 export async function revalidateCategoryData() {
-  revalidateTag('categories', 'max');
+  revalidateTag('categories');
 }
 
 // Alias for compatibility
@@ -26,21 +26,21 @@ export async function revalidateCategories() {
  * Note: This also revalidates folders as they are often displayed together.
  */
 export async function revalidateResourceData() {
-  revalidateTag('resources', 'max');
+  revalidateTag('resources');
 }
 
 /**
  * Revalidate tags cache.
  */
 export async function revalidateTagData() {
-  revalidateTag('tags', 'max');
+  revalidateTag('tags');
 }
 
 /**
  * Revalidate folders cache.
  */
 export async function revalidateFolderData() {
-  revalidateTag('folders', 'max');
+  revalidateTag('folders');
 }
 
 /**
@@ -48,6 +48,6 @@ export async function revalidateFolderData() {
  * When a tag is renamed or deleted, it affects both tags list and resources.
  */
 export async function revalidateTagChanges() {
-  revalidateTag('tags', 'max');
-  revalidateTag('resources', 'max');
+  revalidateTag('tags');
+  revalidateTag('resources');
 }

@@ -1,15 +1,32 @@
 "use client";
 
-import { useState, useTransition, useEffect, useCallback } from "react";
+import { useState, useTransition, useEffect, useCallback, useMemo } from "react";
 import useSWRInfinite from 'swr/infinite';
-
-import { Search, Shield, User, Crown, ChevronDown, Loader2, Plus, Edit2, Trash2, CheckCircle2 } from "lucide-react";
+import { 
+  Search, Shield, User, Crown, ChevronDown, Loader2, Plus, 
+  Edit2, Trash2, CheckCircle2, ArrowUp, ArrowDown, Download,
+  ArrowUpDown
+} from "lucide-react";
 import toast from "react-hot-toast";
 import styles from "./page.module.css";
 import { useDebounce } from "@/app/hooks/useDebounce";
 import { useInfiniteScroll } from "@/app/hooks/useInfiniteScroll";
 import TableSkeleton from "@/app/components/ui/TableSkeleton";
 import UserModal from "./UserModal";
+import AnimatedContainer from "@/app/components/ui/AnimatedContainer";
+
+function formatRelativeTime(date) {
+  if (!date) return "—";
+  const now = new Date();
+  const diff = Math.floor((now - new Date(date)) / 1000);
+
+  if (diff < 60) return "Just now";
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`;
+  
+  return new Date(date).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
 
 function formatDate(d) {
   if (!d) return "—";
@@ -64,6 +81,10 @@ export default function UsersClient({ users: initialUsers }) {
 
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState("all");
+  const [sortBy, setSortBy] = useState("created_at");
+  const [order, setOrder] = useState("desc");
+  const [exportLimit, setExportLimit] = useState("100");
+  
   const [isPending, startTransition] = useTransition();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
@@ -76,8 +97,10 @@ export default function UsersClient({ users: initialUsers }) {
     const params = new URLSearchParams({
       page: pageIndex.toString(),
       limit: "25",
-      q: debouncedSearch,
-      filter: filter
+      search: debouncedSearch,
+      filter: filter,
+      sortBy: sortBy,
+      order: order
     });
     return `/api/admin/users?${params.toString()}`;
   };
@@ -88,7 +111,7 @@ export default function UsersClient({ users: initialUsers }) {
     fallbackData: initialUsers ? [{ data: initialUsers, hasMore: true, count: initialUsers.length }] : undefined
   });
 
-  const userList = data ? data.map(page => page.data).flat() : [];
+  const userList = data ? data.map(page => page?.data || []).flat().filter(Boolean) : [];
   const loading = !data && !error;
   const loadingMore = size > 0 && data && typeof data[size - 1] === "undefined";
   const hasMore = data ? data[data.length - 1]?.hasMore : true;
@@ -136,6 +159,36 @@ export default function UsersClient({ users: initialUsers }) {
     });
   };
 
+  const handleSort = (field) => {
+    if (sortBy === field) {
+      setOrder(order === "desc" ? "asc" : "desc");
+    } else {
+      setSortBy(field);
+      setOrder("desc");
+    }
+  };
+
+  const handleExport = async () => {
+    const toastId = toast.loading(`Preparing export for ${exportLimit} users...`);
+    try {
+      const res = await fetch(`/api/admin/users/export?limit=${exportLimit}`);
+      if (!res.ok) throw new Error("Export failed");
+      
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `users_export_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      
+      toast.success("CSV exported successfully", { id: toastId });
+    } catch (err) {
+      toast.error(err.message, { id: toastId });
+    }
+  };
+
   const openAddModal = () => {
     setSelectedUser(null);
     setIsModalOpen(true);
@@ -146,121 +199,159 @@ export default function UsersClient({ users: initialUsers }) {
     setIsModalOpen(true);
   };
 
+  const SortIcon = ({ field }) => {
+    if (sortBy !== field) return <ArrowUpDown size={14} className={styles.sortIconIdle} />;
+    return order === "desc" ? <ArrowDown size={14} className={styles.sortIconActive} /> : <ArrowUp size={14} className={styles.sortIconActive} />;
+  };
+
   return (
     <div className={styles.container}>
-      <div className={styles.header}>
-        <div style={{ flex: 1 }}>
-          <h1 className={styles.title}>Users</h1>
-          <span className={styles.count}>
-            {loading ? "Loading..." : `${totalCount} total`}
-          </span>
+      <AnimatedContainer type="fade">
+        <div className={styles.header}>
+          <div style={{ flex: 1 }}>
+            <h1 className={styles.title}>Users</h1>
+            <span className={styles.count}>
+              {loading ? "Loading..." : `${totalCount} total`}
+            </span>
+          </div>
+          <div className={styles.headerActions}>
+             <div className={styles.exportGroup}>
+               <select 
+                 className={styles.limitSelect}
+                 value={exportLimit}
+                 onChange={(e) => setExportLimit(e.target.value)}
+                >
+                 <option value="50">Last 50</option>
+                 <option value="100">Last 100</option>
+                 <option value="500">Last 500</option>
+                 <option value="all">All Users</option>
+               </select>
+               <button className={styles.btnExport} onClick={handleExport}>
+                 <Download size={18} /> Export
+               </button>
+             </div>
+             <button className={styles.btnAdd} onClick={openAddModal}>
+               <Plus size={18} /> Add User
+             </button>
+          </div>
         </div>
-        <button className={styles.btnAdd} onClick={openAddModal}>
-          <Plus size={18} /> Add User
-        </button>
-      </div>
 
-      {/* Filters */}
-      <div className={styles.toolbar}>
-        <div className={styles.searchWrap}>
-          <Search size={16} className={styles.searchIcon} />
-          <input
-            type="text"
-            placeholder="Search by name or email..."
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            className={styles.searchInput}
-          />
+        {/* Filters */}
+        <div className={styles.toolbar}>
+          <div className={styles.searchWrap}>
+            <Search size={16} className={styles.searchIcon} />
+            <input
+              type="text"
+              placeholder="Search by name or email..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className={styles.searchInput}
+            />
+          </div>
+          <div className={styles.filters}>
+            {["all", "admin", "premium", "user"].map((f) => (
+              <button
+                key={f}
+                className={`${styles.filterBtn} ${filter === f ? styles.active : ""}`}
+                onClick={() => setFilter(f)}
+              >
+                {f.charAt(0).toUpperCase() + f.slice(1)}
+              </button>
+            ))}
+          </div>
         </div>
-        <div className={styles.filters}>
-          {["all", "admin", "premium", "user"].map((f) => (
-            <button
-              key={f}
-              className={`${styles.filterBtn} ${filter === f ? styles.active : ""}`}
-              onClick={() => setFilter(f)}
-            >
-              {f.charAt(0).toUpperCase() + f.slice(1)}
-            </button>
-          ))}
-        </div>
-      </div>
+      </AnimatedContainer>
 
       {/* Table */}
       <div className={styles.tableWrap}>
         <table className={styles.table}>
           <thead>
             <tr>
-              <th>User</th>
+              <th onClick={() => handleSort("full_name")} className={styles.sortableHead}>
+                User <SortIcon field="full_name" />
+              </th>
               <th>Role</th>
               <th>Subscription</th>
-              <th>Expires</th>
-              <th>Joined</th>
+              <th onClick={() => handleSort("subscription_expires_at")} className={styles.sortableHead}>
+                Expires <SortIcon field="subscription_expires_at" />
+              </th>
+               <th onClick={() => handleSort("last_active_at")} className={styles.sortableHead}>
+                Last Active <SortIcon field="last_active_at" />
+              </th>
+              <th onClick={() => handleSort("created_at")} className={`${styles.sortableHead} ${styles.hideOnMobile}`}>
+                Joined <SortIcon field="created_at" />
+              </th>
               <th>Actions</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody style={{ opacity: isValidating && !loadingMore ? 0.7 : 1, transition: 'opacity 0.2s' }}>
             {loading ? (
               <tr>
-                <td colSpan={6}>
-                  <TableSkeleton rows={10} cols={6} />
+                <td colSpan={7}>
+                  <TableSkeleton rows={10} cols={7} />
                 </td>
               </tr>
             ) : userList.length === 0 ? (
-              <tr><td colSpan={6} className={styles.empty}>No users found</td></tr>
-            ) : userList.map((u) => (
-              <tr key={u.id}>
-                <td>
-                  <div className={styles.userCell}>
-                    <div className={styles.avatar}>{(u.full_name || u.email || "?")[0].toUpperCase()}</div>
-                    <div>
-                      <div className={styles.userName}>{u.full_name || "—"}</div>
-                      <div className={styles.userEmail}>
-                        {u.email}
-                        {u.email_verified_at && (
-                          <CheckCircle2 size={12} className={styles.verifiedIcon} title={`Verified at ${new Date(u.email_verified_at).toLocaleString()}`} />
-                        )}
+              <tr><td colSpan={7} className={styles.empty}>No users found</td></tr>
+            ) : (
+                userList.filter(u => u).map((u, idx) => (
+                  <tr key={u.id}>
+                  <td>
+                    <AnimatedContainer type="staggerItem">
+                      <div className={styles.userCell}>
+                        <div className={styles.avatar}>{(u?.full_name || u?.email || "?")[0].toUpperCase()}</div>
+                        <div>
+                          <div className={styles.userName}>{u?.full_name || "—"}</div>
+                          <div className={styles.userEmail}>
+                            {u?.email}
+                            {u?.email_verified_at && (
+                              <CheckCircle2 size={12} className={styles.verifiedIcon} title={`Verified at ${new Date(u.email_verified_at).toLocaleString()}`} />
+                            )}
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                </td>
-                <td><RoleBadge role={u.role} /></td>
-                <td><SubBadge status={u.subscription_status || "free"} /></td>
-                <td className={styles.dateCell}>{formatDate(u.subscription_expires_at)}</td>
-                <td className={styles.dateCell}>{formatDate(u.created_at)}</td>
-                 <td>
-                  <div className={styles.actions}>
-                    <button 
-                      className={styles.actionBtn} 
-                      onClick={() => openEditModal(u)}
-                      title="Edit user"
-                    >
-                      <Edit2 size={16} />
-                    </button>
-                    <button 
-                      className={`${styles.actionBtn} ${styles.delete}`} 
-                      onClick={() => setUserToDelete(u.id)}
-                      title="Delete user"
-                      disabled={isPending}
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                    <div className={styles.roleSelect}>
-                      <select
-                        value={u.role || "user"}
-                        onChange={(e) => handleRoleChange(u.id, e.target.value)}
-                        className={styles.select}
+                    </AnimatedContainer>
+                  </td>
+                  <td><RoleBadge role={u.role} /></td>
+                  <td><SubBadge status={u.subscription_status || "free"} /></td>
+                  <td className={styles.dateCell}>{formatDate(u.subscription_expires_at)}</td>
+                  <td className={styles.dateCell}>{formatRelativeTime(u.last_active_at)}</td>
+                  <td className={`${styles.dateCell} ${styles.hideOnMobile}`}>{formatDate(u.created_at)}</td>
+                   <td>
+                    <div className={styles.actions}>
+                      <button 
+                        className={styles.actionBtn} 
+                        onClick={() => openEditModal(u)}
+                        title="Edit user"
+                      >
+                        <Edit2 size={16} />
+                      </button>
+                      <button 
+                        className={`${styles.actionBtn} ${styles.delete}`} 
+                        onClick={() => setUserToDelete(u.id)}
+                        title="Delete user"
                         disabled={isPending}
                       >
-                        <option value="user">User</option>
-                        <option value="premium">Premium</option>
-                        <option value="admin">Admin</option>
-                      </select>
-                      <ChevronDown size={14} className={styles.selectIcon} />
+                        <Trash2 size={16} />
+                      </button>
+                      <div className={styles.roleSelect}>
+                        <select
+                          value={u.role || "user"}
+                          onChange={(e) => handleRoleChange(u.id, e.target.value)}
+                          className={styles.select}
+                          disabled={isPending}
+                        >
+                          <option value="user">User</option>
+                          <option value="premium">Premium</option>
+                          <option value="admin">Admin</option>
+                        </select>
+                        <ChevronDown size={14} className={styles.selectIcon} />
+                      </div>
                     </div>
-                  </div>
-                </td>
-              </tr>
-            ))}
+                  </td>
+                </tr>
+              ))
+            )}
           </tbody>
         </table>
       </div>

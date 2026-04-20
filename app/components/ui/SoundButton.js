@@ -6,7 +6,7 @@ import { Download, Eye } from "lucide-react";
 import { useAuth } from "@/app/lib/auth-context";
 import { incrementDownloadCount } from "@/app/lib/api";
 import { mediaManager } from "@/app/lib/mediaManager";
-import { isVideoFormat, isImageFormat, isFontFormat } from "@/app/lib/mediaUtils";
+import { isVideoFormat, isImageFormat, isFontFormat, isAudioFormat } from "@/app/lib/mediaUtils";
 import styles from "./SoundButton.module.css";
 
 function formatSize(bytes) {
@@ -71,13 +71,27 @@ export default function SoundButton({
   const initAudio = useCallback(() => {
     if (!downloadUrl) return null;
     
+    // Normalize absolute URL for comparison and source assignment
+    let normalizedUrl = downloadUrl;
+    if (typeof window !== 'undefined') {
+      try {
+        normalizedUrl = new URL(downloadUrl, window.location.origin).href;
+      } catch (e) {
+        console.warn("URL normalization failed:", downloadUrl);
+      }
+    }
+    
     // If audio object already exists but URL is different, update its src
     if (audioRef.current) {
-      if (audioRef.current.src !== downloadUrl) {
-        audioRef.current.src = downloadUrl;
+      const currentSrc = audioRef.current.src;
+
+      if (currentSrc !== normalizedUrl && normalizedUrl) {
+        audioRef.current.pause();
+        audioRef.current.src = normalizedUrl;
         audioRef.current.load();
       }
-      // Ensure state is synced if duration is already available
+      
+      // Sync duration if already available
       if (audioRef.current.duration && !isNaN(audioRef.current.duration)) {
         setDuration(audioRef.current.duration);
       }
@@ -85,26 +99,54 @@ export default function SoundButton({
     }
     
     const audio = new Audio();
+    
+    // NOTE: Removed crossOrigin="anonymous" because it requires strict server configuration.
+    // Standard public URLs in Supabase are more compatible with default "opaque" loading.
     audio.preload = "metadata";
-    audio.src = downloadUrl;
+    audio.src = normalizedUrl;
 
     audio.addEventListener("loadedmetadata", () => {
-      setDuration(audio.duration);
+      if (audioRef.current === audio) {
+        setDuration(audio.duration);
+      }
     });
+    
     audio.addEventListener("ended", () => {
       setIsPlaying(false);
       setCurrentTime(0);
       mediaManager.stop(audio);
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     });
-    audio.addEventListener("error", () => {
+    
+    audio.addEventListener("error", (e) => {
+      const error = audio.error;
+      let msg = "Unknown error";
+      if (error) {
+        switch (error.code) {
+          case 1: msg = "Aborted"; break;
+          case 2: msg = "Network error"; break;
+          case 3: msg = "Decoding error"; break;
+          case 4: msg = "Format not supported or Access Denied"; break;
+        }
+      }
+      
+      // Don't log error if src was programmatically cleared during cleanup
+      if (audio.src === "" || audio.src === window.location.href) return;
+
+      console.error(`Playback element error [${msg}]:`, normalizedUrl, {
+        code: error?.code,
+        message: error?.message,
+        url: normalizedUrl,
+        readyState: audio.readyState
+      });
       setIsPlaying(false);
       mediaManager.stop(audio);
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
     });
+    
     audioRef.current = audio;
     return audio;
-  }, [downloadUrl]);
+  }, [downloadUrl, id]);
 
   // Sync volume settings and handle global reset
   useEffect(() => {
@@ -148,6 +190,12 @@ export default function SoundButton({
   }, [initAudio]);
 
   const togglePlay = useCallback(() => {
+    const canPlay = isAudioFormat(resourceObj);
+    if (!canPlay) {
+      console.warn("Attempted to play non-audio format:", fileFormat);
+      return;
+    }
+
     const audio = initAudio();
     if (!audio || !downloadUrl) return;
 

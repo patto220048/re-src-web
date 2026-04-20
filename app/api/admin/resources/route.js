@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { supabaseAdmin } from "@/app/lib/supabase-admin";
 import { getServerUser } from "@/app/lib/supabase-server";
 import { mapResource } from "@/app/lib/api";
@@ -114,6 +115,9 @@ export async function DELETE(req) {
       .in("id", ids);
 
     if (dbError) throw dbError;
+
+    // 4. Invalidate frontend cache
+    revalidateTag('resources');
 
     return NextResponse.json({ success: true, count: ids.length });
 

@@ -2,6 +2,11 @@ import { supabase } from './supabase';
 import { unstable_cache } from 'next/cache';
 import { deleteFile } from './storage';
 
+// Cache configuration: 24h if enabled, else 0 (disabled)
+const ENABLE_CACHE = process.env.NEXT_PUBLIC_ENABLE_CACHE === 'true';
+const CACHE_24H = 86400; // 24 hours in seconds
+export const REVALIDATE_TIME = ENABLE_CACHE ? CACHE_24H : 0;
+
 /* ========================================
    RESOURCES
    ======================================== */
@@ -123,7 +128,7 @@ export async function getResources({
       return (data || []).map(mapResource);
     },
     [cacheKey],
-    { revalidate: 600, tags: ["resources"] } // Reduced TTL for admin responsiveness
+    { revalidate: REVALIDATE_TIME, tags: ["resources"] } // Environment-controlled TTL
   )();
 }
 
@@ -369,7 +374,7 @@ export const getCategoriesWithCounts = unstable_cache(
     }));
   },
   ['categories-with-counts'],
-  { revalidate: 3600, tags: ['categories'] }
+  { revalidate: REVALIDATE_TIME, tags: ['categories'] }
 );
 
 export const getCategories = unstable_cache(
@@ -386,7 +391,7 @@ export const getCategories = unstable_cache(
     return data || [];
   },
   ['categories-simple'],
-  { revalidate: 3600, tags: ['categories'] }
+  { revalidate: REVALIDATE_TIME, tags: ['categories'] }
 );
 
 export async function getCategoryBySlug(slug) {
@@ -509,7 +514,7 @@ export async function getFolders(categorySlug, parentId) {
       return (data || []).map(mapFolder);
     },
     [`folders-${categorySlug}-${parentId || 'root'}`],
-    { revalidate: 3600, tags: ['folders', 'resources'] } // Also clear folders when resources change if they are tightly coupled
+    { revalidate: REVALIDATE_TIME, tags: ['folders', 'resources'] } // Environment-controlled TTL
   )();
 }
 
@@ -531,7 +536,7 @@ export const getTags = unstable_cache(
     return (data || []).map(t => ({ ...t, usageCount: t.usage_count }));
   },
   ['tags-list'],
-  { revalidate: 3600, tags: ['tags'] }
+  { revalidate: REVALIDATE_TIME, tags: ['tags'] }
 );
 
 /**
@@ -601,7 +606,7 @@ export const getAllAdminFolders = unstable_cache(
     return (data || []).map(mapFolder);
   },
   ['admin-folders-list'],
-  { revalidate: 3600, tags: ['folders'] }
+  { revalidate: REVALIDATE_TIME, tags: ['folders'] }
 );
 
 /**

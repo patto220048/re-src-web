@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { supabaseAdmin } from "@/app/lib/supabase-admin";
 import { getServerUser } from "@/app/lib/supabase-server";
 
@@ -75,6 +76,10 @@ export async function DELETE(req) {
       .eq("slug", slug);
 
     if (catDeleteError) throw catDeleteError;
+
+    // 6. Invalidate frontend cache
+    revalidateTag('resources');
+    revalidateTag('categories');
 
     return NextResponse.json({ success: true, deletedResources: resources?.length || 0 });
 

@@ -1,4 +1,4 @@
-import { getFolders, getResources, getCategoryBySlug, getCategories } from "@/app/lib/api";
+import { getFolders, getResources, getCategoryBySlug, getCategories, REVALIDATE_TIME } from "@/app/lib/api";
 import ClientPage from "./ClientPage";
 import { unstable_cache } from "next/cache";
 
@@ -49,7 +49,7 @@ const getCachedCategoryData = unstable_cache(
   },
   ['category-data'],
   { 
-    revalidate: 86400, 
+    revalidate: REVALIDATE_TIME, 
     tags: ['resources', 'categories'] 
   }
 );
