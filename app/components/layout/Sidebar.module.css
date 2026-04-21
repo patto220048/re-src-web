@@ -8,8 +8,70 @@
   overflow-y: auto;
   overflow-x: hidden;
   flex-shrink: 0;
+  transition: width var(--transition-base); /* Transition only when not resizing */
+  
+  /* Standard thin scrollbar for Firefox */
   scrollbar-width: thin;
   scrollbar-color: var(--border-default) transparent;
+}
+
+/* Custom Scrollbar for Chrome/Safari/Edge - Integrated with interaction zone */
+.sidebar::-webkit-scrollbar {
+  width: 6px; 
+}
+
+.sidebar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sidebar::-webkit-scrollbar-thumb {
+  background: var(--border-default);
+  border-radius: 10px;
+  border: 1.5px solid transparent; /* Gives a floating/centered appearance */
+  background-clip: content-box;
+}
+
+.sidebar:hover::-webkit-scrollbar-thumb {
+  background: var(--space-400, #444);
+  background-clip: content-box;
+}
+
+.sidebar::-webkit-scrollbar-thumb:hover {
+  background: var(--cat-color, var(--premium-gold)) !important;
+  background-clip: content-box;
+}
+
+/* Disable transition and selection during resize for smooth 60fps */
+.isResizing {
+  transition: none !important;
+  user-select: none;
+  cursor: col-resize;
+}
+
+.resizer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 10px; /* Enhanced hit area for easier interaction */
+  cursor: col-resize;
+  background: transparent;
+  transition: background var(--transition-fast);
+  z-index: 100; /* Above the scrollbar thumb */
+}
+
+/* Highlight resizer zone on hover */
+.resizer:hover,
+.isResizing .resizer {
+  background: rgba(250, 203, 17, 0.05); /* Very subtle gold zone highlight */
+  border-right: 2px solid var(--cat-color, var(--premium-gold));
+}
+
+/* On Mobile, the resizer is hidden/disabled as it uses fixed width drawer */
+@media (max-width: 768px) {
+  .resizer {
+    display: none;
+  }
 }
 
 .header {
@@ -27,6 +89,8 @@
 
 .content {
   padding: var(--space-2) 0;
+  /* Protect content from overlapping with scrollbar/resizer zone */
+  padding-right: 12px;
 }
 
 .allBtn {
