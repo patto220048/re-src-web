@@ -200,22 +200,30 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
   useEffect(() => {
     if (!isInitialized) return;
 
-    // Clear any existing timer
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
+    // Sync explicitly to localStorage whenever these change
+    try {
+      localStorage.setItem(`last_state_${slug}`, JSON.stringify({
+        folderId: selectedFolderId,
+        formats: selectedFormats,
+        tags: selectedTags,
+        sort: sortBy
+      }));
+    } catch (e) {
+      console.warn("Save to localStorage failed:", e);
     }
 
-    // Cancel any ongoing fetch
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
+    // --- Data Refresh Logic ---
+    // Clear old items immediately to avoid ghosting/lag when Switching Folders
+    setAllLoadedResources([]);
+    setIsFetchLoading(true);
+
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    if (abortControllerRef.current) abortControllerRef.current.abort();
 
     const refreshData = async () => {
-      // Create new abort controller
       const controller = new AbortController();
       abortControllerRef.current = controller;
 
-      setIsFetchLoading(true);
       try {
         const fresh = await getResources({
           categorySlug: slug,
@@ -227,7 +235,6 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
           abortSignal: controller.signal
         });
 
-        // Only update state if this request hasn't been aborted
         if (!controller.signal.aborted) {
           setAllLoadedResources(fresh);
           setServerOffset(fresh.length);
@@ -235,31 +242,18 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
           setVisibleCount(PAGE_SIZE_DISPLAY);
         }
       } catch (err) {
-        if (err.name === 'AbortError') {
-          console.log("Fetch aborted for filter change");
-        } else {
-          console.error("Failed to refresh resources:", err);
-        }
+        if (err.name !== 'AbortError') console.error("Failed to refresh resources:", err);
       } finally {
-        if (!controller.signal.aborted) {
-          setIsFetchLoading(false);
-        }
+        if (!controller.signal.aborted) setIsFetchLoading(false);
       }
     };
 
-    // Set debounce timer
-    debounceTimerRef.current = setTimeout(() => {
-      refreshData();
-    }, 300); // 300ms debounce
+    debounceTimerRef.current = setTimeout(refreshData, 300);
 
-    // Cleanup on unmount or next effect run
     return () => {
       if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-      // We don't necessarily want to abort here if the component is still mounted 
-      // but the effect is re-running due to state change, 
-      // because we already handle that at the start of the next effect.
     };
-  }, [selectedFolderId, selectedFormats, selectedTags, slug, isInitialized]);
+  }, [selectedFolderId, selectedFormats, selectedTags, slug, isInitialized, sortBy]);
 
   // Synchronize internal state with server-provided initialResources ONLY when category changes
   useEffect(() => {
@@ -477,6 +471,19 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
     const renderGridItems = () => {
       const items = [];
       let globalIdx = 0;
+
+      // 1. ADD SKELETONS if loading (this hides the gap better than empty grid)
+      if (isFetchLoading && filteredResources.length === 0) {
+        return Array.from({ length: 8 }).map((_, i) => (
+          <div key={`skeleton-${i}`} className={styles.skeletonCard}>
+            <div className={styles.skeletonThumb} />
+            <div className={styles.skeletonCardBody}>
+              <div style={{ height: "14px", width: "80%", background: "var(--text-primary)", opacity: 0.1, borderRadius: "2px" }} />
+              <div style={{ height: "10px", width: "40%", background: "var(--text-primary)", opacity: 0.05, borderRadius: "2px" }} />
+            </div>
+          </div>
+        ));
+      }
 
 
       // 2. Subfolders

@@ -28,6 +28,10 @@
 .breadcrumbItem:last-child {
   color: var(--text-primary);
   font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 400px;
 }
 
 .breadcrumbSep {
@@ -35,15 +39,15 @@
   opacity: 0.5;
 }
 
-/* ---------- Title ---------- */
 .title {
   font-family: var(--font-heading);
-  font-size: 3rem;
+  font-size: 1.8rem;
   font-weight: 800;
-  margin-bottom: var(--space-8);
+  margin-bottom: var(--space-6);
   color: var(--text-primary);
   text-transform: uppercase;
-  letter-spacing: -1px;
+  letter-spacing: -0.5px;
+  line-height: 1.1;
 }
 
 /* ---------- Grid ---------- */
