@@ -210,6 +210,25 @@
   padding-left: calc(var(--space-4) - 3px);
 }
 
+.removeBtn {
+  opacity: 0;
+  color: var(--text-muted);
+  background: transparent;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.resultItem:hover .removeBtn {
+  opacity: 1;
+}
+
+.removeBtn:hover {
+  background: rgba(255, 77, 77, 0.1);
+  color: #ff4d4d;
+}
+
 .hint {
   display: flex;
   justify-content: space-between;

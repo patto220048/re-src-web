@@ -83,6 +83,15 @@ export default function ContextSearch() {
     });
   }, []);
 
+  const removeRecent = useCallback((e, itemId) => {
+    e.stopPropagation(); // Prevent selecting the item
+    setRecentItems(prev => {
+      const updated = prev.filter(i => i.id !== itemId);
+      localStorage.setItem("context_search_recent", JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
+
   const close = useCallback(() => {
     setVisible(false);
     setQuery("");
@@ -300,6 +309,15 @@ export default function ContextSearch() {
                   </span>
                 </div>
               </div>
+              {!query && !focusedId && (
+                <button 
+                  className={styles.removeBtn} 
+                  onClick={(e) => removeRecent(e, item.id)}
+                  title="Remove from history"
+                >
+                  <X size={12} />
+                </button>
+              )}
             </li>
           ))}
         </ul>
