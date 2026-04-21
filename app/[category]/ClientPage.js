@@ -4,6 +4,7 @@ import { useState, useMemo, useEffect, useRef, useCallback } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import Sidebar from "@/app/components/layout/Sidebar";
 import ResourceCard from "@/app/components/ui/ResourceCard";
+import FolderCard from "@/app/components/ui/FolderCard";
 import SoundButton from "@/app/components/ui/SoundButton";
 import FilterBar from "@/app/components/ui/FilterBar";
 import PreviewOverlay from "@/app/components/ui/PreviewOverlay";
@@ -12,6 +13,18 @@ import styles from "./page.module.css";
 
 const PAGE_SIZE_DISPLAY = 24;
 const PAGE_SIZE_BATCH = 200;
+
+const findInTree = (nodes, targetId, parent = null) => {
+  if (!nodes || !targetId) return null;
+  for (const node of nodes) {
+    if (node.id === targetId) return { current: node, parent };
+    if (node.children?.length > 0) {
+      const result = findInTree(node.children, targetId, node);
+      if (result) return result;
+    }
+  }
+  return null;
+};
 
 export default function ClientPage({ slug, info, folders, resources: initialResources }) {
   // --- States ---
@@ -22,6 +35,14 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
   const [sortBy, setSortBy] = useState("newest");
   const [isInitialized, setIsInitialized] = useState(false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE_DISPLAY);
+
+  // Folder History (internal navigation only, not browser history)
+  const [historyStack, setHistoryStack] = useState([]);
+  const [historyPointer, setHistoryPointer] = useState(-1);
+  const historyStackRef = useRef([]);
+  const isInternalNavRef = useRef(false);
+  const hasLoadedInitialStateRef = useRef(false);
+  const prevSlugRef = useRef(slug);
   
   // Resources State
   const [allLoadedResources, setAllLoadedResources] = useState(initialResources);
@@ -73,11 +94,26 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
       }
     }
 
-    // Apply initial state with reference checks to prevent loops
-    if (initialFolderId && initialFolderId !== selectedFolderId) {
+    // 3. Apply initial state with reference checks to prevent loops
+    if (initialFolderId) {
       setSelectedFolderId(initialFolderId);
-      const folder = folders.find(f => f.id === initialFolderId);
-      if (folder) setSelectedFolderName(folder.path || folder.name);
+      const result = findInTree(folders, initialFolderId);
+      if (result?.current) {
+        setSelectedFolderName(result.current.path || result.current.name);
+      }
+    } else {
+      setSelectedFolderId(null);
+      setSelectedFolderName(null);
+    }
+
+    // 4. Initialize history stack ONLY ONCE (or when category changes)
+    if (!hasLoadedInitialStateRef.current || prevSlugRef.current !== slug) {
+      const initialStack = initialFolderId ? [initialFolderId] : [null];
+      setHistoryStack(initialStack);
+      historyStackRef.current = initialStack;
+      setHistoryPointer(0);
+      hasLoadedInitialStateRef.current = true;
+      prevSlugRef.current = slug;
     }
     
     if (initialFormats.length > 0 && JSON.stringify(initialFormats) !== JSON.stringify(selectedFormats)) {
@@ -95,45 +131,46 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
     setIsInitialized(true);
   }, [slug, folders]); // Keep dependencies stable. searchParams is intentionally excluded to avoid loops on URL change.
 
-  // Sync state changes back to URL and LocalStorage
+  // Sync URL changes back to local state (supports browser back/forward)
   useEffect(() => {
-    if (!isInitialized || typeof window === 'undefined') return;
+    if (!isInitialized) return;
+    
+    const folderId = searchParams.get("folder") || null;
+    if (folderId !== selectedFolderId) {
+      setSelectedFolderId(folderId);
+      const result = findInTree(folders, folderId);
+      setSelectedFolderName(result?.current ? (result.current.path || result.current.name) : null);
+      setVisibleCount(PAGE_SIZE_DISPLAY);
 
-    const params = new URLSearchParams(searchParams.toString());
-    
-    if (selectedFolderId) params.set("folder", selectedFolderId);
-    else params.delete("folder");
-    
-    if (selectedFormats.length > 0) params.set("format", selectedFormats.join(","));
-    else params.delete("format");
-
-    if (selectedTags.length > 0) params.set("tags", selectedTags.join(","));
-    else params.delete("tags");
-    
-    if (sortBy && sortBy !== "newest") params.set("sort", sortBy);
-    else params.delete("sort");
-
-    const queryString = params.toString();
-    const currentQuery = searchParams.toString();
-    
-    // ONLY replace if the query actually changed to avoid infinite re-render loops
-    if (queryString !== currentQuery) {
-      const finalUrl = `${pathname}${queryString ? `?${queryString}` : ""}`;
-      router.replace(finalUrl, { scroll: false });
+      // CRITICAL: Sync historyPointer if the URL changed (browser back/forward)
+      const existingIdx = historyStackRef.current.indexOf(folderId);
+      if (existingIdx !== -1) {
+        setHistoryPointer(existingIdx);
+      } else {
+        setHistoryStack(prev => {
+          const next = [...prev, folderId];
+          historyStackRef.current = next;
+          return next;
+        });
+        setHistoryPointer(historyStackRef.current.length - 1);
+      }
     }
-
-    // Update LocalStorage for cross-category memory
-    try {
-      localStorage.setItem(`last_state_${slug}`, JSON.stringify({
-        folderId: selectedFolderId,
-        formats: selectedFormats,
-        tags: selectedTags,
-        sort: sortBy
-      }));
-    } catch (e) {
-      console.warn("Failed to save state to localStorage:", e);
+    
+    const formats = searchParams.get("format") ? searchParams.get("format").split(",") : [];
+    if (JSON.stringify(formats) !== JSON.stringify(selectedFormats)) {
+      setSelectedFormats(formats);
     }
-  }, [selectedFolderId, selectedFormats, selectedTags, sortBy, isInitialized, pathname, router, slug]);
+    
+    const tags = searchParams.get("tags") ? searchParams.get("tags").split(",") : [];
+    if (JSON.stringify(tags) !== JSON.stringify(selectedTags)) {
+      setSelectedTags(tags);
+    }
+    
+    const sort = searchParams.get("sort") || "newest";
+    if (sort !== sortBy) {
+      setSortBy(sort);
+    }
+  }, [searchParams, isInitialized, folders]);
 
   // Handle deep-link to resource via ?res=slug
   useEffect(() => {
@@ -276,6 +313,19 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
     return Array.from(tags).sort();
   }, [allLoadedResources]);
 
+  // --- Folder Navigation Grid Logic ---
+  const { currentSubfolders, parentFolder } = useMemo(() => {
+    if (!selectedFolderId) {
+      return { currentSubfolders: folders, parentFolder: null };
+    }
+
+    const result = findInTree(folders, selectedFolderId);
+    return {
+      currentSubfolders: result?.current?.children || [],
+      parentFolder: result?.parent || "root" // "root" string to represent back to All
+    };
+  }, [folders, selectedFolderId]);
+
   // --- Pagination Logic ---
 
   const handleLoadMore = useCallback(async () => {
@@ -349,18 +399,71 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
     };
   }, [handleLoadMore]);
 
-  const handleSelectFolder = (folder) => {
-    if (folder === null) {
-      setSelectedFolderId(null);
-      setSelectedFolderName(null);
-    } else {
-      setSelectedFolderId(folder.id);
-      setSelectedFolderName(folder.path || folder.name);
+  const updateUrl = useCallback((updates) => {
+    const params = new URLSearchParams(searchParams.toString());
+    
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value === null || value === undefined || (Array.isArray(value) && value.length === 0)) {
+        params.delete(key);
+      } else {
+        params.set(key, Array.isArray(value) ? value.join(",") : value);
+      }
+    });
+
+    const queryString = params.toString();
+    const finalUrl = `${pathname}${queryString ? `?${queryString}` : ""}`;
+    router.replace(finalUrl, { scroll: false });
+  }, [pathname, router, searchParams]);
+
+  const handleSelectFolder = (folder, isHistoryMove = false) => {
+    const folderId = folder ? folder.id : null;
+    const folderName = folder ? (folder.path || folder.name) : null;
+
+    if (selectedFolderId === folderId) return;
+
+    setSelectedFolderId(folderId);
+    setSelectedFolderName(folderName);
+    setVisibleCount(PAGE_SIZE_DISPLAY);
+    
+    updateUrl({ folder: folderId });
+
+    // Update internal history stack if NOT moving via history buttons
+    if (!isHistoryMove) {
+      const newStack = historyStack.slice(0, historyPointer + 1);
+      newStack.push(folderId);
+      setHistoryStack(newStack);
+      historyStackRef.current = newStack;
+      setHistoryPointer(newStack.length - 1);
     }
   };
 
+  const goBack = () => {
+    if (historyPointer > 0) {
+      const prevId = historyStack[historyPointer - 1];
+      const folder = findInTree(folders, prevId);
+      setHistoryPointer(prev => prev - 1);
+      handleSelectFolder(folder?.current || null, true);
+    }
+  };
+
+  const goForward = () => {
+    if (historyPointer < historyStack.length - 1) {
+      const nextId = historyStack[historyPointer + 1];
+      const folder = findInTree(folders, nextId);
+      setHistoryPointer(prev => prev + 1);
+      handleSelectFolder(folder?.current || null, true);
+    }
+  };
+
+  const resetToRoot = () => {
+    handleSelectFolder(null);
+  };
+
   const renderResources = () => {
-    if (filteredResources.length === 0 && !isFetchLoading) {
+    const displayResources = filteredResources.slice(0, visibleCount);
+    const hasCurrentFolders = currentSubfolders.length > 0 || parentFolder;
+
+    if (filteredResources.length === 0 && !isFetchLoading && !hasCurrentFolders) {
       return (
         <div className={styles.empty}>
           <p>
@@ -370,68 +473,70 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
       );
     }
 
-    const displayResources = filteredResources.slice(0, visibleCount);
+    // Prepare Grid Content (Subfolders + Back Button + Resources)
+    const renderGridItems = () => {
+      const items = [];
+      let globalIdx = 0;
 
-    let gridContent;
-    if (info.layout === "audio" || info.layout === "sound") {
-      gridContent = (
-        <div className={styles.soundGrid}>
-          {displayResources.map((resource, idx) => (
+
+      // 2. Subfolders
+      currentSubfolders.forEach((sub) => {
+        items.push(
+          <FolderCard
+            key={sub.id}
+            folder={sub}
+            onClick={() => handleSelectFolder(sub)}
+            primaryColor={info.color}
+            index={globalIdx++}
+          />
+        );
+      });
+
+      // 3. Resources
+      if (info.layout === "audio" || info.layout === "sound") {
+        displayResources.forEach((resource) => {
+          items.push(
             <SoundButton
               key={resource.id}
               {...resource}
               downloadUrl={resource.downloadUrl || resource.fileUrl}
-              index={idx % PAGE_SIZE_DISPLAY}
+              index={globalIdx++ % PAGE_SIZE_DISPLAY}
               onPreview={() => setPreviewResource(resource)}
               primaryColor={info.color}
             />
-          ))}
-        </div>
-      );
-    } else if (info.layout === "font") {
-      gridContent = (
-        <div className={styles.grid}>
-          {displayResources.map((resource, idx) => (
-            <ResourceCard
-              key={resource.id}
-              {...resource}
-              downloadUrl={resource.downloadUrl || resource.fileUrl}
-              cardType="font"
-              index={idx % PAGE_SIZE_DISPLAY}
-              onPreview={() => setPreviewResource(resource)}
-            />
-          ))}
-        </div>
-      );
-    } else {
-      gridContent = (
-        <div className={styles.grid}>
-          {displayResources.map((resource, idx) => (
+          );
+        });
+      } else {
+        displayResources.forEach((resource) => {
+          items.push(
             <ResourceCard
               key={resource.id}
               {...resource}
               downloadUrl={resource.downloadUrl || resource.fileUrl}
               cardType={
-                info.layout === "video" || info.layout === "image"
-                  ? info.layout
-                  : slug === "image-overlay"
-                  ? "image"
-                  : slug === "preset-lut"
-                  ? "preview"
-                  : "video"
+                info.layout === "font" ? "font" :
+                info.layout === "video" || info.layout === "image" ? info.layout :
+                slug === "image-overlay" ? "image" :
+                slug === "preset-lut" ? "preview" : "video"
               }
-              index={idx % PAGE_SIZE_DISPLAY}
+              index={globalIdx++ % PAGE_SIZE_DISPLAY}
               onPreview={() => setPreviewResource(resource)}
               primaryColor={info.color}
             />
-          ))}
-        </div>
-      );
-    }
+          );
+        });
+      }
+
+      return items;
+    };
+
+    const gridClass = (info.layout === "audio" || info.layout === "sound") ? styles.soundGrid : styles.grid;
 
     return (
       <>
-        {gridContent}
+        <div className={gridClass}>
+          {renderGridItems()}
+        </div>
         
         {/* Sentinel element for Infinite Scroll */}
         <div ref={loadMoreRef} className={styles.observerSentinel}>
@@ -477,15 +582,53 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
           {info.name} ({filteredResources.length})
         </h1>
 
+        <div className={styles.navActions}>
+          <button 
+            className={styles.navBtn} 
+            onClick={resetToRoot} 
+            title="Home Root"
+            disabled={selectedFolderId === null}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          </button>
+          <div className={styles.navArrows}>
+            <button 
+              className={styles.navBtn} 
+              onClick={goBack} 
+              disabled={historyPointer <= 0}
+              title="Back"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+            </button>
+            <button 
+              className={styles.navBtn} 
+              onClick={goForward} 
+              disabled={historyPointer >= historyStack.length - 1}
+              title="Forward"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+            </button>
+          </div>
+        </div>
+
         <FilterBar
           formats={info.formats}
           selectedFormats={selectedFormats}
-          onFormatsChange={setSelectedFormats}
+          onFormatsChange={(vals) => {
+            setSelectedFormats(vals);
+            updateUrl({ format: vals });
+          }}
           tags={availableTags}
           selectedTags={selectedTags}
-          onTagsChange={setSelectedTags}
+          onTagsChange={(vals) => {
+            setSelectedTags(vals);
+            updateUrl({ tags: vals });
+          }}
           sortBy={sortBy}
-          onSortChange={setSortBy}
+          onSortChange={(val) => {
+            setSortBy(val);
+            updateUrl({ sort: val });
+          }}
           inPageSearch={inPageSearch}
           onSearchChange={setInPageSearch}
           resSlug={resSlug}
