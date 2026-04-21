@@ -1,59 +1,226 @@
 "use client";
 
-import { Filter, ArrowUpDown } from "lucide-react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { Filter, ArrowUpDown, ChevronDown, Search, X, Tag, Check } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import styles from "./FilterBar.module.css";
 
 export default function FilterBar({
   formats = [],
-  selectedFormat,
-  onFormatChange,
+  selectedFormats = [],
+  onFormatsChange,
+  tags = [],
+  selectedTags = [],
+  onTagsChange,
   sortBy = "newest",
   onSortChange,
+  inPageSearch = "",
+  onSearchChange,
   resSlug,
   onClearRes,
+  primaryColor = "var(--premium-gold)",
 }) {
+  const [isSortOpen, setIsSortOpen] = useState(false);
+  const [isSearchExpanded, setIsSearchExpanded] = useState(inPageSearch.length > 0);
+  const sortRef = useRef(null);
+  const searchInputRef = useRef(null);
+
+  // Close sort dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (sortRef.current && !sortRef.current.contains(e.target)) {
+        setIsSortOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const toggleFormat = (format) => {
+    const isSelected = selectedFormats.includes(format);
+    if (isSelected) {
+      onFormatsChange(selectedFormats.filter((f) => f !== format));
+    } else {
+      onFormatsChange([...selectedFormats, format]);
+    }
+  };
+
+  const toggleTag = (tag) => {
+    const isSelected = selectedTags.includes(tag);
+    if (isSelected) {
+      onTagsChange(selectedTags.filter((t) => t !== tag));
+    } else {
+      onTagsChange([...selectedTags, tag]);
+    }
+  };
+
+  const sortOptions = [
+    { value: "newest", label: "Newest" },
+    { value: "popular", label: "Most Downloaded" },
+    { value: "name", label: "Name A-Z" },
+  ];
+
+  const currentSortLabel = sortOptions.find((o) => o.value === sortBy)?.label || "Sort";
+
   return (
-    <div className={styles.bar} id="filter-bar">
-      <div className={styles.filters}>
-        <Filter size={16} className={styles.icon} />
-        <button
-          className={`${styles.chip} ${(!selectedFormat && !resSlug) ? styles.active : ""}`}
-          onClick={() => {
-            onFormatChange?.(null);
-            onClearRes?.();
-          }}
-        >
-          All
-        </button>
-        {resSlug && (
-          <button className={`${styles.chip} ${styles.active}`} onClick={onClearRes}>
-            Focused
-          </button>
-        )}
-        {formats.map((format) => (
-          <button
-            key={format}
-            className={`${styles.chip} ${selectedFormat === format ? styles.active : ""}`}
-            onClick={() => onFormatChange?.(format)}
-          >
-            .{format}
-          </button>
-        ))}
+    <div className={styles.container} id="filter-bar">
+      <div className={styles.topRow}>
+        <div className={styles.leftGroup}>
+          <div className={styles.labelSection}>
+            <Filter size={14} className={styles.labelIcon} />
+            <span className={styles.labelText}>FILTER</span>
+          </div>
+
+          <div className={styles.chipGroup}>
+            <button
+              className={`${styles.chip} ${
+                selectedFormats.length === 0 && selectedTags.length === 0 && !resSlug
+                  ? styles.activeChip
+                  : ""
+              }`}
+              onClick={() => {
+                onFormatsChange([]);
+                onTagsChange([]);
+                onClearRes?.();
+              }}
+              style={{
+                "--active-color": primaryColor,
+              }}
+            >
+              All
+            </button>
+
+            {resSlug && (
+              <button
+                className={`${styles.chip} ${styles.activeChip}`}
+                onClick={onClearRes}
+                style={{ "--active-color": primaryColor }}
+              >
+                Focused
+              </button>
+            )}
+
+            {formats.map((format) => (
+              <button
+                key={format}
+                className={`${styles.chip} ${
+                  selectedFormats.includes(format) ? styles.activeChip : ""
+                }`}
+                onClick={() => toggleFormat(format)}
+                style={{ "--active-color": primaryColor }}
+              >
+                .{format}
+                {selectedFormats.includes(format) && (
+                  <Check size={10} className={styles.checkIcon} />
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className={styles.rightGroup}>
+          <div className={styles.searchWrapper}>
+            <AnimatePresence>
+              {isSearchExpanded ? (
+                <motion.div
+                  initial={{ width: 40, opacity: 0 }}
+                  animate={{ width: 220, opacity: 1 }}
+                  exit={{ width: 40, opacity: 0 }}
+                  className={styles.searchBar}
+                >
+                  <Search size={14} className={styles.searchInnerIcon} />
+                  <input
+                    ref={searchInputRef}
+                    autoFocus
+                    type="text"
+                    placeholder="Search in category..."
+                    value={inPageSearch}
+                    onChange={(e) => onSearchChange(e.target.value)}
+                    className={styles.searchInput}
+                  />
+                  <button
+                    onClick={() => {
+                      onSearchChange("");
+                      setIsSearchExpanded(false);
+                    }}
+                    className={styles.searchClose}
+                  >
+                    <X size={14} />
+                  </button>
+                </motion.div>
+              ) : (
+                <motion.button
+                  key="search-btn"
+                  onClick={() => setIsSearchExpanded(true)}
+                  className={styles.iconButton}
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
+                  title="Search in this category"
+                >
+                  <Search size={18} />
+                </motion.button>
+              )}
+            </AnimatePresence>
+          </div>
+
+          <div className={styles.sortWrapper} ref={sortRef}>
+            <button
+              className={`${styles.sortTrigger} ${isSortOpen ? styles.sortOpen : ""}`}
+              onClick={() => setIsSortOpen(!isSortOpen)}
+            >
+              <ArrowUpDown size={14} />
+              <span>{currentSortLabel}</span>
+              <ChevronDown size={14} className={styles.chevron} />
+            </button>
+
+            <AnimatePresence>
+              {isSortOpen && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  className={styles.sortMenu}
+                >
+                  {sortOptions.map((opt) => (
+                    <button
+                      key={opt.value}
+                      className={`${styles.sortItem} ${sortBy === opt.value ? styles.activeSortItem : ""}`}
+                      onClick={() => {
+                        onSortChange(opt.value);
+                        setIsSortOpen(false);
+                      }}
+                    >
+                      {opt.label}
+                      {sortBy === opt.value && <Check size={14} className={styles.checkIcon} />}
+                    </button>
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </div>
       </div>
 
-      <div className={styles.sort}>
-        <ArrowUpDown size={14} />
-        <select
-          value={sortBy}
-          onChange={(e) => onSortChange?.(e.target.value)}
-          className={styles.select}
-          id="sort-select"
-        >
-          <option value="newest">Newest</option>
-          <option value="popular">Most Downloaded</option>
-          <option value="name">Name A-Z</option>
-        </select>
-      </div>
+      {tags.length > 0 && (
+        <div className={styles.tagsRow}>
+          <div className={styles.labelSection}>
+            <Tag size={14} className={styles.labelIcon} />
+            <span className={styles.labelText}>TAGS</span>
+          </div>
+          <div className={styles.tagsScroll}>
+            {tags.map((tag) => (
+              <button
+                key={tag}
+                className={`${styles.tagChip} ${selectedTags.includes(tag) ? styles.activeTag : ""}`}
+                onClick={() => toggleTag(tag)}
+                style={{ "--active-color": primaryColor }}
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

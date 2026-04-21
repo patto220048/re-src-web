@@ -17,7 +17,8 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
   // --- States ---
   const [selectedFolderId, setSelectedFolderId] = useState(null);
   const [selectedFolderName, setSelectedFolderName] = useState(null);
-  const [selectedFormat, setSelectedFormat] = useState(null);
+  const [selectedFormats, setSelectedFormats] = useState([]);
+  const [selectedTags, setSelectedTags] = useState([]);
   const [sortBy, setSortBy] = useState("newest");
   const [isInitialized, setIsInitialized] = useState(false);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE_DISPLAY);
@@ -46,10 +47,12 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
     // 1. Try URL first
     const urlFolderId = searchParams.get("folder");
     const urlFormat = searchParams.get("format");
+    const urlTags = searchParams.get("tags");
     const urlSort = searchParams.get("sort");
 
     let initialFolderId = urlFolderId;
-    let initialFormat = urlFormat;
+    let initialFormats = urlFormat ? urlFormat.split(",") : [];
+    let initialTags = urlTags ? urlTags.split(",") : [];
     let initialSort = urlSort || "newest";
 
     // 2. If URL is incomplete, try LocalStorage
@@ -59,7 +62,8 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
         if (saved) {
           const data = JSON.parse(saved);
           if (!urlFolderId && data.folderId) initialFolderId = data.folderId;
-          if (!urlFormat && data.format) initialFormat = data.format;
+          if (!urlFormat && data.formats) initialFormats = data.formats;
+          if (!urlTags && data.tags) initialTags = data.tags;
           if (!urlSort && data.sort) initialSort = data.sort;
         }
       } catch (e) {
@@ -67,17 +71,27 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
       }
     }
 
-    // Apply initial state
-    if (initialFolderId) {
+    // Apply initial state with reference checks to prevent loops
+    if (initialFolderId && initialFolderId !== selectedFolderId) {
       setSelectedFolderId(initialFolderId);
       const folder = folders.find(f => f.id === initialFolderId);
       if (folder) setSelectedFolderName(folder.path || folder.name);
     }
-    if (initialFormat) setSelectedFormat(initialFormat);
-    if (initialSort) setSortBy(initialSort);
+    
+    if (initialFormats.length > 0 && JSON.stringify(initialFormats) !== JSON.stringify(selectedFormats)) {
+      setSelectedFormats(initialFormats);
+    }
+
+    if (initialTags.length > 0 && JSON.stringify(initialTags) !== JSON.stringify(selectedTags)) {
+      setSelectedTags(initialTags);
+    }
+
+    if (initialSort && initialSort !== sortBy) {
+      setSortBy(initialSort);
+    }
     
     setIsInitialized(true);
-  }, [slug, folders]); // searchParams is omitted to run only once or on category change
+  }, [slug, folders]); // Keep dependencies stable. searchParams is intentionally excluded to avoid loops on URL change.
 
   // Sync state changes back to URL and LocalStorage
   useEffect(() => {
@@ -88,29 +102,36 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
     if (selectedFolderId) params.set("folder", selectedFolderId);
     else params.delete("folder");
     
-    if (selectedFormat) params.set("format", selectedFormat);
+    if (selectedFormats.length > 0) params.set("format", selectedFormats.join(","));
     else params.delete("format");
+
+    if (selectedTags.length > 0) params.set("tags", selectedTags.join(","));
+    else params.delete("tags");
     
     if (sortBy && sortBy !== "newest") params.set("sort", sortBy);
     else params.delete("sort");
 
     const queryString = params.toString();
-    const finalUrl = `${pathname}${queryString ? `?${queryString}` : ""}`;
+    const currentQuery = searchParams.toString();
     
-    // Update URL without adding to history (to avoid back-button hell with filters)
-    router.replace(finalUrl, { scroll: false });
+    // ONLY replace if the query actually changed to avoid infinite re-render loops
+    if (queryString !== currentQuery) {
+      const finalUrl = `${pathname}${queryString ? `?${queryString}` : ""}`;
+      router.replace(finalUrl, { scroll: false });
+    }
 
     // Update LocalStorage for cross-category memory
     try {
       localStorage.setItem(`last_state_${slug}`, JSON.stringify({
         folderId: selectedFolderId,
-        format: selectedFormat,
+        formats: selectedFormats,
+        tags: selectedTags,
         sort: sortBy
       }));
     } catch (e) {
       console.warn("Failed to save state to localStorage:", e);
     }
-  }, [selectedFolderId, selectedFormat, sortBy, isInitialized, pathname, router, slug]);
+  }, [selectedFolderId, selectedFormats, selectedTags, sortBy, isInitialized, pathname, router, slug]);
 
   // Handle deep-link to resource via ?res=slug
   useEffect(() => {
@@ -137,19 +158,17 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
   }, []);
 
   // Reset EVERYTHING when primary filters (Folder/Format/Search/Sort) change
-  // Note: For now, we reset to the initial state to keep it simple. 
-  // Truly large datasets with filtering would need server-side filtering logic.
   useEffect(() => {
     setVisibleCount(PAGE_SIZE_DISPLAY);
-  }, [selectedFolderId, selectedFormat, sortBy, inPageSearch]);
+  }, [selectedFolderId, selectedFormats, selectedTags, sortBy, inPageSearch]);
 
-  // Synchronize internal state with server-provided initialResources when they change (navigation/refresh)
+  // Synchronize internal state with server-provided initialResources ONLY when category changes
   useEffect(() => {
     setAllLoadedResources(initialResources);
     setServerOffset(initialResources.length);
     setHasMoreDB(initialResources.length === PAGE_SIZE_BATCH);
     setVisibleCount(PAGE_SIZE_DISPLAY);
-  }, [initialResources]);
+  }, [slug]); // Prop 'initialResources' is often a new reference on each render, so we tie this to 'slug' to avoid loops.
 
   // --- Core Filtering ---
   const filteredResources = useMemo(() => {
@@ -164,9 +183,15 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
       results = results.filter((r) => r.folderId === selectedFolderId);
     }
 
-    if (selectedFormat) {
-      results = results.filter(
-        (r) => r.fileFormat?.toUpperCase() === selectedFormat.toUpperCase()
+    if (selectedFormats.length > 0) {
+      results = results.filter((r) =>
+        selectedFormats.some(f => f.toUpperCase() === r.fileFormat?.toUpperCase())
+      );
+    }
+
+    if (selectedTags.length > 0) {
+      results = results.filter((r) =>
+        selectedTags.every(t => r.tags?.some(rt => rt.toLowerCase() === t.toLowerCase()))
       );
     }
 
@@ -189,7 +214,16 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
         break;
     }
     return results;
-  }, [allLoadedResources, selectedFolderId, selectedFormat, sortBy, inPageSearch]);
+  }, [allLoadedResources, selectedFolderId, selectedFormats, selectedTags, sortBy, inPageSearch, resSlug]);
+
+  // Extract unique tags from loaded resources for FilterBar
+  const availableTags = useMemo(() => {
+    const tags = new Set();
+    allLoadedResources.forEach(r => {
+      if (r.tags) r.tags.forEach(t => tags.add(t.toLowerCase()));
+    });
+    return Array.from(tags).sort();
+  }, [allLoadedResources]);
 
   // --- Pagination Logic ---
 
@@ -391,12 +425,18 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
 
         <FilterBar
           formats={info.formats}
-          selectedFormat={selectedFormat}
-          onFormatChange={setSelectedFormat}
+          selectedFormats={selectedFormats}
+          onFormatsChange={setSelectedFormats}
+          tags={availableTags}
+          selectedTags={selectedTags}
+          onTagsChange={setSelectedTags}
           sortBy={sortBy}
           onSortChange={setSortBy}
+          inPageSearch={inPageSearch}
+          onSearchChange={setInPageSearch}
           resSlug={resSlug}
           onClearRes={() => router.push(pathname)}
+          primaryColor={info.color}
         />
 
         {renderResources()}
