@@ -31,11 +31,19 @@ export default function SuccessModal({ isOpen, onClose }) {
 
   const playSuccessSound = () => {
     try {
-      const audio = new Audio("https://cdn.pixabay.com/audio/2022/01/21/audio_73147743d7.mp3?filename=success-fanfare-trumpets-6185.mp3");
+      // Use a more stable sound URL or fallback to silent failure
+      const audio = new Audio("https://assets.mixkit.co/active_storage/sfx/2018/2018-preview.mp3");
       audio.volume = 0.2;
-      audio.play();
+      
+      const playPromise = audio.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(err => {
+          // Automatic playback is often blocked by browsers unless user interacts
+          console.warn("Audio playback was blocked or failed:", err);
+        });
+      }
     } catch (err) {
-      console.warn("Audio playback failed:", err);
+      console.warn("Audio initialization failed:", err);
     }
   };
 

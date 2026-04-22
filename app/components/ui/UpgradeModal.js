@@ -1,9 +1,10 @@
 "use client";
-
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { X, AlertTriangle, ArrowUpCircle } from "lucide-react";
 import styles from "./UpgradeModal.module.css";
 import { PayPalButtons } from "@paypal/react-paypal-js";
+import { useTheme } from "next-themes";
 
 export default function UpgradeModal({ 
   isOpen, 
@@ -14,6 +15,15 @@ export default function UpgradeModal({
   onApprove,
   isProcessing
 }) {
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const paypalColor = mounted ? (resolvedTheme === "dark" ? "white" : "black") : "black";
+
   if (!isOpen) return null;
 
   return (
@@ -65,7 +75,7 @@ export default function UpgradeModal({
               <p className={styles.confirmText}>Confirm your upgrade to Yearly Plan ($18/year):</p>
               <div className={styles.paypalContainer}>
                 <PayPalButtons
-                  style={{ layout: "horizontal", color: "black", label: "subscribe" }}
+                  style={{ layout: "horizontal", color: paypalColor, label: "subscribe", height: 40, tagline: false, shape: "rect" }}
                   createSubscription={(data, actions) => {
                     return actions.subscription.create({
                       plan_id: paypalOptions.planId,

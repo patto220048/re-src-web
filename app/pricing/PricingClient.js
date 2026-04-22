@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
+import { useTheme } from "next-themes";
 import { useRouter } from "next/navigation";
 import { Check, Crown, ExternalLink } from "lucide-react";
 import toast from "react-hot-toast";
@@ -17,6 +18,14 @@ export default function PricingClient({ config }) {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [isUpgrading, setIsUpgrading] = useState(false);
+  const { resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const paypalColor = mounted ? (resolvedTheme === "dark" ? "white" : "black") : "black";
 
   const isSandbox = config.env === "sandbox";
   const activeParams = isSandbox ? config.sandbox : config.live;
@@ -156,7 +165,7 @@ export default function PricingClient({ config }) {
                 </div>
               ) : (
                 <PayPalButtons
-                  style={{ layout: "horizontal", color: "black", label: "subscribe" }}
+                  style={{ layout: "horizontal", color: paypalColor, label: "subscribe", height: 40, tagline: false, shape: "rect" }}
                   createSubscription={(data, actions) => {
                     return actions.subscription.create({
                       plan_id: activeParams.monthly_plan_id,
@@ -211,7 +220,7 @@ export default function PricingClient({ config }) {
                 <button onClick={openUpgrade} className={styles.upgradeBtn}>Upgrade to Yearly</button>
               ) : (
                 <PayPalButtons
-                  style={{ layout: "horizontal", color: "black", label: "subscribe" }}
+                  style={{ layout: "horizontal", color: paypalColor, label: "subscribe", height: 40, tagline: false, shape: "rect" }}
                   createSubscription={(data, actions) => {
                     return actions.subscription.create({
                       plan_id: activeParams.yearly_plan_id,
