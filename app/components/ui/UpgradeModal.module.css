@@ -15,7 +15,7 @@
 
 .modal {
   background: #0a0a0a;
-  border: 1px solid var(--accent-gold);
+  border: 1px solid var(--premium-gold);
   width: 100%;
   max-width: 500px;
   position: relative;
@@ -51,7 +51,7 @@
 
 .iconWrapper {
   margin-bottom: 1rem;
-  color: var(--accent-gold);
+  color: var(--premium-gold);
   display: flex;
   justify-content: center;
 }
@@ -101,12 +101,12 @@
   display: flex;
   gap: 0.75rem;
   background: rgba(250, 203, 17, 0.05);
-  border-left: 3px solid var(--accent-gold);
+  border-left: 3px solid var(--premium-gold);
   padding: 1rem;
 }
 
 .warningIcon {
-  color: var(--accent-gold);
+  color: var(--premium-gold);
   flex-shrink: 0;
 }
 

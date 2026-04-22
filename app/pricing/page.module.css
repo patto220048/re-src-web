@@ -137,11 +137,13 @@
   .title {
     font-size: 2.2rem;
   }
-  
+
   .card {
     padding: 2rem;
   }
-}.statusBadge {
+}
+
+.statusBadge {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -225,7 +227,7 @@
 .upgradeBtn {
   width: 100%;
   padding: 14px;
-  background: var(--accent-gold);
+  background: var(--premium-gold);
   color: #000;
   font-weight: 800;
   border: none;
@@ -252,7 +254,7 @@
 }
 
 .activeText {
-  color: var(--accent-gold);
+  color: var(--premium-gold);
   font-size: 0.85rem;
   font-weight: 600;
   text-align: center;
@@ -264,8 +266,8 @@
   width: 100%;
   padding: 12px;
   background: transparent;
-  border: 1px solid var(--accent-gold);
-  color: var(--accent-gold);
+  border: 1px solid var(--premium-gold);
+  color: var(--premium-gold);
   text-align: center;
   text-decoration: none;
   font-weight: 800;
@@ -276,7 +278,7 @@
 }
 
 .manageLink:hover {
-  background: var(--accent-gold);
+  background: var(--premium-gold);
   color: #000;
   box-shadow: 0 4px 15px rgba(250, 203, 17, 0.2);
 }

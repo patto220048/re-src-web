@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import { useTheme } from "next-themes";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Check, Crown, ExternalLink } from "lucide-react";
 import toast from "react-hot-toast";
 import styles from "./page.module.css";
@@ -13,6 +13,7 @@ import UpgradeModal from "@/app/components/ui/UpgradeModal";
 
 export default function PricingClient({ config }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user, profile, isPremium } = useAuth();
   const [isProcessing, setIsProcessing] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -23,7 +24,11 @@ export default function PricingClient({ config }) {
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+    if (searchParams.get("upgrade") === "true") {
+      setShowUpgradeModal(true);
+      setIsUpgrading(true);
+    }
+  }, [searchParams]);
 
   const paypalColor = mounted ? (resolvedTheme === "dark" ? "white" : "black") : "black";
 

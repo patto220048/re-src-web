@@ -37,11 +37,14 @@ export default async function SubscriptionPage() {
     }
   }
 
+  const isMonthly = subscription?.plan_id === activeParams?.monthly_plan_id;
+
   return (
     <SubscriptionClient
       subscription={subscription || null}
       planLabel={planLabel}
       userEmail={user.email}
+      isMonthly={isMonthly}
     />
   );
 }

@@ -32,14 +32,14 @@ function StatusBadge({ status }) {
   );
 }
 
-export default function SubscriptionClient({ subscription, planLabel, userEmail }) {
+export default function SubscriptionClient({ subscription, planLabel, userEmail, isMonthly }) {
   const router = useRouter();
   const [toggling, setToggling] = useState(false);
 
   const isActive = subscription?.status === "ACTIVE";
   const isSuspended = subscription?.status === "SUSPENDED";
   const isCancelled = subscription?.status === "CANCELLED" || subscription?.status === "EXPIRED";
-
+  
   const handleToggleAutoRenew = async (e) => {
     const newVal = e.target.checked;
     setToggling(true);
@@ -88,7 +88,17 @@ export default function SubscriptionClient({ subscription, planLabel, userEmail 
         <div className={styles.card}>
           <div className={styles.row}>
             <span className={styles.label}>Plan</span>
-            <span className={styles.value}>{planLabel}</span>
+            <div className={styles.planValueWrapper}>
+              <span className={styles.value}>{planLabel}</span>
+              {isMonthly && isActive && (
+                <button 
+                  className={styles.miniUpgradeBtn}
+                  onClick={() => router.push("/pricing?upgrade=true")}
+                >
+                  Upgrade to Yearly
+                </button>
+              )}
+            </div>
           </div>
 
           <div className={styles.row}>
