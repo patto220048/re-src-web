@@ -75,7 +75,11 @@ export async function POST(request) {
 
     if (resource.storage_path) {
       // Build a clean download filename
-      const baseName = resource.name || "download";
+      let baseName = resource.name || "download";
+      
+      // Sanitize filename: remove illegal characters that might cause browsers to ignore the name
+      baseName = baseName.replace(/[/\\?%*:|"<>]/g, '-').trim();
+
       const extension = resource.file_format 
         ? `.${resource.file_format.toLowerCase().replace(/^\./, "")}` 
         : (resource.file_name?.split('.').pop() ? `.${resource.file_name.split('.').pop()}` : "");
