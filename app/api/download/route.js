@@ -29,7 +29,7 @@ export async function POST(request) {
     // 2. Check if the resource is premium
     const { data: resource } = await supabase
       .from("resources")
-      .select("id, is_premium, download_url, name")
+      .select("id, is_premium, download_url, name, storage_path, file_name, file_format")
       .eq("id", resourceId)
       .single();
 
@@ -65,10 +65,33 @@ export async function POST(request) {
     // 4. Increment download count
     await incrementDownloadCount(resourceId);
 
-    // 5. Return download URL
+    // 5. Generate Signed URL for secure native download
+    let finalDownloadUrl = resource.download_url;
+
+    if (resource.storage_path) {
+      // Build a clean download filename using the web display name + correct extension
+      const baseName = resource.name || "download";
+      const extension = resource.file_format 
+        ? `.${resource.file_format.toLowerCase().replace(/^\./, "")}` 
+        : (resource.file_name?.split('.').pop() ? `.${resource.file_name.split('.').pop()}` : "");
+      
+      const downloadName = baseName.endsWith(extension) ? baseName : `${baseName}${extension}`;
+
+      const { data: signedData, error: signedError } = await supabase.storage
+        .from("resources")
+        .createSignedUrl(resource.storage_path, 60, {
+          download: downloadName,
+        });
+
+      if (!signedError && signedData?.signedUrl) {
+        finalDownloadUrl = signedData.signedUrl;
+      }
+    }
+
+    // 6. Return download URL
     return NextResponse.json({
       success: true,
-      downloadUrl: resource.download_url,
+      downloadUrl: finalDownloadUrl,
     });
   } catch (error) {
     console.error("Download API error:", error);

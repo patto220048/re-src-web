@@ -313,48 +313,36 @@ export default function SoundButton({
       return;
     }
 
-    if (isDownloading || !downloadUrl) return;
+    if (isDownloading) return;
 
     setIsDownloading(true);
     try {
-      // 1. Try cross-origin download via blob (allows naming)
-      const response = await fetch(downloadUrl);
-      if (!response.ok) throw new Error("Fetch failed");
+      // 1. Call our API to increment count and get a Secure Signed Download URL
+      const response = await fetch('/api/download', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resourceId: id }),
+      });
 
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      const ext = fileFormat ? `.${fileFormat.replace(/^\./, "").toLowerCase()}` : "";
-      const baseName = name?.replace(/\.[^/.]+$/, "") || "download";
-      link.download = `${baseName}${ext}`;
-      link.style.display = "none";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-
-      if (id) incrementDownloadCount(id).catch(() => {});
-    } catch (err) {
-      console.warn("Blob download failed (likely CORS). Falling back to direct link.", err);
-
-      // 2. Fallback: Open in new tab (browser handles it, usually triggers download or play)
-      try {
-        const link = document.createElement("a");
-        link.href = downloadUrl;
-        link.target = "_blank";
-        link.rel = "noopener noreferrer";
-        const ext = fileFormat ? `.${fileFormat.replace(/^\./, "").toLowerCase()}` : "";
-        const baseName = name?.replace(/\.[^/.]+$/, "") || "download";
-        link.download = `${baseName}${ext}`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-        if (id) incrementDownloadCount(id).catch(() => {});
-      } catch (fallbackErr) {
-        console.error("Direct download fallback failed:", fallbackErr);
+      if (!response.ok) {
+        const errorData = await response.json();
+        if (errorData.requiresPremium) {
+          window.dispatchEvent(new CustomEvent("need-premium"));
+          throw new Error("Premium required");
+        }
+        throw new Error(errorData.error || "Download failed");
       }
+
+      const { downloadUrl: signedUrl } = await response.json();
+      
+      if (!signedUrl) throw new Error("No download URL returned");
+
+      // 2. Trigger Native Browser Download
+      // Using window.location.assign with a signed URL that has Content-Disposition: attachment
+      // is the most reliable way to trigger a native download without memory issues.
+      window.location.assign(signedUrl);
+    } catch (err) {
+      console.error("Download failed:", err);
     }
     setIsDownloading(false);
   };

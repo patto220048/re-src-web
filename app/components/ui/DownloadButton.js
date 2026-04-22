@@ -32,54 +32,40 @@ export default function DownloadButton({ downloadUrl, fileUrl, fileName, fileFor
       return;
     }
 
-    if (state !== "idle" || !resolvedUrl) return;
+    if (state !== "idle") return;
     setState("downloading");
 
     try {
-      // 1. Try cross-origin download via blob (allows naming)
-      const response = await fetch(resolvedUrl);
-      if (!response.ok) throw new Error("Fetch failed");
-      
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = getDownloadName();
-      link.style.display = "none";
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      // 1. Call our API to increment count and get a Secure Signed Download URL
+      const response = await fetch('/api/download', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ resourceId: resourceId }),
+      });
 
-      if (resourceId) {
-        incrementDownloadCount(resourceId).catch(() => {});
+      if (!response.ok) {
+        const errorData = await response.json();
+        if (errorData.requiresPremium) {
+          window.dispatchEvent(new CustomEvent("need-premium"));
+          throw new Error("Premium required");
+        }
+        throw new Error(errorData.error || "Download failed");
       }
+
+      const { downloadUrl: signedUrl } = await response.json();
+      
+      if (!signedUrl) throw new Error("No download URL returned");
+
+      // 2. Trigger Native Browser Download
+      // Using window.location.assign with a signed URL that has Content-Disposition: attachment
+      // is the most reliable way to trigger a native download without memory issues.
+      window.location.assign(signedUrl);
+
       setState("done");
       setTimeout(() => setState("idle"), 2000);
     } catch (err) {
-      console.warn("Blob download failed (likely CORS). Falling back to direct link.", err);
-      
-      // 2. Fallback: Open in new tab (browser handles it, usually triggers download or play)
-      try {
-        const link = document.createElement("a");
-        link.href = resolvedUrl;
-        link.target = "_blank";
-        link.rel = "noopener noreferrer";
-        // Note: 'download' attribute only works for same-origin or with specific headers
-        link.download = getDownloadName(); 
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        if (resourceId) {
-          incrementDownloadCount(resourceId).catch(() => {});
-        }
-        setState("done");
-        setTimeout(() => setState("idle"), 2000);
-      } catch (fallbackErr) {
-        console.error("Direct download fallback failed:", fallbackErr);
-        setState("idle");
-      }
+      console.error("Download failed:", err);
+      setState("idle");
     }
   };
 
