@@ -219,8 +219,9 @@
 
 .tagsRow {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--space-4);
+  padding-top: var(--space-2);
 }
 
 .tagsScroll {
@@ -228,13 +229,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  overflow-x: auto;
-  padding: 4px 0;
-  scrollbar-width: none;
-}
-
-.tagsScroll::-webkit-scrollbar {
-  display: none; /* Hide for Chrome/Safari */
+  flex-wrap: wrap;
+  padding: 2px 0;
 }
 
 .tagChip {
