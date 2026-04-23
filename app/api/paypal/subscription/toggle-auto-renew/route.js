@@ -53,8 +53,19 @@ export async function POST(req) {
       return NextResponse.json({ error: "Subscription not found" }, { status: 404 });
     }
 
-    if (sub.status === "CANCELLED") {
-      return NextResponse.json({ error: "Cannot toggle auto-renew for a cancelled subscription" }, { status: 400 });
+    if (sub.status === "CANCELLED" || sub.status === "EXPIRED") {
+      return NextResponse.json({ error: "Cannot toggle auto-renew for a cancelled or expired subscription" }, { status: 400 });
+    }
+
+    // Check if subscription has already expired by date
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("subscription_expires_at")
+      .eq("id", user.id)
+      .single();
+
+    if (profile?.subscription_expires_at && new Date(profile.subscription_expires_at) < new Date()) {
+      return NextResponse.json({ error: "Subscription has already expired. Please resubscribe." }, { status: 400 });
     }
 
     // 3. Fetch PayPal config

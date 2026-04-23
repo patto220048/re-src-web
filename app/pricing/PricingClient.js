@@ -36,8 +36,9 @@ export default function PricingClient({ config }) {
   const activeParams = isSandbox ? config.sandbox : config.live;
   
   // Plan detection
-  const isMonthlyActive = profile?.subscription_plan === activeParams.monthly_plan_id && profile?.subscription_status === "active";
-  const isYearlyActive = profile?.subscription_plan === activeParams.yearly_plan_id && profile?.subscription_status === "active";
+  // Plan detection - only mark as active if the user is actually premium (not expired)
+  const isMonthlyActive = isPremium && profile?.subscription_plan === activeParams.monthly_plan_id;
+  const isYearlyActive = isPremium && profile?.subscription_plan === activeParams.yearly_plan_id;
 
   const initialOptions = {
     "client-id": activeParams.client_id,

@@ -50,8 +50,9 @@ export async function POST(request) {
 
     const hasAccess =
       profile?.role === "admin" ||
-      profile?.role === "premium" ||
-      profile?.subscription_status === "active";
+      (["active", "suspended", "cancelled"].includes(profile?.subscription_status) && 
+       profile?.subscription_expires_at && 
+       new Date(profile.subscription_expires_at) > new Date());
 
     if (!hasAccess) {
       return NextResponse.json(

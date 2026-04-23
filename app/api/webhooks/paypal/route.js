@@ -33,14 +33,20 @@ export async function POST(req) {
 
     if (eventType.startsWith("BILLING.SUBSCRIPTION.")) {
       const status = resource.status; // ACTIVE, CANCELLED, EXPIRED, SUSPENDED
+      const nextBillingTime = resource.billing_info?.next_billing_time;
+
+      const subUpdateData = {
+        status: status,
+        updated_at: new Date().toISOString()
+      };
+      
+      if (nextBillingTime) {
+        subUpdateData.current_period_end = nextBillingTime;
+      }
 
       const { error: subError } = await supabase
         .from("subscriptions")
-        .update({
-          status: status,
-          current_period_end: resource.billing_info?.next_billing_time || null,
-          updated_at: new Date().toISOString()
-        })
+        .update(subUpdateData)
         .eq("paypal_subscription_id", subscriptionID)
         .select()
         .single();
@@ -50,12 +56,17 @@ export async function POST(req) {
       }
 
       // Sync with profiles table
+      const profileUpdateData = {
+        subscription_status: status.toLowerCase(),
+      };
+
+      if (nextBillingTime) {
+        profileUpdateData.subscription_expires_at = nextBillingTime;
+      }
+
       const { error: profileError } = await supabase
         .from("profiles")
-        .update({
-          subscription_status: status.toLowerCase(),
-          subscription_expires_at: resource.billing_info?.next_billing_time || null
-        })
+        .update(profileUpdateData)
         .eq("subscription_id", subscriptionID);
 
       if (profileError) {

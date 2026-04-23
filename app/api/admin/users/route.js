@@ -38,7 +38,7 @@ export async function GET(req) {
     // 2. Apply Filters
     if (filter !== "all") {
       if (filter === "premium") {
-        query = query.or('role.eq.premium,subscription_status.eq.active');
+        query = query.or('role.eq.premium,subscription_status.eq.active,subscription_status.eq.suspended,subscription_status.eq.cancelled');
       } else {
         query = query.eq("role", filter);
       }

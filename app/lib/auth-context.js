@@ -310,10 +310,12 @@ export function AuthProvider({ children }) {
 
   // ─── Derived State ───
   const isAdmin = profile?.role === "admin";
+  
   const isPremium =
-    profile?.role === "premium" ||
-    profile?.subscription_status === "active" ||
-    (profile?.subscription_status === "suspended" && profile?.subscription_expires_at && new Date(profile.subscription_expires_at) > new Date());
+    profile?.role === "admin" ||
+    (["active", "suspended", "cancelled"].includes(profile?.subscription_status) && 
+     profile?.subscription_expires_at && 
+     new Date(profile.subscription_expires_at) > new Date());
 
   return (
     <AuthContext.Provider

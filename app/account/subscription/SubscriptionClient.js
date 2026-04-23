@@ -15,14 +15,24 @@ function formatDate(dateStr) {
   });
 }
 
-function StatusBadge({ status }) {
+function StatusBadge({ status, isExpiredByTime }) {
   const map = {
     ACTIVE: { label: "Active", color: "#22c55e", icon: CheckCircle2 },
     CANCELLED: { label: "Cancelled", color: "#f43f5e", icon: XCircle },
     EXPIRED: { label: "Expired", color: "#94a3b8", icon: XCircle },
     SUSPENDED: { label: "Auto-renew Off", color: "#f59e0b", icon: AlertCircle },
   };
-  const cfg = map[status] || { label: status, color: "#94a3b8", icon: AlertCircle };
+
+  let cfg = map[status] || { label: status, color: "#94a3b8", icon: AlertCircle };
+
+  if (isExpiredByTime) {
+    if (status === "ACTIVE") {
+      cfg = { label: "Payment Failed", color: "#f43f5e", icon: AlertCircle };
+    } else {
+      cfg = { label: "Expired", color: "#94a3b8", icon: XCircle };
+    }
+  }
+
   const Icon = cfg.icon;
   return (
     <span className={styles.statusBadge} style={{ color: cfg.color, borderColor: cfg.color }}>
@@ -38,7 +48,9 @@ export default function SubscriptionClient({ subscription, planLabel, userEmail,
 
   const isActive = subscription?.status === "ACTIVE";
   const isSuspended = subscription?.status === "SUSPENDED";
-  const isCancelled = subscription?.status === "CANCELLED" || subscription?.status === "EXPIRED";
+  // Consider it 'cancelled/expired' if the status is explicitly so, OR if the expiration date has passed
+  const isExpiredByTime = subscription?.current_period_end && new Date(subscription.current_period_end) < new Date();
+  const isCancelled = subscription?.status === "CANCELLED" || subscription?.status === "EXPIRED" || isExpiredByTime;
   
   const handleToggleAutoRenew = async (e) => {
     const newVal = e.target.checked;
@@ -103,7 +115,7 @@ export default function SubscriptionClient({ subscription, planLabel, userEmail,
 
           <div className={styles.row}>
             <span className={styles.label}>Status</span>
-            <StatusBadge status={subscription.status} />
+            <StatusBadge status={subscription.status} isExpiredByTime={isExpiredByTime} />
           </div>
 
           <div className={styles.row}>
