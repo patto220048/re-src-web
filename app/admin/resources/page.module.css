@@ -556,6 +556,7 @@
   display: flex;
   align-items: center;
   gap: var(--space-4);
+  min-width: 0;
 }
 
 .listIconSmall {
@@ -589,12 +590,16 @@
 .listNameInfo {
   display: flex;
   flex-direction: column;
+  min-width: 0;
 }
 
 .listTitle {
   font-weight: 600;
   font-size: 1rem;
   color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .listCategory {
