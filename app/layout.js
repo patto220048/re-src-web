@@ -8,6 +8,8 @@ import { ToastContainer } from "@/app/components/ui/ToastContainer";
 import { SiteProvider } from "@/app/context/SiteContext";
 import { AuthProvider } from "@/app/lib/auth-context";
 
+import { SpeedInsights } from "@vercel/speed-insights/next";
+
 export const metadata = {
   title: "SFXFolder.com — Free Resources for Video Editors",
   description:
@@ -41,6 +43,7 @@ export default async function RootLayout({ children }) {
               <SiteProvider initialSettings={settings} initialCategories={categories}>
                 <LayoutShell initialCategories={categories}>{children}</LayoutShell>
                 <ToastContainer />
+                <SpeedInsights />
               </SiteProvider>
             </AuthProvider>
           </ToastProvider>
