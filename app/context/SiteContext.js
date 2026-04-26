@@ -11,7 +11,7 @@ const SiteDataContext = createContext(null);
 export function SiteProvider({ children, initialSettings, initialCategories }) {
   const value = useMemo(() => ({
     settings: initialSettings || {
-      site_name: 'EditerLor',
+      site_name: 'SFXFolder.com',
       tagline: 'Free Resources for Video Editors',
       project_version: 'v0.1'
     },

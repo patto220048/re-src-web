@@ -1,4 +1,4 @@
-# EditerLor — Design Specification
+# SFXFolder.com — Design Specification
 
 > Free Resources for Video Editors
 > Web lưu trữ & chia sẻ tài nguyên edit video cho cộng đồng
@@ -15,9 +15,9 @@ Xây dựng một trang web công khai cho cộng đồng editor, giúp tải nh
 - **Admin:** Chủ web — quản lý upload, phân loại, thống kê
 
 ### 1.3 Thương hiệu
-- **Tên:** EditerLor
+- **Tên:** SFXFolder.com
 - **Tagline:** Free Resources for Video Editors
-- **URL mục tiêu:** editerlor.com (hoặc tương tự)
+- **URL mục tiêu:** SFXFolder.com.com (hoặc tương tự)
 
 ---
 
@@ -100,7 +100,7 @@ Monospace:  "JetBrains Mono" — file format, size display
 ### 4.1 Sitemap
 
 ```
-EditerLor
+SFXFolder.com
 ├── /                          Trang chủ (8 danh mục)
 ├── /{category-slug}           Trang danh mục (sidebar tree + card grid)
 ├── /search                    Tìm kiếm toàn trang
@@ -243,7 +243,7 @@ folders/{folderId}
 
 ```
 settings/general
-├── siteName: string          // "EditerLor"
+├── siteName: string          // "SFXFolder.com"
 ├── tagline: string           // "Free Resources for Video Editors"
 ├── seoDescription: string
 ├── logoUrl: string
@@ -440,5 +440,5 @@ f:\re-src-web\
 ---
 
 *Spec created: 2026-04-02*
-*Project: EditerLor*
+*Project: SFXFolder.com*
 *Author: Brainstorming session*

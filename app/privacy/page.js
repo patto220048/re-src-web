@@ -38,10 +38,10 @@ export default function PrivacyPolicy() {
           <section className={styles.section}>
             <h2>3. Information Sharing and Disclosure</h2>
             <p>
-              We do not share your personal information with companies, organizations, or individuals outside of EditerLor except in the following cases:
+              We do not share your personal information with companies, organizations, or individuals outside of SFXFolder.com except in the following cases:
             </p>
             <ul>
-              <li><strong>With your consent:</strong> We will share personal information with companies, organizations or individuals outside of EditerLor when we have your consent to do so.</li>
+              <li><strong>With your consent:</strong> We will share personal information with companies, organizations or individuals outside of SFXFolder.com when we have your consent to do so.</li>
               <li><strong>For legal reasons:</strong> We will share personal information if we have a good-faith belief that access, use, preservation or disclosure of the information is reasonably necessary to meet any applicable law, regulation, legal process or enforceable governmental request.</li>
             </ul>
           </section>
@@ -84,7 +84,7 @@ export default function PrivacyPolicy() {
           <section className={styles.section}>
             <h2>9. Contact Us</h2>
             <p>
-              If you have any questions about this Privacy Policy, please contact us at support@editerlor.com.
+              If you have any questions about this Privacy Policy, please contact us at support@SFXFolder.com.com.
             </p>
           </section>
       </div>

@@ -9,11 +9,11 @@ import { SiteProvider } from "@/app/context/SiteContext";
 import { AuthProvider } from "@/app/lib/auth-context";
 
 export const metadata = {
-  title: "EditerLor — Free Resources for Video Editors",
+  title: "SFXFolder.com — Free Resources for Video Editors",
   description:
     "Download free sound effects, music, video memes, green screens, animations, overlays, fonts, and presets for your video editing projects.",
   openGraph: {
-    title: "EditerLor — Free Resources for Video Editors",
+    title: "SFXFolder.com — Free Resources for Video Editors",
     description:
       "Download free sound effects, music, video memes, green screens, animations, overlays, fonts, and presets.",
     type: "website",

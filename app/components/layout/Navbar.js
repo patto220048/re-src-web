@@ -86,7 +86,7 @@ export default function Navbar() {
             onClick={(e) => handleLinkClick(e, "/")}
           >
             <span className={styles.logoText}>
-              {settings?.site_name || "EditerLor"}
+              {settings?.site_name || "SFXFolder.com"}
             </span>
           </Link>
 

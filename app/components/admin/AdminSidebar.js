@@ -39,7 +39,7 @@ export default function AdminSidebar() {
     <aside className={styles.sidebar}>
       <div className={styles.brand}>
         <Link href="/admin/dashboard" className={styles.logo}>
-          EditerLor
+          SFXFolder.com
         </Link>
         <span className={styles.badge}>Admin</span>
       </div>
