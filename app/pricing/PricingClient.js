@@ -5,6 +5,7 @@ import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import { useTheme } from "next-themes";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Check, Crown, ExternalLink } from "lucide-react";
+import Link from "next/link";
 import toast from "react-hot-toast";
 import styles from "./page.module.css";
 import { useAuth } from "@/app/lib/auth-context";
@@ -118,13 +119,13 @@ export default function PricingClient({ config }) {
             <Crown size={20} />
             <span>You are currently a Premium member. Thank you for your support!</span>
           </div>
-          <a 
+          <Link 
             href="/account/subscription" 
             className={styles.statusLink}
             style={{ backgroundColor: '#facb11', color: '#000', fontWeight: '900' }}
           >
             Manage Subscription <ExternalLink size={14} />
-          </a>
+          </Link>
         </div>
       )}
 
@@ -162,13 +163,13 @@ export default function PricingClient({ config }) {
               ) : isMonthlyActive ? (
                 <div className={styles.activePlanContainer}>
                   <div className={styles.activeText}>Active via Monthly Billing</div>
-                  <a 
+                  <Link 
                     href="/account/subscription" 
                     className={styles.manageLink}
                     style={{ borderColor: '#facb11', color: '#facb11', borderStyle: 'solid', borderWidth: '1px' }}
                   >
                     Manage Subscription
-                  </a>
+                  </Link>
                 </div>
               ) : (
                 <PayPalButtons
@@ -215,13 +216,13 @@ export default function PricingClient({ config }) {
               ) : isYearlyActive ? (
                 <div className={styles.activePlanContainer}>
                   <div className={styles.activeText}>Active via Yearly Billing</div>
-                  <a 
+                  <Link 
                     href="/account/subscription" 
                     className={styles.manageLink}
                     style={{ borderColor: '#facb11', color: '#facb11', borderStyle: 'solid', borderWidth: '1px' }}
                   >
                     Manage Subscription
-                  </a>
+                  </Link>
                 </div>
               ) : isMonthlyActive ? (
                 <button onClick={openUpgrade} className={styles.upgradeBtn}>Upgrade to Yearly</button>

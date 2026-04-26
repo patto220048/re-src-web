@@ -13,7 +13,7 @@ export default function TermsOfService() {
           <section className={styles.section}>
             <h2>1. Agreement to Terms</h2>
             <p>
-              By accessing or using SFXFolder.com (the "Service"), you agree to be bound by these Terms of Service. If you disagree with any part of the terms, you may not access the service.
+              By accessing or using SFXFolder.com (the &quot;Service&quot;), you agree to be bound by these Terms of Service. If you disagree with any part of the terms, you may not access the service.
             </p>
           </section>
 

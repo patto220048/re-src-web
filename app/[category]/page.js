@@ -91,7 +91,7 @@ export default async function CategoryPage({ params, searchParams }) {
   const folderTree = buildFolderTree(flatFolders);
 
   return (
-    <Suspense>
+    <Suspense fallback={<div>Loading category...</div>}>
       <ClientPage 
         slug={slug} 
         info={info} 
