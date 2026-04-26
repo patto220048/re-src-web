@@ -3,6 +3,7 @@
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { Download as DownloadCount, Play, Eye, Volume2, VolumeX } from "lucide-react";
 import DownloadButton from "./DownloadButton";
 import { mediaManager } from "@/app/lib/mediaManager";
@@ -31,6 +32,7 @@ export default function ResourceCard({
   cardType = "default",
   index = 0,
   onPreview,
+  detailUrl,
   primaryColor = "#FFFFFF",
   ...otherProps
 }) {
@@ -155,42 +157,10 @@ export default function ResourceCard({
 
   const handleMouseEnter = () => {
     setIsHovering(true);
-    // Sync with global volume settings
-    setIsMuted(mediaManager.getMuted());
-    setVolume(mediaManager.getVolume());
-
-    if (effectiveCardType === "video" && videoRef.current) {
-      mediaManager.play(videoRef.current, 'video', () => {
-        setVideoProgress(0);
-      });
-      const p = videoRef.current.play();
-      if (p !== undefined) {
-        p.then(() => {
-          rafRef.current = requestAnimationFrame(updateVideoProgress);
-        }).catch((err) => {
-          // If unmuted autoplay is blocked, fallback to muted
-          if (err.name === "NotAllowedError" && videoRef.current) {
-            videoRef.current.muted = true;
-            videoRef.current.play().catch(() => {});
-          }
-          // Suppress noise in console
-          if (err.name !== "AbortError" && err.name !== "NotAllowedError") {
-            console.error("Playback failed:", err);
-          }
-        });
-      }
-    }
   };
 
   const handleMouseLeave = () => {
     setIsHovering(false);
-    if (effectiveCardType === "video" && videoRef.current) {
-      videoRef.current.pause();
-      videoRef.current.currentTime = 0;
-      mediaManager.stop(videoRef.current);
-      setVideoProgress(0);
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    }
   };
 
   const renderPreview = () => {
@@ -426,6 +396,11 @@ export default function ResourceCard({
       </div>
 
       <div className={styles.actions}>
+        {detailUrl && (
+          <Link href={detailUrl} className={styles.detailBtn} title="View details">
+            <Eye size={16} />
+          </Link>
+        )}
         <DownloadButton downloadUrl={resolvedUrl} fileName={name} fileFormat={fileFormat} resourceId={id} />
       </div>
     </div>

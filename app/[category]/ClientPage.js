@@ -511,7 +511,7 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
               {...resource}
               downloadUrl={resource.downloadUrl || resource.fileUrl}
               index={globalIdx++ % PAGE_SIZE_DISPLAY}
-              onPreview={() => setPreviewResource(resource)}
+              onPreview={() => resource.slug ? router.push(`/${slug}/${resource.slug}`) : setPreviewResource(resource)}
               primaryColor={info.color}
             />
           );
@@ -531,6 +531,7 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
               }
               index={globalIdx++ % PAGE_SIZE_DISPLAY}
               onPreview={() => setPreviewResource(resource)}
+              detailUrl={resource.slug ? `/${slug}/${resource.slug}` : null}
               primaryColor={info.color}
             />
           );

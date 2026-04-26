@@ -309,6 +309,30 @@
 /* ---------- Actions ---------- */
 .actions {
   padding: 0 var(--space-4) var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.detailBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border-default);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  text-decoration: none;
+}
+
+.detailBtn:hover {
+  border-color: var(--cat-color, var(--text-primary));
+  color: var(--cat-color, var(--text-primary));
+  background: rgba(255, 255, 255, 0.03);
 }
 
 @keyframes fadeInUp {
