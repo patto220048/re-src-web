@@ -13,14 +13,14 @@ export default function TermsOfService() {
           <section className={styles.section}>
             <h2>1. Agreement to Terms</h2>
             <p>
-              By accessing or using EditerLor (the "Service"), you agree to be bound by these Terms of Service. If you disagree with any part of the terms, you may not access the service.
+              By accessing or using SFXFolder.com (the "Service"), you agree to be bound by these Terms of Service. If you disagree with any part of the terms, you may not access the service.
             </p>
           </section>
 
           <section className={styles.section}>
             <h2>2. License and Use of Resources</h2>
             <p>
-              All resources provided on EditerLor (overlays, sound effects, transitions, templates, etc.) are provided with a specific license. Unless otherwise stated:
+              All resources provided on SFXFolder.com (overlays, sound effects, transitions, templates, etc.) are provided with a specific license. Unless otherwise stated:
             </p>
             <ul>
               <li>You may use these resources in both personal and commercial video projects.</li>
@@ -39,7 +39,7 @@ export default function TermsOfService() {
           <section className={styles.section}>
             <h2>4. Intellectual Property</h2>
             <p>
-              The Service and its original content (excluding user-provided content), features, and functionality are and will remain the exclusive property of EditerLor and its licensors. Our trademarks and trade dress may not be used in connection with any product or service without our prior written consent.
+              The Service and its original content (excluding user-provided content), features, and functionality are and will remain the exclusive property of SFXFolder.com and its licensors. Our trademarks and trade dress may not be used in connection with any product or service without our prior written consent.
             </p>
           </section>
 
@@ -53,7 +53,7 @@ export default function TermsOfService() {
           <section className={styles.section}>
             <h2>6. Limitation of Liability</h2>
             <p>
-              In no event shall EditerLor, nor its directors, employees, partners, agents, suppliers, or affiliates, be liable for any indirect, incidental, special, consequential, or punitive damages, including without limitation, loss of profits, data, use, goodwill, or other intangible losses, resulting from your access to or use of or inability to access or use the Service.
+              In no event shall SFXFolder.com, nor its directors, employees, partners, agents, suppliers, or affiliates, be liable for any indirect, incidental, special, consequential, or punitive damages, including without limitation, loss of profits, data, use, goodwill, or other intangible losses, resulting from your access to or use of or inability to access or use the Service.
             </p>
           </section>
 
@@ -80,7 +80,7 @@ export default function TermsOfService() {
           <section className={styles.section}>
             <h2>9. Contact Us</h2>
             <p>
-              If you have any questions about these Terms, please contact us at support@editerlor.com.
+              If you have any questions about these Terms, please contact us at support@SFXFolder.com.com.
             </p>
           </section>
       </div>

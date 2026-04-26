@@ -48,7 +48,7 @@ export default function AdminLogin() {
       <form className={styles.form} onSubmit={handleLogin}>
         <div className={styles.header}>
           <h1 className={styles.title}>Admin Login</h1>
-          <p className={styles.subtitle}>EditerLor Management</p>
+          <p className={styles.subtitle}>SFXFolder.com Management</p>
         </div>
 
         {error && (
@@ -64,7 +64,7 @@ export default function AdminLogin() {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            placeholder="admin@editerlor.com"
+            placeholder="admin@SFXFolder.com.com"
             className={styles.input}
             required
             id="admin-email"

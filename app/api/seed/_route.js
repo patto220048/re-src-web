@@ -103,7 +103,7 @@ async function runSeed() {
 
     // Seed settings
     await setDoc(doc(db, "settings", "general"), {
-      siteName: "EditerLor",
+      siteName: "SFXFolder.com",
       tagline: "Free Resources for Video Editors",
       seoDescription: "Download free sound effects, music, video memes, green screens, animations, overlays, fonts, and presets.",
       contactEmail: "",

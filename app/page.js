@@ -27,7 +27,7 @@ export default async function Home() {
       <section className={styles.hero} id="hero-section">
         <div className={styles.heroGlow} />
         <h1 className={styles.title}>
-          EditerLor
+          SFXFolder.com
         </h1>
         <p className={styles.subtitle}>
           Digital Assets for Video Editors

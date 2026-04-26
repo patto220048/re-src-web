@@ -19,21 +19,21 @@ const listeners = new Set();
 if (typeof window !== 'undefined') {
   // Legacy migration and loading
   ['video', 'audio'].forEach(type => {
-    const savedVol = localStorage.getItem(`editerlor_${type}_volume`);
+    const savedVol = localStorage.getItem(`SFXFolder.com_${type}_volume`);
     if (savedVol !== null) {
       settings[type].volume = parseFloat(savedVol);
     } else if (type === 'video') {
       // Fallback for legacy global volume
-      const legacyVol = localStorage.getItem('editerlor_volume');
+      const legacyVol = localStorage.getItem('SFXFolder.com_volume');
       if (legacyVol !== null) settings.video.volume = parseFloat(legacyVol);
     }
 
-    const savedMuted = localStorage.getItem(`editerlor_${type}_muted`);
+    const savedMuted = localStorage.getItem(`SFXFolder.com_${type}_muted`);
     if (savedMuted !== null) {
       settings[type].muted = savedMuted === 'true';
     } else if (type === 'video') {
       // Fallback for legacy global muted
-      const legacyMuted = localStorage.getItem('editerlor_muted');
+      const legacyMuted = localStorage.getItem('SFXFolder.com_muted');
       if (legacyMuted !== null) settings.video.muted = legacyMuted === 'true';
     }
   });
@@ -130,7 +130,7 @@ export const mediaManager = {
     settings[type].volume = Math.max(0, Math.min(1, val));
     
     if (typeof window !== 'undefined') {
-      localStorage.setItem(`editerlor_${type}_volume`, settings[type].volume);
+      localStorage.setItem(`SFXFolder.com_${type}_volume`, settings[type].volume);
     }
     
     // Update active media instantly if types match
@@ -150,7 +150,7 @@ export const mediaManager = {
     settings[type].muted = val;
     
     if (typeof window !== 'undefined') {
-      localStorage.setItem(`editerlor_${type}_muted`, settings[type].muted);
+      localStorage.setItem(`SFXFolder.com_${type}_muted`, settings[type].muted);
     }
     
     // Update active media instantly if types match

@@ -1089,7 +1089,7 @@ export const getSiteSettings = unstable_cache(
     if (error) {
       console.warn('Cannot fetch site settings, using defaults:', error);
       return {
-        site_name: 'EditerLor',
+        site_name: 'SFXFolder.com',
         tagline: 'Free Resources for Video Editors',
         project_version: 'v 0.1.16.4',
         status_text: 'System Online'
