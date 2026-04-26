@@ -1043,7 +1043,7 @@ function AdminResourcesContent() {
 
 export default function AdminResources() {
   return (
-    <Suspense>
+    <Suspense fallback={<div>Loading resources...</div>}>
       <AdminResourcesContent />
     </Suspense>
   );

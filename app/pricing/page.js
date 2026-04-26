@@ -32,7 +32,7 @@ export default async function PricingPage() {
   };
 
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<div>Loading...</div>}>
       <PricingClient config={config || defaultConfig} />
     </Suspense>
   );
