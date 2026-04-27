@@ -24,20 +24,45 @@ export default async function SubscriptionPage() {
     .single();
 
   // Fetch the plan label from cached config
-  const config = await getPaypalConfig();
-  const activeParams = config?.env === "live" ? config?.live : config?.sandbox;
+  const configData = await getPaypalConfig();
+  
+  // Use environment variables for Plan IDs to ensure consistency with pricing page
+  const finalConfig = {
+    env: process.env.PAYPAL_MODE || configData?.env || 'sandbox',
+    sandbox: {
+      monthly_plan_id: process.env.PAYPAL_MONTHLY_PLAN_ID || configData?.sandbox?.monthly_plan_id,
+      yearly_plan_id: process.env.PAYPAL_YEARLY_PLAN_ID || configData?.sandbox?.yearly_plan_id,
+      monthly_price: configData?.sandbox?.monthly_price || "1.80",
+      yearly_price: configData?.sandbox?.yearly_price || "18.00"
+    },
+    live: {
+      monthly_plan_id: process.env.PAYPAL_MONTHLY_PLAN_ID || configData?.live?.monthly_plan_id,
+      yearly_plan_id: process.env.PAYPAL_YEARLY_PLAN_ID || configData?.live?.yearly_plan_id,
+      monthly_price: configData?.live?.monthly_price || "1.80",
+      yearly_price: configData?.live?.yearly_price || "18.00"
+    }
+  };
+
+  const activeParams = finalConfig.env === "live" ? finalConfig.live : finalConfig.sandbox;
 
   // Map plan_id to a human-readable label
   let planLabel = "Premium";
-  if (subscription?.plan_id) {
-    if (subscription.plan_id === activeParams?.monthly_plan_id) {
-      planLabel = `Monthly — $${activeParams?.monthly_price}/mo`;
-    } else if (subscription.plan_id === activeParams?.yearly_plan_id) {
-      planLabel = `Yearly — $${activeParams?.yearly_price}/yr`;
+  const subPlanId = subscription?.plan_id;
+  const monthlyId = activeParams?.monthly_plan_id;
+  const yearlyId = activeParams?.yearly_plan_id;
+
+  if (subPlanId) {
+    if (subPlanId === monthlyId) {
+      planLabel = `Premium Monthly — $${activeParams?.monthly_price}/mo`;
+    } else if (subPlanId === yearlyId) {
+      planLabel = `Premium Yearly — $${activeParams?.yearly_price}/yr`;
+    } else {
+      planLabel = "Premium (Legacy Plan)";
     }
   }
 
-  const isMonthly = subscription?.plan_id === activeParams?.monthly_plan_id;
+  const isMonthly = subPlanId === monthlyId || (subPlanId && subPlanId !== yearlyId);
+  const isYearly = subPlanId === yearlyId;
 
   return (
     <SubscriptionClient
@@ -45,6 +70,7 @@ export default async function SubscriptionPage() {
       planLabel={planLabel}
       userEmail={user.email}
       isMonthly={isMonthly}
+      isYearly={isYearly}
     />
   );
 }

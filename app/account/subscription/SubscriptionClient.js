@@ -43,7 +43,7 @@ function StatusBadge({ status, isExpiredByTime }) {
   );
 }
 
-export default function SubscriptionClient({ subscription, planLabel, userEmail, isMonthly }) {
+export default function SubscriptionClient({ subscription, planLabel, userEmail, isMonthly, isYearly }) {
   const router = useRouter();
   const [toggling, setToggling] = useState(false);
 
@@ -102,13 +102,16 @@ export default function SubscriptionClient({ subscription, planLabel, userEmail,
           <div className={styles.row}>
             <span className={styles.label}>Plan</span>
             <div className={styles.planValueWrapper}>
-              <span className={styles.value}>{planLabel}</span>
+              <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+                <span className={styles.value}>{planLabel}</span>
+                {isYearly && <span className={styles.yearlyBadge}>Yearly</span>}
+              </div>
               {isMonthly && isActive && (
                 <button 
                   className={styles.miniUpgradeBtn}
                   onClick={() => router.push("/pricing?upgrade=true")}
                 >
-                  Upgrade to Yearly
+                  Upgrade to Yearly — Save 20%
                 </button>
               )}
             </div>
