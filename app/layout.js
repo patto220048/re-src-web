@@ -35,6 +35,13 @@ export const metadata = {
     "free sfx for youtube",
     "download sfx free",
   ],
+  icons: {
+    icon: [
+      { url: "/favicon.png?v=2" },
+    ],
+    apple: "/favicon.png?v=2",
+  },
+  manifest: "/site.webmanifest",
   openGraph: {
     title: "SFXFolder — Free Sound Effects, Music & Assets for Video Editors",
     description:
@@ -100,13 +107,17 @@ export default async function RootLayout({ children }) {
     "@type": "Organization",
     name: "SFXFolder",
     url: SITE_URL,
-    logo: `${SITE_URL}/favicon.ico`,
+    logo: `${SITE_URL}/favicon.png?v=2`,
     sameAs: [],
   };
 
   return (
     <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
+        <link rel="icon" href="/favicon.ico?v=2" sizes="any" />
+        <link rel="icon" href="/favicon.png?v=2" type="image/png" />
+        <link rel="apple-touch-icon" href="/favicon.png?v=2" />
+        <link rel="manifest" href="/site.webmanifest" />
         <script
           id="schema-website"
           type="application/ld+json"
