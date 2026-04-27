@@ -1,0 +1,11 @@
+project_id = "your-project-ref"
+
+[api]
+port = 54321
+external_url = "http://127.0.0.1:54321"
+
+[db]
+port = 54322
+
+[auth]
+site_url = "http://localhost:3000"
