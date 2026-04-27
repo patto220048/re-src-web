@@ -71,25 +71,36 @@ export async function POST(req) {
       return NextResponse.json({ error: "Subscription has already expired. Please resubscribe." }, { status: 400 });
     }
 
-    // 3. Fetch PayPal config
-    const { data: settings } = await supabase
-      .from("system_settings")
-      .select("setting_value")
-      .eq("setting_key", "paypal_config")
-      .single();
+    let isSandbox;
+    let clientId;
 
-    const isSandbox = settings?.setting_value?.env !== "live";
-    const activeParams = isSandbox
-      ? settings?.setting_value?.sandbox
-      : settings?.setting_value?.live;
+    // OVERRIDE FOR LOCAL TESTING: If PAYPAL_MODE=sandbox is set in .env, force it.
+    if (process.env.PAYPAL_MODE === "sandbox") {
+      isSandbox = true;
+      clientId = process.env.PAYPAL_CLIENT_ID;
+      console.log("[PayPal Toggle] Forced to SANDBOX mode via env variable.");
+    } else {
+      // 3. Fetch PayPal config from DB
+      const { data: settings } = await supabase
+        .from("system_settings")
+        .select("setting_value")
+        .eq("setting_key", "paypal_config")
+        .single();
 
-    const clientId = activeParams?.client_id || process.env.PAYPAL_CLIENT_ID;
+      isSandbox = settings?.setting_value?.env !== "live";
+      const activeParams = isSandbox
+        ? settings?.setting_value?.sandbox
+        : settings?.setting_value?.live;
+
+      clientId = activeParams?.client_id || process.env.PAYPAL_CLIENT_ID;
+    }
+
     const clientSecret = isSandbox
       ? process.env.PAYPAL_SECRET_SANDBOX
       : process.env.PAYPAL_SECRET_LIVE;
 
     if (!clientId || !clientSecret) {
-      return NextResponse.json({ error: "Missing PayPal credentials" }, { status: 500 });
+      return NextResponse.json({ error: "Missing PayPal credentials (check .env.local)" }, { status: 500 });
     }
 
     // 4. Get PayPal access token
