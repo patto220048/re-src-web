@@ -44,7 +44,7 @@ export async function POST(request) {
     // 3. User must have premium/admin role for ALL resources
     const { data: profile } = await supabase
       .from("profiles")
-      .select("role, subscription_status")
+      .select("role, subscription_status, subscription_expires_at")
       .eq("id", user.id)
       .single();
 

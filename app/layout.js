@@ -108,13 +108,17 @@ export default async function RootLayout({ children }) {
     <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
       <head>
         <script
+          id="schema-website"
           type="application/ld+json"
+          suppressHydrationWarning
           dangerouslySetInnerHTML={{
             __html: JSON.stringify(websiteSchema),
           }}
         />
         <script
+          id="schema-organization"
           type="application/ld+json"
+          suppressHydrationWarning
           dangerouslySetInnerHTML={{
             __html: JSON.stringify(organizationSchema),
           }}
