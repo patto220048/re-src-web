@@ -6,8 +6,62 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+async function getPayPalAccessToken(clientId: string, secret: string, mode: string) {
+  const auth = btoa(`${clientId}:${secret}`)
+  const url = mode === 'live' 
+    ? 'https://api-m.paypal.com/v1/oauth2/token' 
+    : 'https://api-m.sandbox.paypal.com/v1/oauth2/token'
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Basic ${auth}`,
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: 'grant_type=client_credentials',
+  })
+
+  const data = await response.json()
+  return data.access_token
+}
+
+async function verifyPayPalSignature(req: Request, body: any, accessToken: string) {
+  const mode = Deno.env.get('PAYPAL_MODE') || 'sandbox'
+  const webhookId = Deno.env.get('PAYPAL_WEBHOOK_ID')
+  
+  if (!webhookId) {
+    console.error("PAYPAL_WEBHOOK_ID is not set. Skipping validation (NOT RECOMMENDED FOR PROD)")
+    return true // Fallback for dev if not set
+  }
+
+  const url = mode === 'live'
+    ? 'https://api-m.paypal.com/v1/notifications/verify-webhook-signature'
+    : 'https://api-m.sandbox.paypal.com/v1/notifications/verify-webhook-signature'
+
+  const verificationBody = {
+    auth_algo: req.headers.get('paypal-auth-algo'),
+    cert_url: req.headers.get('paypal-cert-url'),
+    transmission_id: req.headers.get('paypal-transmission-id'),
+    transmission_sig: req.headers.get('paypal-transmission-sig'),
+    transmission_time: req.headers.get('paypal-transmission-time'),
+    webhook_id: webhookId,
+    webhook_event: body,
+  }
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(verificationBody),
+  })
+
+  const data = await response.json()
+  return data.verification_status === 'SUCCESS'
+}
+
 serve(async (req) => {
-  // Handle CORS
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
   }
@@ -17,22 +71,32 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
+    const clientId = Deno.env.get('PAYPAL_CLIENT_ID') ?? ''
+    const secret = Deno.env.get('PAYPAL_SECRET') ?? ''
+    const mode = Deno.env.get('PAYPAL_MODE') ?? 'sandbox'
+
     const body = await req.json()
     const eventType = body.event_type
     const resource = body.resource
 
-    console.log(`[PayPal Webhook] Received ${eventType} event`)
+    console.log(`[PayPal Webhook] Processing ${eventType} (${mode})`)
+
+    // VERIFICATION
+    const accessToken = await getPayPalAccessToken(clientId, secret, mode)
+    const isValid = await verifyPayPalSignature(req, body, accessToken)
+
+    if (!isValid) {
+      console.error("[PayPal Webhook] Signature verification FAILED")
+      return new Response(JSON.stringify({ error: "Invalid signature" }), { status: 401, headers: corsHeaders })
+    }
 
     if (!eventType || !resource || !resource.id) {
-      return new Response(JSON.stringify({ error: "Invalid payload" }), { 
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      })
+      return new Response(JSON.stringify({ error: "Invalid payload" }), { status: 400, headers: corsHeaders })
     }
 
     const subscriptionID = resource.id
 
-    // Fetch current subscription state to check auto_renew
+    // Fetch current state
     const { data: currentSub } = await supabase
       .from("subscriptions")
       .select("auto_renew, status")
@@ -40,59 +104,29 @@ serve(async (req) => {
       .single()
 
     if (eventType.startsWith("BILLING.SUBSCRIPTION.")) {
-      let status = resource.status // ACTIVE, CANCELLED, EXPIRED, SUSPENDED
+      let status = resource.status
       const nextBillingTime = resource.billing_info?.next_billing_time
 
-      // Defensive check for renewed event on cancelled sub
       if (eventType === "BILLING.SUBSCRIPTION.RENEWED" && currentSub?.auto_renew === false) {
-        console.warn(`[PayPal Webhook] Received RENEW for a cancelled sub ${subscriptionID}. Keeping status as CANCELLED.`)
         status = "CANCELLED"
       }
 
-      const subUpdateData: any = {
-        status: status,
-        updated_at: new Date().toISOString()
-      }
-      
-      if (nextBillingTime) {
-        subUpdateData.current_period_end = nextBillingTime
-      }
+      const updateData: any = { status, updated_at: new Date().toISOString() }
+      if (nextBillingTime) updateData.current_period_end = nextBillingTime
 
-      await supabase
-        .from("subscriptions")
-        .update(subUpdateData)
-        .eq("paypal_subscription_id", subscriptionID)
-
-      // Sync with profiles table
-      const profileUpdateData: any = {
+      await supabase.from("subscriptions").update(updateData).eq("paypal_subscription_id", subscriptionID)
+      await supabase.from("profiles").update({ 
         subscription_status: status.toLowerCase(),
-      }
+        subscription_expires_at: nextBillingTime 
+      }).eq("subscription_id", subscriptionID)
 
-      if (nextBillingTime) {
-        profileUpdateData.subscription_expires_at = nextBillingTime
-      }
-
-      await supabase
-        .from("profiles")
-        .update(profileUpdateData)
-        .eq("subscription_id", subscriptionID)
-
-      return new Response(JSON.stringify({ success: true, updatedStatus: status }), {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200
-      })
+      return new Response(JSON.stringify({ success: true, status }), { headers: corsHeaders })
     }
 
-    return new Response(JSON.stringify({ success: true, ignored: true }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 200
-    })
+    return new Response(JSON.stringify({ success: true, ignored: true }), { headers: corsHeaders })
 
   } catch (err) {
-    console.error("[PayPal Webhook] Processing Error:", err)
-    return new Response(JSON.stringify({ error: err.message }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 500
-    })
+    console.error("[PayPal Webhook] Error:", err)
+    return new Response(JSON.stringify({ error: err.message }), { status: 500, headers: corsHeaders })
   }
 })
