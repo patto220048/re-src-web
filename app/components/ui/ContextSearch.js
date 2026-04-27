@@ -144,6 +144,8 @@ export default function ContextSearch() {
     const handleContextMenu = (e) => {
       if (
         window.location.pathname.startsWith("/admin") ||
+        window.location.pathname === "/terms" ||
+        window.location.pathname === "/privacy" ||
         e.target.tagName === "INPUT" ||
         e.target.tagName === "TEXTAREA"
       ) {

@@ -6,9 +6,12 @@ import styles from './privacy.module.css';
 export default function PrivacyPolicy() {
   return (
     <div className={styles.container}>
+      <div className={styles.heroGlow} />
       <div className={styles.content}>
+        <div className={styles.header}>
           <h1 className={styles.title}>Privacy Policy</h1>
-          <p className={styles.lastUpdated}>Last Updated: April 16, 2026</p>
+          <p className={styles.lastUpdated}>Last Updated: April 28, 2026</p>
+        </div>
 
           <section className={styles.section}>
             <h2>1. Information We Collect</h2>
@@ -84,7 +87,7 @@ export default function PrivacyPolicy() {
           <section className={styles.section}>
             <h2>9. Contact Us</h2>
             <p>
-              If you have any questions about this Privacy Policy, please contact us at support@SFXFolder.com.com.
+              If you have any questions about this Privacy Policy, please contact us at <strong>support@sfxfolder.com</strong>.
             </p>
           </section>
       </div>
