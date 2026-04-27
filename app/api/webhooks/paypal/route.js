@@ -34,9 +34,24 @@ export async function POST(req) {
 
     console.log(`[PayPal Webhook] Received ${eventType} for Subscription ${subscriptionID}`);
 
+    // Fetch current subscription state to check auto_renew
+    const { data: currentSub } = await supabase
+      .from("subscriptions")
+      .select("auto_renew, status")
+      .eq("paypal_subscription_id", subscriptionID)
+      .single();
+
     if (eventType.startsWith("BILLING.SUBSCRIPTION.")) {
-      const status = resource.status; // ACTIVE, CANCELLED, EXPIRED, SUSPENDED
+      let status = resource.status; // ACTIVE, CANCELLED, EXPIRED, SUSPENDED
       const nextBillingTime = resource.billing_info?.next_billing_time;
+
+      // DEFENSIVE CHECK: If our DB says auto_renew is OFF (status was cancelled), 
+      // but we get a RENEWED event from PayPal, we update the time but keep status as CANCELLED.
+      // This ensures the UI doesn't suddenly show "Auto-renew: ON" again.
+      if (eventType === "BILLING.SUBSCRIPTION.RENEWED" && currentSub?.auto_renew === false) {
+        console.warn(`[PayPal Webhook] Received RENEW for a cancelled sub ${subscriptionID}. Keeping status as CANCELLED.`);
+        status = "CANCELLED";
+      }
 
       const subUpdateData = {
         status: status,
