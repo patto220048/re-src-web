@@ -31,9 +31,24 @@ export default async function PricingPage() {
     }
   };
 
+  let finalConfig = config || defaultConfig;
+
+  // OVERRIDE FOR LOCAL TESTING: If PAYPAL_MODE=sandbox is set in .env, force it.
+  if (process.env.PAYPAL_MODE === "sandbox") {
+    console.log("[Pricing] Overriding PayPal config to SANDBOX mode via env variable.");
+    finalConfig = {
+      ...finalConfig,
+      env: "sandbox",
+      sandbox: {
+        ...finalConfig.sandbox,
+        client_id: process.env.PAYPAL_CLIENT_ID || process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID || finalConfig.sandbox?.client_id
+      }
+    };
+  }
+
   return (
     <Suspense fallback={<div>Loading...</div>}>
-      <PricingClient config={config || defaultConfig} />
+      <PricingClient config={finalConfig} />
     </Suspense>
   );
 }

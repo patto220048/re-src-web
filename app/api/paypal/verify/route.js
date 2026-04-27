@@ -63,11 +63,16 @@ export async function POST(req) {
     let isSandbox;
     let clientId;
 
-    if (settingsError || !settings) {
+    // OVERRIDE FOR LOCAL TESTING: If PAYPAL_MODE=sandbox is set in .env, force it.
+    if (process.env.PAYPAL_MODE === "sandbox") {
+      isSandbox = true;
+      clientId = process.env.PAYPAL_CLIENT_ID;
+      console.log("[PayPal Verify] Forced to SANDBOX mode via env variable.");
+    } else if (settingsError || !settings) {
       // Fallback: use env variables if DB table not yet set up
       console.warn("[PayPal Verify] system_settings table missing, falling back to env vars.");
       isSandbox = process.env.PAYPAL_MODE !== "live";
-      clientId = null; // will be derived from secret logic only
+      clientId = process.env.PAYPAL_CLIENT_ID;
     } else {
       const config = settings.setting_value;
       isSandbox = config.env === "sandbox";
