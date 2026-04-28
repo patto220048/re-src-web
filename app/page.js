@@ -27,8 +27,8 @@ export default async function Home() {
   const webPageSchema = {
     "@context": "https://schema.org",
     "@type": "WebPage",
-    name: "SFXFolder — Free Sound Effects, Music & Assets for Video Editors",
-    description: "Download free sound effects, royalty-free music, video memes, green screens, animations, overlays, fonts, and presets for video editing.",
+    name: "SFXFolder — My Personal Folder of Free Resources for Video Editors",
+    description: "Expert-curated collection of free sound effects, royalty-free music, video memes, green screens, animations, overlays, fonts, and presets for video editing based on professional experience.",
     url: SITE_URL,
     isPartOf: {
       "@type": "WebSite",
@@ -73,14 +73,14 @@ export default async function Home() {
       <section className={styles.hero} id="hero-section">
         <div className={styles.heroGlow} />
         <h1 className={styles.title}>
-          My Personal Resource Folder for Video Editors
+          My Personal Folder of Free Resources for Video Editors
         </h1>
         <p className={styles.subtitle}>
           SFXFolder.com — A Curation of Assets Based on Professional Experience
         </p>
         <p className={styles.description}>
-          This isn&apos;t just another asset library. It&apos;s my personal collection of pro-grade sound effects, music, and tools that I&apos;ve hand-picked and used throughout my editing career. 
-          Download my curated SFX instantly — no copyright issues.
+          This isn&apos;t just another library. It&apos;s my personal collection of <strong>free</strong> pro-grade sound effects, music, and tools that I&apos;ve hand-picked and used throughout my editing career. 
+          Download my curated assets instantly — 100% free with no copyright issues.
         </p>
         <div className={styles.searchWrap}>
           <SearchBar size="large" placeholder="Search free sound effects, music, presets..." />

@@ -16,11 +16,11 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://sfxfolder.com';
 export const metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
-    default: "SFXFolder — Free Sound Effects, Music & Assets for Video Editors",
+    default: "SFXFolder — My Personal Folder of Free Resources for Video Editors",
     template: "%s | SFXFolder",
   },
   description:
-    "Download free sound effects, royalty-free music, video memes, green screens, animations, overlays, fonts, and presets. High-quality SFX and assets for YouTube, TikTok, and professional video editing.",
+    "Expert-curated collection of free sound effects, royalty-free music, video memes, green screens, animations, overlays, fonts, and presets based on professional experience.",
   keywords: [
     "free sound effects",
     "sfx free",
@@ -43,9 +43,9 @@ export const metadata = {
   },
   manifest: "/site.webmanifest",
   openGraph: {
-    title: "SFXFolder — Free Sound Effects, Music & Assets for Video Editors",
+    title: "SFXFolder — My Personal Folder of Free Resources",
     description:
-      "Download free sound effects, royalty-free music, video memes, green screens, animations, overlays, fonts, and presets for your video editing projects.",
+      "Expert-curated collection of free sound effects, music, and assets for video editing based on professional experience.",
     type: "website",
     url: SITE_URL,
     siteName: "SFXFolder",
@@ -53,9 +53,9 @@ export const metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "SFXFolder — Free SFX, Music & Assets",
+    title: "SFXFolder — My Personal Folder of Free Resources",
     description:
-      "High-quality free sound effects, music, and video editing assets. Download instantly, no copyright issues.",
+      "Expert-curated free sound effects, music, and video editing assets. Hand-picked based on professional experience.",
   },
   alternates: {
     canonical: SITE_URL,
