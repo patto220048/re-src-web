@@ -13,6 +13,8 @@ export default function ContactPage() {
   const turnstileRef = useRef(null);
 
   useEffect(() => {
+    let widgetId = null;
+
     // Define the global callback for Turnstile
     window.onTurnstileSuccess = (token) => {
       const event = new CustomEvent('turnstile-token', { detail: token });
@@ -22,15 +24,36 @@ export default function ContactPage() {
     const handleToken = (e) => {
       setTurnstileToken(e.detail);
     };
+
     window.addEventListener('turnstile-token', handleToken);
     
-    return () => {
-      window.removeEventListener('turnstile-token', handleToken);
+    // Manual render if turnstile is already loaded
+    const renderWidget = () => {
+      if (window.turnstile && turnstileRef.current) {
+        widgetId = window.turnstile.render(turnstileRef.current, {
+          sitekey: '0x4AAAAAADE0L-TzAgbapf_f', // Site Key
+          callback: 'onTurnstileSuccess',
+          theme: 'dark',
+        });
+      }
+    };
+
+    // Check every 100ms if turnstile is loaded, then render
+    const checkInterval = setInterval(() => {
       if (window.turnstile) {
+        renderWidget();
+        clearInterval(checkInterval);
+      }
+    }, 100);
+    
+    return () => {
+      clearInterval(checkInterval);
+      window.removeEventListener('turnstile-token', handleToken);
+      if (window.turnstile && widgetId) {
         try {
-          window.turnstile.remove();
+          window.turnstile.remove(widgetId);
         } catch (err) {
-          console.warn('Turnstile cleanup error:', err);
+          // Ignore cleanup errors
         }
       }
       delete window.onTurnstileSuccess;
@@ -39,7 +62,7 @@ export default function ContactPage() {
 
   // Function called when turnstile expires or errors
   const resetTurnstile = () => {
-    if (window.turnstile) {
+    if (window.turnstile && turnstileRef.current) {
       window.turnstile.reset(turnstileRef.current);
     }
   };
@@ -138,13 +161,7 @@ export default function ContactPage() {
 
               {/* Turnstile Widget */}
               <div className={styles.captchaContainer}>
-                <div 
-                  ref={turnstileRef}
-                  className="cf-turnstile" 
-                  data-sitekey="0x4AAAAAADE0L-TzAgbapf_f" // Site Key
-                  data-callback="onTurnstileSuccess"
-                  data-theme="dark"
-                />
+                <div ref={turnstileRef} />
               </div>
 
               <button 
