@@ -16,13 +16,13 @@
 .modal {
   position: relative;
   width: 100%;
-  max-width: 420px;
+  max-width: 480px;
   margin: var(--space-4);
   background: var(--bg-card);
   border: 1px solid var(--border-active);
   border-radius: var(--radius-sm);
-  padding: var(--space-8);
-  box-shadow: 12px 12px 0px rgba(0, 0, 0, 0.5);
+  padding: var(--space-8) var(--space-10);
+  box-shadow: var(--shadow-neo);
   animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -337,6 +337,36 @@
 
 .toggle button:hover {
   text-decoration: underline;
+}
+
+.legalDisclaimer {
+  margin-top: var(--space-4);
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+@media (max-width: 480px) {
+  .legalDisclaimer {
+    white-space: normal;
+  }
+  
+  .modal {
+    padding: var(--space-8) var(--space-6);
+  }
+}
+
+.legalDisclaimer a {
+  color: var(--text-primary);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.legalDisclaimer a:hover {
+  opacity: 0.8;
 }
 
 /* ─── Animations ─── */

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/app/lib/auth-context";
+import Link from "next/link";
 import {
   X,
   Mail,
@@ -434,6 +435,12 @@ export default function AuthModal({ isOpen, onClose, config }) {
                 </button>
               </form>
             )}
+
+            <div className={styles.legalDisclaimer}>
+              By continuing, you agree to our{" "}
+              <Link href="/terms" onClick={onClose}>Terms of Service</Link> and{" "}
+              <Link href="/privacy" onClick={onClose}>Privacy Policy</Link>.
+            </div>
 
             {/* Mode Toggle */}
             {mode !== "forgot" && (
