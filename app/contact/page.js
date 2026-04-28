@@ -15,30 +15,31 @@ export default function ContactPage() {
   useEffect(() => {
     let widgetId = null;
 
-    // Define the global callback for Turnstile
-    window.onTurnstileSuccess = (token) => {
-      const event = new CustomEvent('turnstile-token', { detail: token });
-      window.dispatchEvent(event);
-    };
-
-    const handleToken = (e) => {
-      setTurnstileToken(e.detail);
-    };
-
-    window.addEventListener('turnstile-token', handleToken);
-    
-    // Manual render if turnstile is already loaded
     const renderWidget = () => {
-      if (window.turnstile && turnstileRef.current) {
-        widgetId = window.turnstile.render(turnstileRef.current, {
-          sitekey: '0x4AAAAAADE0L-TzAgbapf_f', // Site Key
-          callback: 'onTurnstileSuccess',
-          theme: 'dark',
-        });
+      if (window.turnstile && turnstileRef.current && !widgetId) {
+        console.log('Attempting to render Turnstile...');
+        try {
+          widgetId = window.turnstile.render(turnstileRef.current, {
+            sitekey: '0x4AAAAAADE0L-TzAgbapf_f',
+            callback: (token) => {
+              console.log('Turnstile: Verification successful');
+              setTurnstileToken(token);
+            },
+            'error-callback': (err) => {
+              console.error('Turnstile: Error', err);
+            },
+            'expired-callback': () => {
+              console.log('Turnstile: Token expired');
+              setTurnstileToken(null);
+            },
+            theme: 'dark',
+          });
+        } catch (err) {
+          console.error('Turnstile: Render error', err);
+        }
       }
     };
 
-    // Check every 100ms if turnstile is loaded, then render
     const checkInterval = setInterval(() => {
       if (window.turnstile) {
         renderWidget();
@@ -48,15 +49,9 @@ export default function ContactPage() {
     
     return () => {
       clearInterval(checkInterval);
-      window.removeEventListener('turnstile-token', handleToken);
       if (window.turnstile && widgetId) {
-        try {
-          window.turnstile.remove(widgetId);
-        } catch (err) {
-          // Ignore cleanup errors
-        }
+        window.turnstile.remove(widgetId);
       }
-      delete window.onTurnstileSuccess;
     };
   }, []);
 
@@ -69,8 +64,10 @@ export default function ContactPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log('Form submission triggered');
     
     if (!turnstileToken) {
+      console.log('Submission blocked: No Turnstile token');
       toast.error('Please complete the security check.');
       return;
     }
@@ -167,7 +164,7 @@ export default function ContactPage() {
               <button 
                 type="submit" 
                 className={styles.submitBtn} 
-                disabled={isSubmitting}
+                disabled={isSubmitting || !turnstileToken}
               >
                 {isSubmitting ? (
                   <>
