@@ -39,7 +39,7 @@
   border: 1px solid var(--border-default);
   border-radius: 12px;
   padding: 20px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-premium);
   z-index: 1000;
   animation: slideDown 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }

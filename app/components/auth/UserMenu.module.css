@@ -66,7 +66,7 @@
   border: 1px solid var(--border-active);
   border-radius: var(--radius-sm);
   padding: var(--space-2);
-  box-shadow: 12px 12px 0px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-neo);
   z-index: 1000;
   animation: dropdownIn 0.15s ease;
 }

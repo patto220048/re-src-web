@@ -36,13 +36,13 @@
 .content {
   max-width: 900px;
   width: 100%;
-  background: rgba(20, 20, 20, 0.6);
+  background: var(--bg-card);
   backdrop-filter: blur(20px);
   border: 1px solid var(--border-default);
   padding: var(--space-12);
   position: relative;
   z-index: 1;
-  box-shadow: 0 40px 100px rgba(0, 0, 0, 0.5);
+  box-shadow: var(--shadow-premium);
   animation: slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1);
 }
 

@@ -79,6 +79,16 @@
   --neon-cyan-rgb: 255, 255, 255;
   --bg-secondary: #141414;
   --bg-tertiary: #1C1C1C;
+  /* Glass Effect */
+  --bg-glass: rgba(20, 20, 20, 0.6);
+  
+  /* Shadows */
+  --shadow-premium: 0 40px 100px rgba(0, 0, 0, 0.5);
+  --shadow-neo: 12px 12px 0px rgba(0, 0, 0, 0.4);
+
+  /* Footer & Misc */
+  --bg-footer-bottom: rgba(0, 0, 0, 0.2);
+  --bg-social-icon: rgba(255, 255, 255, 0.03);
 }
 
 [data-theme='light'] {
@@ -104,6 +114,17 @@
   /* Category colors for light mode */
   --neo-yellow: #444444;
   --neo-orange: #222222;
+
+  /* Glass Effect (light) */
+  --bg-glass: rgba(255, 255, 255, 0.6);
+
+  /* Shadows (light) */
+  --shadow-premium: 0 40px 100px rgba(0, 0, 0, 0.1);
+  --shadow-neo: 12px 12px 0px rgba(0, 0, 0, 0.08);
+
+  /* Footer & Misc (light) */
+  --bg-footer-bottom: rgba(0, 0, 0, 0.03);
+  --bg-social-icon: rgba(0, 0, 0, 0.03);
 }
 
 /* ---------- CSS Reset ---------- */
