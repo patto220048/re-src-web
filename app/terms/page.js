@@ -17,7 +17,7 @@ export default function TermsOfService() {
           <section className={styles.section}>
             <h2>1. Agreement to Terms</h2>
             <p>
-              By accessing or using SFXFolder.com (the &quot;Service&quot;), you acknowledge that this is a personal resource collection curated by the owner based on professional experience. By using the Service, you agree to be bound by these Terms of Service. If you disagree with any part of the terms, you may not access the service. These terms apply to all visitors, users, and others who access or use the Service.
+              By accessing or using SFXFolder.com (the &quot;Service&quot;), you acknowledge that this is a collection of resources aggregated from multiple sources, managed and categorized by the owner based on professional experience. By using the Service, you agree to be bound by these Terms of Service. If you disagree with any part of the terms, you may not access the service. These terms apply to all visitors, users, and others who access or use the Service.
             </p>
           </section>
 
@@ -31,6 +31,7 @@ export default function TermsOfService() {
               <li>You may not resell, redistribute, or sub-license the resources as standalone files.</li>
               <li>You may not use the resources in a way that allows others to download them as standalone files.</li>
               <li>Attribution is appreciated but not required unless specified in the specific resource details.</li>
+              <li>Some resources in this collection may be generated, enhanced, or assisted by Artificial Intelligence (AI) technologies.</li>
             </ul>
           </section>
 
