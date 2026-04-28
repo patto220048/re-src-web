@@ -10,6 +10,7 @@ import { AuthProvider } from "@/app/lib/auth-context";
 
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { Analytics } from "@vercel/analytics/react";
+import SmoothScroll from "@/app/components/layout/SmoothScroll";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://sfxfolder.com';
 
@@ -145,7 +146,9 @@ export default async function RootLayout({ children }) {
           <ToastProvider>
             <AuthProvider>
               <SiteProvider initialSettings={settings} initialCategories={categories}>
-                <LayoutShell initialCategories={categories}>{children}</LayoutShell>
+                <SmoothScroll>
+                  <LayoutShell initialCategories={categories}>{children}</LayoutShell>
+                </SmoothScroll>
                 <ToastContainer />
                 <SpeedInsights />
                 <Analytics />

@@ -1,12 +1,12 @@
 .container {
-  max-width: 1000px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 0 var(--space-6);
   display: flex;
   flex-direction: column;
   gap: 20vh;
   /* Larger gap for scrolling feel */
-  scroll-behavior: smooth;
+  position: relative !important;
 }
 
 /* Scroll Progress Bar */
@@ -102,7 +102,8 @@
   align-items: flex-start;
   margin-top: var(--space-12);
   position: relative;
-  min-height: 120vh; /* Extra height for sticky content to scroll past */
+  position: relative !important;
+  min-height: 120vh;
 }
 
 .profileSection::before {
@@ -125,17 +126,23 @@
   }
 }
 
-.imageWrapper {
+.stickySide {
   position: sticky;
   top: 15vh;
+  width: 100%;
+}
+
+.imageContainer {
+  position: relative !important;
   width: 100%;
   aspect-ratio: 1;
   border: 1px solid var(--border-default);
   overflow: hidden;
   background: var(--bg-card);
+  border-radius: var(--radius-xl);
 }
 
-.imageWrapper img {
+.imageContainer img {
   width: 100%;
   height: 120%;
   position: absolute;
@@ -152,8 +159,10 @@
 .bioContent {
   display: flex;
   flex-direction: column;
-  gap: var(--space-20); /* Larger gap to feel the scroll */
+  gap: var(--space-20);
+  /* Larger gap to feel the scroll */
   padding-bottom: 20vh;
+  position: relative;
 }
 
 .bioTitle {
@@ -172,25 +181,82 @@
 /* Mission Grid */
 .missionGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: var(--space-4);
-  margin-top: var(--space-8);
+  grid-template-columns: repeat(3, 1fr);
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-xl);
+  margin: var(--space-20) 0;
+  gap: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+@media (max-width: 900px) {
+  .missionGrid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .missionCard {
-  padding: var(--space-10);
-  border: 1px solid var(--border-default);
-  background: var(--bg-card);
+  padding: var(--space-12);
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  align-items: center;
+  text-align: center;
+  gap: var(--space-6);
+  transition: background 0.3s ease;
+  position: relative;
+  border-right: 1px solid var(--border-default);
+}
+
+.missionCard:last-child {
+  border-right: none;
+}
+
+@media (max-width: 900px) {
+  .missionCard {
+    border-right: none;
+    border-bottom: 1px solid var(--border-default);
+  }
+
+  .missionCard:last-child {
+    border-bottom: none;
+  }
+}
+
+.missionCard:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.philosophySection {
+  margin: var(--space-32) 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-12);
+  position: relative;
+}
+
+.philosophyContent {
+  text-align: center;
+  padding: var(--space-12) 0;
+}
+
+.visualImageWrapper {
+  height: 50vh;
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  position: relative;
+}
+
+.visualImage {
+  object-fit: cover;
+  filter: brightness(0.9) contrast(1.1);
 }
 
 .missionCard:hover {
   border-color: var(--border-active);
-  transform: translateY(-8px);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+  transform: translateY(-10px);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .cardIcon {
@@ -211,15 +277,15 @@
 }
 
 .visualSection {
-  width: 100vw;
-  margin-left: calc(-50vw + 50%);
-  height: 60vh;
-  border-top: 1px solid var(--border-default);
-  border-bottom: 1px solid var(--border-default);
-  position: relative;
+  width: 100%;
+  height: 400px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-2xl);
+  position: relative !important;
   overflow: hidden;
-  margin-top: var(--space-12);
-  margin-bottom: var(--space-12);
+  margin-top: var(--space-16);
+  margin-bottom: var(--space-16);
+  background: var(--bg-card);
 }
 
 .imageReveal {
@@ -229,14 +295,21 @@
 }
 
 .visualSection img {
-  opacity: 0.6;
-  filter: grayscale(1);
+  opacity: 0.85;
+  filter: grayscale(1) brightness(0.95);
+  object-fit: cover;
+}
+
+.parallaxImage {
+  object-fit: cover;
+  width: 100%;
+  height: 100%;
 }
 
 .visualOverlay {
   position: absolute;
   inset: 0;
-  background: linear-gradient(to bottom, rgba(10, 10, 10, 0) 0%, rgba(10, 10, 10, 0.8) 100%);
+  background: radial-gradient(circle at center, transparent 0%, rgba(0, 0, 0, 0.4) 100%);
 }
 
 /* Connect Section */
@@ -245,6 +318,7 @@
   padding: 10vh 0;
   border-top: 1px solid var(--border-default);
   margin-top: var(--space-12);
+  position: relative;
 }
 
 .connectTitle {
@@ -303,4 +377,38 @@
   color: var(--text-muted);
   letter-spacing: 0.1em;
   opacity: 0.6;
+}
+
+.hero,
+.profileSection,
+.missionGrid,
+.philosophySection,
+.connect {
+  scroll-margin-top: calc(var(--navbar-height) + 20px);
+}
+
+.scrollTop {
+  position: fixed;
+  bottom: var(--space-8);
+  right: var(--space-8);
+  z-index: 1000;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--bg-card);
+  border: 1px solid var(--border-default);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-premium);
+}
+
+.scrollTop:hover {
+  background: var(--text-primary);
+  color: var(--bg-primary);
+  border-color: var(--text-primary);
 }

@@ -12,7 +12,12 @@ export default function LayoutShell({ children, initialCategories = [] }) {
   return (
     <>
       {!isAdmin && <Navbar initialCategories={initialCategories} />}
-      <main style={!isAdmin ? { paddingTop: "var(--navbar-height)" } : undefined}>
+      <main 
+        style={{ 
+          position: 'relative',
+          ...(!isAdmin ? { paddingTop: "var(--navbar-height)" } : {}) 
+        }}
+      >
         {children}
       </main>
       {!isAdmin && pathname !== "/about-us" && <Footer />}

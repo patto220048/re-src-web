@@ -1,17 +1,15 @@
 "use client";
 
 import Image from "next/image";
-import { Headphones, Sparkles, Zap, ChevronDown } from "lucide-react";
-import { motion, useScroll, useSpring, useTransform } from "framer-motion";
-import { useRef } from "react";
+import { Headphones, Sparkles, Zap, ChevronDown, ArrowUp } from "lucide-react";
+import { motion, useScroll, useSpring, useTransform, AnimatePresence } from "framer-motion";
+import { useRef, useState, useEffect } from "react";
 import styles from "./about-us.module.css";
 
 export default function AboutUsClient({ aboutPageSchema, socialLinks = [], contactEmail, siteName = "SFXFOLDER" }) {
   const targetRef = useRef(null);
-  const { scrollYProgress } = useScroll({
-    target: targetRef,
-    offset: ["start start", "end end"],
-  });
+  const profileRef = useRef(null);
+  const { scrollYProgress } = useScroll();
 
   const scaleX = useSpring(scrollYProgress, {
     stiffness: 100,
@@ -24,7 +22,6 @@ export default function AboutUsClient({ aboutPageSchema, socialLinks = [], conta
   const heroY = useTransform(scrollYProgress, [0, 0.15], [0, -50]);
 
   const creatorY = useTransform(scrollYProgress, [0.1, 0.4], [0, 80]);
-  const missionImageY = useTransform(scrollYProgress, [0.5, 0.8], [-50, 50]);
 
   const fadeInUp = {
     initial: { opacity: 0, y: 60 },
@@ -38,22 +35,33 @@ export default function AboutUsClient({ aboutPageSchema, socialLinks = [], conta
     whileInView: { transition: { staggerChildren: 0.15, delayChildren: 0.2 } }
   };
 
-  // Ref for Sticky Bio section
-  const profileRef = useRef(null);
   const { scrollYProgress: profileProgress } = useScroll({
     target: profileRef,
     offset: ["start end", "end start"],
   });
-
-  // Opacity transforms for Bio paragraphs
   const p1Opacity = useTransform(profileProgress, [0.2, 0.35, 0.5], [0.3, 1, 0.3]);
   const p2Opacity = useTransform(profileProgress, [0.4, 0.55, 0.7], [0.3, 1, 0.3]);
+
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setShowScrollTop(window.scrollY > 400);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   return (
     <div 
       className={styles.container} 
       ref={targetRef}
       onContextMenu={(e) => e.preventDefault()}
+      style={{ position: 'relative' }}
     >
       <script
         type="application/ld+json"
@@ -87,12 +95,12 @@ export default function AboutUsClient({ aboutPageSchema, socialLinks = [], conta
         </motion.h1>
         <motion.p 
           className={styles.bioText} 
-          style={{ maxWidth: '650px' }}
+          style={{ maxWidth: '650px', margin: '0 auto' }}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 1, delay: 1 }}
         >
-          SFXFolder was born with a single mission: <strong>simplifying your SFX search</strong>. We provide professional-grade resources that don&apos;t cost a fortune or come with copyright headaches.
+          SFXFolder was born with a single mission: <strong>simplifying your resources search</strong>. We provide professional-grade resources that don&apos;t cost a fortune or come with copyright headaches.
         </motion.p>
         
         <motion.div 
@@ -100,25 +108,29 @@ export default function AboutUsClient({ aboutPageSchema, socialLinks = [], conta
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 2, duration: 1 }}
+          style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: '1.5rem' }}
         >
           <ChevronDown size={24} className={styles.bounce} />
         </motion.div>
       </motion.section>
 
-      {/* Bio Section with Sticky Image & Paragraph Focus */}
       <motion.section 
         ref={profileRef}
         className={styles.profileSection}
+        style={{ position: 'relative' }}
       >
-        <motion.div className={styles.imageWrapper}>
-          <Image 
-            src="/assets/creator.png" 
-            alt="Creator of SFXFolder" 
-            fill
-            sizes="(max-width: 768px) 100vw, 400px"
-            priority
-          />
-        </motion.div>
+        <div className={styles.stickySide}>
+          <div className={styles.imageContainer}>
+            <Image 
+              src="/assets/creator.png" 
+              alt="Creator of SFXFolder" 
+              fill
+              sizes="(max-width: 768px) 100vw, 400px"
+              priority
+              className={styles.profileImg}
+            />
+          </div>
+        </div>
         <div className={styles.bioContent}>
           <motion.h2 
             className={styles.bioTitle}
@@ -130,14 +142,14 @@ export default function AboutUsClient({ aboutPageSchema, socialLinks = [], conta
           </motion.h2>
           <motion.p 
             className={styles.bioText}
-            style={{ opacity: p1Opacity }}
+            style={{ opacity: p1Opacity, maxWidth: '650px', margin: '0 auto 1rem' }}
           >
             Hi, I&apos;m a professional video editor with over a decade of experience in the industry. 
             Throughout my career, I&apos;ve spent countless hours scouring the web for the perfect sound effect or the right LUT to make a scene pop.
           </motion.p>
           <motion.p 
             className={styles.bioText}
-            style={{ opacity: p2Opacity }}
+            style={{ opacity: p2Opacity, maxWidth: '650px', margin: '0 auto' }}
           >
             I realized that while there are thousands of &quot;free&quot; resources out there, very few meet the standards of a professional workflow. 
             SFXFolder is my personal collection — hand-picked, edited, and organized for editors who value their time and quality.
@@ -153,21 +165,21 @@ export default function AboutUsClient({ aboutPageSchema, socialLinks = [], conta
         whileInView="whileInView"
         viewport={{ once: true, margin: "-100px" }}
       >
-        <motion.div className={styles.missionCard} variants={fadeInUp}>
+        <motion.div className={styles.missionCard} variants={fadeInUp} style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <Zap className={styles.cardIcon} size={32} />
           <h3 className={styles.cardTitle}>Instant Access</h3>
           <p className={styles.cardDescription}>
             No complex sign-ups or hidden fees. Just high-quality assets ready for your next project, instantly.
           </p>
         </motion.div>
-        <motion.div className={styles.missionCard} variants={fadeInUp}>
+        <motion.div className={styles.missionCard} variants={fadeInUp} style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <Headphones className={styles.cardIcon} size={32} />
           <h3 className={styles.cardTitle}>Pro-Grade Quality</h3>
           <p className={styles.cardDescription}>
             Every asset is tested in real-world editing environments to ensure it meets professional standards.
           </p>
         </motion.div>
-        <motion.div className={styles.missionCard} variants={fadeInUp}>
+        <motion.div className={styles.missionCard} variants={fadeInUp} style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
           <Sparkles className={styles.cardIcon} size={32} />
           <h3 className={styles.cardTitle}>Curated Selection</h3>
           <p className={styles.cardDescription}>
@@ -176,36 +188,31 @@ export default function AboutUsClient({ aboutPageSchema, socialLinks = [], conta
         </motion.div>
       </motion.section>
 
-      {/* Visual Break with Parallax */}
-      <section className={styles.visualSection}>
-        <div className={styles.imageReveal}>
-          <motion.div 
-            style={{ y: missionImageY, height: '120%', position: 'absolute', top: '-10%', left: 0, right: 0 }}
-          >
-            <Image 
-              src="/assets/mission-hero.png" 
-              alt="Professional Editing Workspace" 
-              fill
-              sizes="100vw"
-              className={styles.parallaxImage}
-            />
-          </motion.div>
-        </div>
-        <div className={styles.visualOverlay} />
-      </section>
-
-      {/* Philosophy Section */}
+      {/* Combined Philosophy Section */}
       <motion.section 
-        className={styles.bioContent} 
-        style={{ textAlign: 'center', alignItems: 'center' }}
-        {...fadeInUp}
+        className={styles.philosophySection}
+        initial={{ opacity: 0, y: 30 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-100px" }}
+        transition={{ duration: 1 }}
       >
-        <h2 className={styles.bioTitle}>Our Philosophy</h2>
-        <p className={styles.bioText} style={{ maxWidth: '800px' }}>
-          We believe that creativity shouldn&apos;t be limited by a budget. By providing the tools that professionals use for free, 
-          we aim to level the playing field for creators everywhere. Whether you&apos;re making your first YouTube video or 
-          editing a feature film, SFXFolder is here to support your journey.
-        </p>
+        <div className={styles.visualImageWrapper}>
+          <Image 
+            src="/assets/mission-hero.png"
+            alt="Mission"
+            fill
+            className={styles.visualImage}
+            quality={95}
+          />
+        </div>
+        <div className={styles.philosophyContent}>
+          <h2 className={styles.bioTitle}>Our Philosophy</h2>
+          <p className={styles.bioText} style={{ maxWidth: '800px', margin: '0 auto' }}>
+            We believe that creativity shouldn&apos;t be limited by a budget. By providing the tools that professionals use for free, 
+            we aim to level the playing field for creators everywhere. Whether you&apos;re making your first YouTube video or 
+            editing a feature film, SFXFolder is here to support your journey.
+          </p>
+        </div>
       </motion.section>
 
       {/* Connect Section */}
@@ -253,6 +260,24 @@ export default function AboutUsClient({ aboutPageSchema, socialLinks = [], conta
           © {new Date().getFullYear()} {siteName.toUpperCase()} — ALL RIGHTS RESERVED
         </motion.div>
       </motion.section>
+
+      {/* Scroll to Top Button */}
+      <AnimatePresence>
+        {showScrollTop && (
+          <motion.button
+            className={styles.scrollTop}
+            onClick={scrollToTop}
+            initial={{ opacity: 0, scale: 0.5, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.5, y: 20 }}
+            whileHover={{ y: -5 }}
+            whileTap={{ scale: 0.9 }}
+            aria-label="Scroll to top"
+          >
+            <ArrowUp size={20} />
+          </motion.button>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
