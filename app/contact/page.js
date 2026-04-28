@@ -26,6 +26,13 @@ export default function ContactPage() {
     
     return () => {
       window.removeEventListener('turnstile-token', handleToken);
+      if (window.turnstile) {
+        try {
+          window.turnstile.remove();
+        } catch (err) {
+          console.warn('Turnstile cleanup error:', err);
+        }
+      }
       delete window.onTurnstileSuccess;
     };
   }, []);
