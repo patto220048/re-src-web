@@ -39,10 +39,46 @@ export default function AboutUsClient({ aboutPageSchema, socialLinks = [], conta
     target: profileRef,
     offset: ["start end", "end start"],
   });
-  const p1Opacity = useTransform(profileProgress, [0.2, 0.35, 0.5], [0.3, 1, 0.3]);
-  const p2Opacity = useTransform(profileProgress, [0.4, 0.55, 0.7], [0.3, 1, 0.3]);
+  const p1Opacity = useTransform(profileProgress, [0.15, 0.3], [0.3, 1]);
+  const p2Opacity = useTransform(profileProgress, [0.35, 0.4], [0.3, 1]);
+  const p3Opacity = useTransform(profileProgress, [0.45, 0.55], [0.3, 1]);
+  const p4Opacity = useTransform(profileProgress, [0.56, 0.7], [0.3, 1]);
 
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [typedText1, setTypedText1] = useState("simplifying your");
+  const [typedText2, setTypedText2] = useState("resources search");
+  const [isTyping, setIsTyping] = useState(false);
+
+  useEffect(() => {
+    // For SSR/SEO we initialize with full text, then clear and type on mount
+    setTypedText1("");
+    setTypedText2("");
+    setIsTyping(true);
+    
+    const text1 = "simplifying your";
+    const text2 = "resources search";
+    let i = 0;
+    let j = 0;
+    
+    const startDelay = setTimeout(() => {
+      const typeText = setInterval(() => {
+        if (i < text1.length) {
+          setTypedText1(text1.slice(0, i + 1));
+          i++;
+        } else if (j < text2.length) {
+          setTypedText2(text2.slice(0, j + 1));
+          j++;
+        } else {
+          setIsTyping(false);
+          clearInterval(typeText);
+        }
+      }, 70);
+      
+      return () => clearInterval(typeText);
+    }, 500);
+    
+    return () => clearTimeout(startDelay);
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -92,7 +128,14 @@ export default function AboutUsClient({ aboutPageSchema, socialLinks = [], conta
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1, delay: 0.5 }}
         >
-          Curating the Sound <br /> of Your Vision
+          <span className={styles.titleSmall}>
+            {typedText1}
+            {isTyping && typedText1.length < 16 && <span className={styles.cursor}>|</span>}
+          </span>
+          <span className={styles.rgbText}>
+            {typedText2}
+            {isTyping && typedText1.length === 16 && <span className={styles.cursor}>|</span>}
+          </span>
         </motion.h1>
         <motion.p 
           className={styles.bioText} 
@@ -119,7 +162,6 @@ export default function AboutUsClient({ aboutPageSchema, socialLinks = [], conta
         ref={profileRef}
         className={styles.profileSection}
         style={{ position: 'relative' }}
-        data-snap-section
       >
         <div className={styles.stickySide}>
           <div className={styles.imageContainer}>
@@ -146,15 +188,29 @@ export default function AboutUsClient({ aboutPageSchema, socialLinks = [], conta
             className={styles.bioText}
             style={{ opacity: p1Opacity, maxWidth: '650px', margin: '0 auto 1rem' }}
           >
-            Hi, I&apos;m a professional video editor with over a decade of experience in the industry. 
+            Hi, I&apos;m Jay a professional video editor with over a decade of experience in the industry. 
             Throughout my career, I&apos;ve spent countless hours scouring the web for the perfect sound effect or the right LUT to make a scene pop.
           </motion.p>
           <motion.p 
             className={styles.bioText}
-            style={{ opacity: p2Opacity, maxWidth: '650px', margin: '0 auto' }}
+            style={{ opacity: p2Opacity, maxWidth: '650px', margin: '0 auto 1rem' }}
           >
-            I realized that while there are thousands of &quot;free&quot; resources out there, very few meet the standards of a professional workflow. 
-            SFXFolder is my personal collection — hand-picked, edited, and organized for editors who value their time and quality.
+            I realized that while there are thousands of &quot;free&quot; resources out there, finding ones that actually meet the standards of a fast, professional workflow is like looking for a needle in a haystack. 
+            SFXFolder is my personal collection — built with the fastest curated search tools for editing, and carefully organized for creators who value both time and quality.
+          </motion.p>
+          <motion.p 
+            className={styles.bioText}
+            style={{ opacity: p3Opacity, maxWidth: '650px', margin: '0 auto 1rem' }}
+          >
+            Compared to platforms that offer massive libraries of resources, the search process often requires deep expertise, can be complicated, and isn&apos;t cheap.
+            If you&apos;re looking for something simple, streamlined, and complete, SFXFolder is a great choice — offering everything you need at a very low cost.
+          </motion.p>
+            <motion.p 
+            className={styles.bioText}
+            style={{ opacity: p4Opacity, maxWidth: '650px', margin: '0 auto 1rem' }}
+          >
+            With a long-term vision, I will continuously upgrade, develop, and update my library.
+            In the future, I also plan to integrate it directly into professional software like Adobe Premiere Pro, DaVinci Resolve, and Adobe After Effects, delivering the fastest and most optimized experience for users.
           </motion.p>
         </div>
       </motion.section>

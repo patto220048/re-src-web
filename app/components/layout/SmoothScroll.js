@@ -33,7 +33,7 @@ function SnapHandler() {
         if (closestSection && minDistance > 5 && minDistance < 400) {
           lenis.scrollTo(closestSection, { duration: 1.2, offset: -80 });
         }
-      }, 60);
+      }, 100);
     };
 
     lenis.on('scroll', handleScroll);
