@@ -148,6 +148,8 @@ export default function ContextSearch() {
         window.location.pathname === "/terms" ||
         window.location.pathname === "/privacy" ||
         window.location.pathname === "/about-us" ||
+        window.location.pathname === "/contact" ||
+        
         e.target.tagName === "INPUT" ||
         e.target.tagName === "TEXTAREA"
       ) {
