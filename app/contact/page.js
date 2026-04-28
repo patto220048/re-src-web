@@ -13,11 +13,21 @@ export default function ContactPage() {
   const turnstileRef = useRef(null);
 
   useEffect(() => {
+    // Define the global callback for Turnstile
+    window.onTurnstileSuccess = (token) => {
+      const event = new CustomEvent('turnstile-token', { detail: token });
+      window.dispatchEvent(event);
+    };
+
     const handleToken = (e) => {
       setTurnstileToken(e.detail);
     };
     window.addEventListener('turnstile-token', handleToken);
-    return () => window.removeEventListener('turnstile-token', handleToken);
+    
+    return () => {
+      window.removeEventListener('turnstile-token', handleToken);
+      delete window.onTurnstileSuccess;
+    };
   }, []);
 
   // Function called when turnstile expires or errors
@@ -124,21 +134,11 @@ export default function ContactPage() {
                 <div 
                   ref={turnstileRef}
                   className="cf-turnstile" 
-                  data-sitekey="0x4AAAAAADE0L-TzAgbapf_f" // Test Site Key
+                  data-sitekey="0x4AAAAAADE0L-TzAgbapf_f" // Site Key
                   data-callback="onTurnstileSuccess"
                   data-theme="dark"
                 />
               </div>
-
-              {/* Add global callback for Turnstile */}
-              <script dangerouslySetInnerHTML={{
-                __html: `
-                  window.onTurnstileSuccess = function(token) {
-                    const event = new CustomEvent('turnstile-token', { detail: token });
-                    window.dispatchEvent(event);
-                  };
-                `
-              }} />
 
               <button 
                 type="submit" 
