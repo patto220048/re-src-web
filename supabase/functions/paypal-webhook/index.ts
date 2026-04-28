@@ -30,11 +30,11 @@ async function getPayPalAccessToken(clientId: string, secret: string, mode: stri
   return data.access_token
 }
 
-async function verifyPayPalSignature(req: Request, body: any, accessToken: string) {
-  const mode = Deno.env.get('PAYPAL_MODE') || 'sandbox'
-  const webhookId = Deno.env.get('PAYPAL_WEBHOOK_ID')
-  
-  if (!webhookId) return false
+async function verifyPayPalSignature(req: Request, body: any, accessToken: string, mode: string, webhookId: string | undefined) {
+  if (!webhookId) {
+    console.error("[PayPal Webhook] Missing Webhook ID for verification")
+    return false
+  }
 
   const url = mode === 'live'
     ? 'https://api-m.paypal.com/v1/notifications/verify-webhook-signature'
@@ -59,6 +59,12 @@ async function verifyPayPalSignature(req: Request, body: any, accessToken: strin
     body: JSON.stringify(verificationBody),
   })
 
+  if (!response.ok) {
+    const error = await response.text()
+    console.error(`[PayPal Webhook] Signature verification API error: ${error}`)
+    return false
+  }
+
   const data = await response.json()
   return data.verification_status === 'SUCCESS'
 }
@@ -73,21 +79,39 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
-    const clientId = Deno.env.get('PAYPAL_CLIENT_ID') ?? ''
-    const secret = Deno.env.get('PAYPAL_SECRET') ?? ''
-    const mode = Deno.env.get('PAYPAL_MODE') ?? 'sandbox'
+    // Automatically detect environment based on function name in URL
+    const isDev = req.url.includes('paypal-webhook-dev')
+    
+    // Determine mode and fetch corresponding credentials
+    const mode = isDev ? 'sandbox' : (Deno.env.get('PAYPAL_MODE') || 'live')
+    
+    const clientId = isDev 
+      ? Deno.env.get('PAYPAL_CLIENT_ID_SANDBOX') 
+      : (Deno.env.get('PAYPAL_CLIENT_ID_LIVE') || Deno.env.get('PAYPAL_CLIENT_ID') || '')
+      
+    const secret = isDev 
+      ? Deno.env.get('PAYPAL_SECRET_SANDBOX') 
+      : (Deno.env.get('PAYPAL_SECRET_LIVE') || Deno.env.get('PAYPAL_SECRET') || '')
+      
+    const webhookId = isDev 
+      ? Deno.env.get('PAYPAL_WEBHOOK_ID_SANDBOX') 
+      : (Deno.env.get('PAYPAL_WEBHOOK_ID_LIVE') || Deno.env.get('PAYPAL_WEBHOOK_ID') || '')
 
     const body = await req.json()
     const eventType = body.event_type
     const resource = body.resource
 
-    console.log(`[PayPal Webhook] Incoming Event: ${eventType} Mode: ${mode}`)
+    console.log(`[PayPal Webhook] Incoming Event: ${eventType} Mode: ${mode} (isDev: ${isDev})`)
+
+    if (!clientId || !secret) {
+      throw new Error(`Missing PayPal credentials for mode: ${mode}`)
+    }
 
     const accessToken = await getPayPalAccessToken(clientId, secret, mode)
-    const isValid = await verifyPayPalSignature(req, body, accessToken)
+    const isValid = await verifyPayPalSignature(req, body, accessToken, mode, webhookId)
 
     if (!isValid) {
-      console.error("[PayPal Webhook] Signature verification FAILED")
+      console.error(`[PayPal Webhook] Signature verification FAILED (Mode: ${mode}, WebhookID: ${webhookId?.substring(0, 5)}...)`)
       return new Response(JSON.stringify({ error: "Invalid signature" }), { 
         status: 401, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
