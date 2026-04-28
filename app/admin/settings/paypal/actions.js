@@ -1,6 +1,7 @@
 "use server";
 
 import { createServerClient } from "@supabase/ssr";
+import { revalidateTag, revalidatePath } from "next/cache";
 
 function getAdminSupabase() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
@@ -34,6 +35,11 @@ export async function updatePaypalConfig(config) {
       console.error("DB Error updating config:", error);
       return { success: false, error: "Failed to update settings" };
     }
+
+
+    // Clear cache to reflect changes immediately
+    revalidateTag('settings');
+    revalidatePath('/pricing');
 
     return { success: true };
   } catch (err) {

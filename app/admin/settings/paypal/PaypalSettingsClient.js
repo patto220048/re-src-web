@@ -9,6 +9,7 @@ import { Save, AlertCircle } from "lucide-react";
 export default function PaypalSettingsClient({ initialConfig }) {
   const [config, setConfig] = useState(initialConfig);
   const [isSaving, setIsSaving] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -32,7 +33,9 @@ export default function PaypalSettingsClient({ initialConfig }) {
     const result = await updatePaypalConfig(sanitizedConfig);
     
     if (result.success) {
-      toast.success("Settings saved successfully!", { id: toastId });
+      toast.success("Settings saved and cache revalidated!", { id: toastId });
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 3000);
     } else {
       toast.error(result.error, { id: toastId });
     }
@@ -59,13 +62,16 @@ export default function PaypalSettingsClient({ initialConfig }) {
     <div className={styles.container}>
       <div className={styles.header}>
         <h1 className={styles.title}>PayPal Configuration</h1>
-        <button 
-          onClick={handleSave} 
-          disabled={isSaving}
-          className={styles.saveBtn}
-        >
-          <Save size={18} /> {isSaving ? "Saving..." : "Save Settings"}
-        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          {showSuccess && <span style={{ color: '#10b981', fontWeight: '500', fontSize: '0.9rem' }}>Changes applied to Live site!</span>}
+          <button 
+            onClick={handleSave} 
+            disabled={isSaving}
+            className={styles.saveBtn}
+          >
+            <Save size={18} /> {isSaving ? "Saving..." : "Save Settings"}
+          </button>
+        </div>
       </div>
 
       <div className={styles.alertBox}>
