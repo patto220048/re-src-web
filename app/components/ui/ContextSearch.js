@@ -2,7 +2,8 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Search, Loader2, X, History, Volume2, Filter, ChevronDown, Check, Eye, Folder } from "lucide-react";
+import { Search, Loader2, X, History, Volume2, Filter, ChevronDown, Check, Eye, Folder, ChevronRight } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { getIcon } from "@/app/components/ui/IconLib";
 import { searchResourcesClient, getOrBuildSearchIndex } from "@/app/lib/searchUtils";
 import styles from "./ContextSearch.module.css";
@@ -53,16 +54,30 @@ export default function ContextSearch() {
   const [loading, setLoading] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [activeFolder, setActiveFolder] = useState(null);
   const [availableCategories, setAvailableCategories] = useState([]);
-  const [availableFormats, setAvailableFormats] = useState([]);
   const [filters, setFilters] = useState({
     category: "",
-    format: ""
+    type: "all"
   });
   
   const inputRef = useRef(null);
   const containerRef = useRef(null);
+  const listRef = useRef(null);
   const debounceRef = useRef(null);
+
+  // Scroll active item into view
+  useEffect(() => {
+    if (activeIndex >= 0 && listRef.current) {
+      const activeEl = listRef.current.children[activeIndex];
+      if (activeEl) {
+        activeEl.scrollIntoView({
+          block: 'nearest',
+          behavior: 'smooth'
+        });
+      }
+    }
+  }, [activeIndex]);
 
   // Load recent items from localStorage
   useEffect(() => {
@@ -109,13 +124,8 @@ export default function ContextSearch() {
           const cats = Object.entries(catMap)
             .map(([name, count]) => ({ name, count }))
             .sort((a, b) => b.count - a.count);
-            
-          const fmts = Object.entries(fmtMap)
-            .map(([name, count]) => ({ name, count }))
-            .sort((a, b) => b.count - a.count);
 
           setAvailableCategories(cats);
-          setAvailableFormats(fmts);
         }
       } catch (e) {
         console.error("Failed to load search index data:", e);
@@ -137,28 +147,37 @@ export default function ContextSearch() {
   }, []);
 
   const removeRecent = useCallback((e, itemId) => {
+    e.preventDefault();
     e.stopPropagation(); // Prevent selecting the item
+    
     setRecentItems(prev => {
       const updated = prev.filter(i => i.id !== itemId);
       localStorage.setItem("context_search_recent", JSON.stringify(updated));
+      
+      // If we are currently showing recent items (no query/filters), 
+      // update the displayed results immediately for better UX
+      if (!query.trim() && !filters.category && !activeFolder && filters.type === 'all') {
+        setResults(updated);
+      }
+      
       return updated;
     });
-  }, []);
+  }, [query, filters, activeFolder]);
 
   const close = useCallback(() => {
     setVisible(false);
     setQuery("");
     setResults([]);
     setActiveIndex(0);
+    setActiveFolder(null); // Clear folder context on close
+    setFilters(prev => ({ ...prev, type: 'all' })); // Reset type filter on close
     window.dispatchEvent(new CustomEvent("local-search", { detail: "" }));
   }, []);
 
-  // Instant fuzzy search
   useEffect(() => {
     if (!visible) return;
 
-
-    if (!query.trim() && !filters.category && !filters.format) {
+    if (!query.trim() && !filters.category && !activeFolder && filters.type === 'all') {
       setResults(recentItems);
       setLoading(false);
       return;
@@ -171,7 +190,8 @@ export default function ContextSearch() {
       try {
         let found = await searchResourcesClient(query, {
           category: filters.category,
-          format: filters.format,
+          type: filters.type,
+          folderId: activeFolder?.id,
           limit: 20
         });
         
@@ -190,7 +210,75 @@ export default function ContextSearch() {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [query, visible, recentItems, filters.category, filters.format]);
+  }, [query, visible, recentItems, filters.category, filters.type, activeFolder]);
+
+  const handleItemClick = useCallback((item) => {
+    saveRecent(item);
+    
+    if (item.type === 'folder') {
+      setActiveFolder(item);
+      setFilters(prev => ({ ...prev, type: 'resource' }));
+      setQuery(""); // Clear search to show folder content
+      inputRef.current?.focus();
+      return;
+    }
+
+    const categorySlug = item.categorySlug || 
+                         (typeof item.category === 'string' ? item.category.toLowerCase().replace(/\s+/g, '-') : 'all');
+    const itemSlug = item.slug;
+    const folderId = item.folderId;
+
+    if (categorySlug && itemSlug) {
+      // Navigate to category page with folder and resource parameters
+      let url = `/${categorySlug}?res=${itemSlug}`;
+      if (folderId) {
+        url += `&folder=${folderId}`;
+      }
+      window.location.href = url;
+      close();
+    }
+  }, [saveRecent, close]);
+
+  const handleKeyDown = useCallback((e) => {
+    const displayList = results;
+    
+    switch (e.key) {
+      case "ArrowDown":
+        e.preventDefault();
+        setActiveIndex((i) => Math.min(i + 1, (displayList.length || 1) - 1));
+        break;
+      case "ArrowUp":
+        e.preventDefault();
+        setActiveIndex((i) => Math.max(i - 1, 0));
+        break;
+      case "ArrowRight":
+        {
+          const currentItem = displayList[activeIndex];
+          if (currentItem?.type === 'folder') {
+            e.preventDefault();
+            handleItemClick(currentItem);
+          }
+        }
+        break;
+      case "ArrowLeft":
+        if (activeFolder) {
+          e.preventDefault();
+          setActiveFolder(null);
+          setFilters(prev => ({ ...prev, type: 'all' }));
+          setQuery("");
+        }
+        break;
+      case "Enter":
+        e.preventDefault();
+        if (displayList[activeIndex]) {
+          handleItemClick(displayList[activeIndex]);
+        } else if (query.trim()) {
+          window.location.href = `/search?q=${encodeURIComponent(query.trim())}`;
+          close();
+        }
+        break;
+    }
+  }, [results, activeIndex, activeFolder, handleItemClick, query, close]);
 
   useEffect(() => {
     const handleContextMenu = (e) => {
@@ -223,20 +311,38 @@ export default function ContextSearch() {
       }
     };
 
-    const handleKeyDown = (e) => {
-      if (e.key === "Escape") close();
+    const handleGlobalKeyDown = (e) => {
+      if (!visible) return;
+
+      // Prioritize keys when search is open
+      if (["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Enter", "Escape"].includes(e.key)) {
+        e.preventDefault();
+        
+        if (e.key === "Escape") {
+          close();
+          return;
+        }
+
+        // If focus was lost (e.g. clicked outside), bring it back to input
+        if (document.activeElement !== inputRef.current && e.target.tagName !== "INPUT") {
+          inputRef.current?.focus();
+        }
+        
+        // Handle navigation through our logic
+        handleKeyDown(e);
+      }
     };
 
     document.addEventListener("contextmenu", handleContextMenu);
     document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("keydown", handleGlobalKeyDown);
 
     return () => {
       document.removeEventListener("contextmenu", handleContextMenu);
       document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("keydown", handleGlobalKeyDown);
     };
-  }, [close]);
+  }, [close, visible, handleKeyDown]);
 
   const handleNavigate = (e, item) => {
     e.stopPropagation(); // Prevent trigger row click
@@ -260,54 +366,6 @@ export default function ContextSearch() {
     }
   };
 
-  const handleItemClick = (item) => {
-    saveRecent(item);
-    
-    if (item.type === 'folder') {
-      const categorySlug = item.categorySlug || 'all';
-      window.location.href = `/${categorySlug}?folder=${item.id}`;
-      close();
-      return;
-    }
-
-    const categorySlug = item.categorySlug || 
-                         (typeof item.category === 'string' ? item.category.toLowerCase().replace(/\s+/g, '-') : 'all');
-    const itemSlug = item.slug;
-    const folderId = item.folderId;
-
-    if (categorySlug && itemSlug) {
-      // Navigate to category page with folder and resource parameters
-      let url = `/${categorySlug}?res=${itemSlug}`;
-      if (folderId) {
-        url += `&folder=${folderId}`;
-      }
-      window.location.href = url;
-      close();
-    }
-  };
-
-  const handleKeyDown = (e) => {
-    switch (e.key) {
-      case "ArrowDown":
-        e.preventDefault();
-        setActiveIndex((i) => Math.min(i + 1, (displayList.length || 1) - 1));
-        break;
-      case "ArrowUp":
-        e.preventDefault();
-        setActiveIndex((i) => Math.max(i - 1, 0));
-        break;
-      case "Enter":
-        e.preventDefault();
-        if (displayList[activeIndex]) {
-          handleItemClick(displayList[activeIndex]);
-        } else if (query.trim()) {
-          window.location.href = `/search?q=${encodeURIComponent(query.trim())}`;
-          close();
-        }
-        break;
-    }
-  };
-
   if (!visible) return null;
 
   const displayList = results;
@@ -319,6 +377,34 @@ export default function ContextSearch() {
       style={{ left: position.x, top: position.y }}
       data-lenis-prevent
     >
+      <AnimatePresence>
+        {activeFolder && (
+          <motion.div 
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 10 }}
+            className={styles.folderContext}
+          >
+            <div className={styles.folderContextLabel}>
+              <Folder size={12} className={styles.folderIcon} />
+              <span className={styles.folderName}>{activeFolder.name}</span>
+              <button 
+                className={styles.clearFolder} 
+                onClick={() => {
+                  setActiveFolder(null);
+                  setFilters(prev => ({ ...prev, type: 'all' }));
+                }}
+                title="Clear folder context"
+              >
+                <X size={12} />
+              </button>
+            </div>
+            <ChevronRight size={14} className={styles.contextArrow} />
+            <span className={styles.contextHint}>Searching in folder</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div className={styles.searchBox}>
         <Search size={16} className={styles.searchIcon} />
         <input
@@ -330,7 +416,6 @@ export default function ContextSearch() {
             setQuery(e.target.value);
             setActiveIndex(0);
           }}
-          onKeyDown={handleKeyDown}
           className={styles.input}
           id="context-search-input"
         />
@@ -349,6 +434,21 @@ export default function ContextSearch() {
       {showAdvanced && (
         <div className={styles.advancedPanel}>
           <div className={styles.filterGroup}>
+            <span className={styles.filterLabel}>Result Type</span>
+            <div className={styles.filterScroll}>
+              {['all', 'resource', 'folder'].map(type => (
+                <button
+                  key={type}
+                  className={`${styles.filterChip} ${filters.type === type ? styles.activeChip : ""}`}
+                  onClick={() => setFilters(prev => ({ ...prev, type }))}
+                >
+                  {type === 'all' ? 'All Results' : type === 'resource' ? 'Resources' : 'Folders'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className={styles.filterGroup}>
             <div className={styles.filterLabel}>Category</div>
             <div className={styles.filterScroll}>
               <button 
@@ -364,26 +464,6 @@ export default function ContextSearch() {
                   onClick={() => setFilters(f => ({ ...f, category: cat.name }))}
                 >
                   {cat.name} <span className={styles.chipCount}>{cat.count}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className={styles.filterGroup}>
-            <div className={styles.filterLabel}>Format</div>
-            <div className={styles.filterScroll}>
-              <button 
-                className={`${styles.filterChip} ${!filters.format ? styles.activeChip : ""}`}
-                onClick={() => setFilters(f => ({ ...f, format: "" }))}
-              >
-                All
-              </button>
-              {availableFormats.map(fmt => (
-                <button 
-                  key={fmt.name}
-                  className={`${styles.filterChip} ${filters.format === fmt.name ? styles.activeChip : ""}`}
-                  onClick={() => setFilters(f => ({ ...f, format: fmt.name }))}
-                >
-                  {fmt.name.toUpperCase()} <span className={styles.chipCount}>{fmt.count}</span>
                 </button>
               ))}
             </div>
@@ -406,7 +486,7 @@ export default function ContextSearch() {
       )}
 
       {!loading && displayList.length > 0 && (
-        <ul className={styles.results} data-lenis-prevent>
+        <ul ref={listRef} className={styles.results} data-lenis-prevent>
           {displayList.map((item, idx) => (
             <li
               key={item.id}

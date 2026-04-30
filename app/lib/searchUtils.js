@@ -159,12 +159,29 @@ export async function searchResourcesClient(term, options = {}) {
   }
 
   // Apply filters if present
-  if (options.category || options.format) {
+  if (options.category || options.folderId || options.type) {
     results = results.filter(item => {
-      // Use categorySlug for reliable matching with the slug passed from UI
-      const catMatch = !options.category || item.categorySlug === options.category;
-      const fmtMatch = !options.format || item.fileFormat === options.format;
-      return catMatch && fmtMatch;
+      // Robust category matching: check slug or display name
+      const catMatch = !options.category || 
+                       item.categorySlug === options.category || 
+                       item.category === options.category;
+      
+      // Type filtering (all, resource, folder)
+      // Special logic: if we are in a folder context, always show subfolders 
+      // so the user can continue navigating even if filtering for resources.
+      const typeMatch = !options.type || 
+                       options.type === 'all' || 
+                       item.type === options.type ||
+                       (options.folderId && item.type === 'folder' && item.parentId === options.folderId);
+      
+      // Folder filtering: 
+      // 1. If it's a resource, check folderId
+      // 2. If it's a folder, check parentId (to show subfolders)
+      const folderMatch = !options.folderId || 
+                         (item.type === 'resource' && item.folderId === options.folderId) ||
+                         (item.type === 'folder' && item.parentId === options.folderId);
+                         
+      return catMatch && folderMatch && typeMatch;
     });
   }
 

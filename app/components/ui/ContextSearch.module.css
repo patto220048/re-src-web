@@ -373,3 +373,63 @@
   opacity: 0.6;
   margin-left: 4px;
 }
+
+.folderContext {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 6px 12px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border-default);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.folderContextLabel {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(250, 203, 17, 0.1);
+  color: var(--premium-gold);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 600;
+}
+
+.folderIcon {
+  flex-shrink: 0;
+}
+
+.folderName {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.clearFolder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--premium-gold);
+  opacity: 0.6;
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 2px;
+  transition: all 0.2s;
+}
+
+.clearFolder:hover {
+  opacity: 1;
+  background: rgba(250, 203, 17, 0.1);
+}
+
+.contextArrow {
+  opacity: 0.4;
+}
+
+.contextHint {
+  opacity: 0.6;
+}
