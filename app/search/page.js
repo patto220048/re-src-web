@@ -62,15 +62,23 @@ function SearchContent() {
 
       {results.length > 0 ? (
         <div className={styles.grid}>
-          {results.map((r, idx) => (
-            <ResourceCard
-              key={r.id}
-              {...r}
-              downloadUrl={r.downloadUrl || r.fileUrl}
-              index={idx}
-              onPreview={() => setPreviewResource(r)}
-            />
-          ))}
+          {results.map((r, idx) => {
+            const categorySlug = r.categorySlug || r.category?.slug;
+            const deepUrl = categorySlug 
+              ? `/${categorySlug}?res=${r.slug}&folder=${r.folderId}` 
+              : null;
+              
+            return (
+              <ResourceCard
+                key={r.id}
+                {...r}
+                detailUrl={deepUrl}
+                downloadUrl={r.downloadUrl || r.fileUrl}
+                index={idx}
+                onPreview={() => setPreviewResource(r)}
+              />
+            );
+          })}
         </div>
       ) : (
         <div className={styles.empty}>

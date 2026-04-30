@@ -77,9 +77,14 @@ export default function SearchBar({ size = "default", placeholder = "Search reso
 
   const navigateToResource = (item) => {
     const isHome = pathname === "/";
-    const url = isHome 
-      ? `/${item.categorySlug}` 
-      : `/${item.categorySlug}?res=${item.slug}`;
+    let url = `/${item.categorySlug}`;
+    
+    const params = new URLSearchParams();
+    if (item.slug) params.set("res", item.slug);
+    if (item.folderId) params.set("folder", item.folderId);
+    
+    const queryString = params.toString();
+    if (queryString) url += `?${queryString}`;
     
     router.push(url);
     setShowDropdown(false);

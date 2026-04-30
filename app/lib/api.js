@@ -306,6 +306,7 @@ export async function getSearchSuggestions(query) {
     categorySlug: item.categories?.slug,
     categoryIcon: item.categories?.icon || 'box',
     format: item.file_format,
+    folderId: item.folder_id,
     folderName: item.folders?.name
   }));
 }

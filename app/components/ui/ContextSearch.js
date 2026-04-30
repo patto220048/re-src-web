@@ -2,9 +2,9 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Search, Loader2, X, History, Volume2 } from "lucide-react";
+import { Search, Loader2, X, History, Volume2, Filter, ChevronDown, Check, Eye } from "lucide-react";
 import { getIcon } from "@/app/components/ui/IconLib";
-import { searchResourcesClient } from "@/app/lib/searchUtils";
+import { searchResourcesClient, getOrBuildSearchIndex } from "@/app/lib/searchUtils";
 import styles from "./ContextSearch.module.css";
 
 function getCategoryIcon(iconName, size = 16) {
@@ -50,9 +50,15 @@ export default function ContextSearch() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState([]);
   const [recentItems, setRecentItems] = useState([]);
-  const [focusedId, setFocusedId] = useState(null);
   const [loading, setLoading] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [availableCategories, setAvailableCategories] = useState([]);
+  const [availableFormats, setAvailableFormats] = useState([]);
+  const [filters, setFilters] = useState({
+    category: "",
+    format: ""
+  });
   
   const inputRef = useRef(null);
   const containerRef = useRef(null);
@@ -71,6 +77,52 @@ export default function ContextSearch() {
       }
     }
   }, []);
+
+  // Load categories and formats when visible
+  useEffect(() => {
+    if (!visible) return;
+
+    const loadIndexData = async () => {
+      try {
+        const fuse = await getOrBuildSearchIndex();
+        // Handle different Fuse.js versions/structures
+        const list = fuse.list || (fuse.getIndex && fuse.getIndex().docs) || [];
+        
+        console.log("ContextSearch: Index loaded, items:", list.length);
+        
+        if (list.length > 0) {
+          // Get unique categories with counts
+          const catMap = {};
+          const fmtMap = {};
+          
+          list.forEach(item => {
+            // Some items might be wrapped in { item: ... } if they came from a search result, 
+            // but fuse.list should be raw.
+            const data = item.item || item; 
+            const cat = data.category || data.category_id;
+            const fmt = data.fileFormat || data.file_format || data.format;
+            
+            if (cat) catMap[cat] = (catMap[cat] || 0) + 1;
+            if (fmt) fmtMap[fmt] = (fmtMap[fmt] || 0) + 1;
+          });
+          
+          const cats = Object.entries(catMap)
+            .map(([name, count]) => ({ name, count }))
+            .sort((a, b) => b.count - a.count);
+            
+          const fmts = Object.entries(fmtMap)
+            .map(([name, count]) => ({ name, count }))
+            .sort((a, b) => b.count - a.count);
+
+          setAvailableCategories(cats);
+          setAvailableFormats(fmts);
+        }
+      } catch (e) {
+        console.error("Failed to load search index data:", e);
+      }
+    };
+    loadIndexData();
+  }, [visible]);
 
   const saveRecent = useCallback((item) => {
     if (!item) return;
@@ -98,7 +150,6 @@ export default function ContextSearch() {
     setQuery("");
     setResults([]);
     setActiveIndex(0);
-    setFocusedId(null);
     window.dispatchEvent(new CustomEvent("local-search", { detail: "" }));
   }, []);
 
@@ -106,12 +157,8 @@ export default function ContextSearch() {
   useEffect(() => {
     if (!visible) return;
 
-    if (focusedId) {
-      setResults([]);
-      return;
-    }
 
-    if (!query.trim()) {
+    if (!query.trim() && !filters.category && !filters.format) {
       setResults(recentItems);
       setLoading(false);
       return;
@@ -122,12 +169,17 @@ export default function ContextSearch() {
     
     debounceRef.current = setTimeout(async () => {
       try {
-        const found = await searchResourcesClient(query);
+        let found = await searchResourcesClient(query, {
+          category: filters.category,
+          format: filters.format,
+          limit: 20
+        });
+        
         const formatted = found.map(item => ({
           ...item,
           categoryIcon: item.categoryIcon || 'box'
         }));
-        setResults(formatted.slice(0, 8));
+        setResults(formatted);
         setActiveIndex(0);
       } catch (e) {
         console.error("Search error:", e);
@@ -138,7 +190,7 @@ export default function ContextSearch() {
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
     };
-  }, [query, visible, recentItems, focusedId]);
+  }, [query, visible, recentItems, filters.category, filters.format]);
 
   useEffect(() => {
     const handleContextMenu = (e) => {
@@ -149,7 +201,7 @@ export default function ContextSearch() {
         window.location.pathname === "/privacy" ||
         window.location.pathname === "/about-us" ||
         window.location.pathname === "/contact" ||
-        
+        window.location.pathname === "/pricing" ||
         e.target.tagName === "INPUT" ||
         e.target.tagName === "TEXTAREA"
       ) {
@@ -186,29 +238,37 @@ export default function ContextSearch() {
     };
   }, [close]);
 
+  const handleNavigate = (e, item) => {
+    e.stopPropagation(); // Prevent trigger row click
+    saveRecent(item);
+    
+    const categorySlug = item.categorySlug || 
+                         (typeof item.category === 'string' ? item.category.toLowerCase().replace(/\s+/g, '-') : 'all');
+    const itemSlug = item.slug;
+
+    if (categorySlug && itemSlug) {
+      // Direct navigation to dedicated details page
+      window.location.href = `/${categorySlug}/${itemSlug}`;
+      close();
+    }
+  };
+
   const handleItemClick = (item) => {
     saveRecent(item);
     
-    // Always redirect to category page with ?res=slug for all items
-    // This ensures isolation/move-to-top works on the main grid
-    // Resolve category slug from various possible structures (direct DB or transformed search item)
-    const categorySlug = 
-      item.categorySlug || 
-      item.category?.slug || 
-      item.categories?.slug || 
-      (typeof item.category === 'string' ? item.category.toLowerCase().replace(/\s+/g, '-') : null);
+    const categorySlug = item.categorySlug || 
+                         (typeof item.category === 'string' ? item.category.toLowerCase().replace(/\s+/g, '-') : 'all');
+    const itemSlug = item.slug;
+    const folderId = item.folderId;
 
-    if (categorySlug) {
-      window.location.href = `/${categorySlug}?res=${item.slug}`;
-      close();
-    } else {
-      // Fallback for audio if category slug missing, though it shouldn't be
-      const isAudio = ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'audio'].includes(item.fileFormat?.toLowerCase()) || 
-                      ['mp3', 'wav', 'ogg', 'm4a', 'aac', 'audio'].includes(item.format?.toLowerCase());
-      if (isAudio) {
-        setFocusedId(item.id);
-        setQuery("");
+    if (categorySlug && itemSlug) {
+      // Navigate to category page with folder and resource parameters
+      let url = `/${categorySlug}?res=${itemSlug}`;
+      if (folderId) {
+        url += `&folder=${folderId}`;
       }
+      window.location.href = url;
+      close();
     }
   };
 
@@ -236,42 +296,87 @@ export default function ContextSearch() {
 
   if (!visible) return null;
 
-  const displayList = focusedId 
-    ? [results.find(i => i.id === focusedId) || recentItems.find(i => i.id === focusedId)].filter(Boolean)
-    : results;
+  const displayList = results;
 
   return (
     <div
       ref={containerRef}
-      className={`${styles.container} ${focusedId ? styles.isFocused : ""}`}
+      className={styles.container}
       style={{ left: position.x, top: position.y }}
     >
       <div className={styles.searchBox}>
-        {focusedId ? <Volume2 size={16} className={styles.focusIcon} /> : <Search size={16} className={styles.searchIcon} />}
+        <Search size={16} className={styles.searchIcon} />
         <input
           ref={inputRef}
           type="text"
-          placeholder={focusedId ? "Focused on Audio..." : "Quick search..."}
+          placeholder="Quick search..."
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
-            if (focusedId) setFocusedId(null);
             setActiveIndex(0);
           }}
           onKeyDown={handleKeyDown}
           className={styles.input}
           id="context-search-input"
         />
-        {focusedId ? (
-          <button onClick={() => setFocusedId(null)} className={styles.clearBtn} title="Clear filter">
-            <X size={14} />
+        <div className={styles.searchActions}>
+          <button 
+            className={`${styles.filterToggle} ${showAdvanced ? styles.activeFilter : ""}`} 
+            onClick={() => setShowAdvanced(!showAdvanced)}
+            title="Advanced Search"
+          >
+            <Filter size={14} />
           </button>
-        ) : (
           <kbd className={styles.kbd}>ESC</kbd>
-        )}
+        </div>
       </div>
 
-      {!query && !focusedId && recentItems.length > 0 && (
+      {showAdvanced && (
+        <div className={styles.advancedPanel}>
+          <div className={styles.filterGroup}>
+            <div className={styles.filterLabel}>Category</div>
+            <div className={styles.filterScroll}>
+              <button 
+                className={`${styles.filterChip} ${!filters.category ? styles.activeChip : ""}`}
+                onClick={() => setFilters(f => ({ ...f, category: "" }))}
+              >
+                All
+              </button>
+              {availableCategories.map(cat => (
+                <button 
+                  key={cat.name}
+                  className={`${styles.filterChip} ${filters.category === cat.name ? styles.activeChip : ""}`}
+                  onClick={() => setFilters(f => ({ ...f, category: cat.name }))}
+                >
+                  {cat.name} <span className={styles.chipCount}>{cat.count}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className={styles.filterGroup}>
+            <div className={styles.filterLabel}>Format</div>
+            <div className={styles.filterScroll}>
+              <button 
+                className={`${styles.filterChip} ${!filters.format ? styles.activeChip : ""}`}
+                onClick={() => setFilters(f => ({ ...f, format: "" }))}
+              >
+                All
+              </button>
+              {availableFormats.map(fmt => (
+                <button 
+                  key={fmt.name}
+                  className={`${styles.filterChip} ${filters.format === fmt.name ? styles.activeChip : ""}`}
+                  onClick={() => setFilters(f => ({ ...f, format: fmt.name }))}
+                >
+                  {fmt.name.toUpperCase()} <span className={styles.chipCount}>{fmt.count}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!query && recentItems.length > 0 && (
         <div className={styles.sectionHeader}>
           <History size={10} />
           <span>RECENT SEARCHES</span>
@@ -290,8 +395,8 @@ export default function ContextSearch() {
           {displayList.map((item, idx) => (
             <li
               key={item.id}
-              className={`${styles.resultItem} ${idx === activeIndex && !focusedId ? styles.active : ""} ${focusedId === item.id ? styles.focusedItem : ""}`}
-              onMouseEnter={() => !focusedId && setActiveIndex(idx)}
+              className={`${styles.resultItem} ${idx === activeIndex ? styles.active : ""}`}
+              onMouseEnter={() => setActiveIndex(idx)}
               onClick={() => handleItemClick(item)}
             >
               <span className={styles.resultIcon}>
@@ -299,7 +404,7 @@ export default function ContextSearch() {
               </span>
               <div className={styles.resultItemContent}>
                 <div className={styles.resultName}>
-                  {highlightText(item.name, (query.trim() && !focusedId) ? item.matches : [], 'name')}
+                  {highlightText(item.name, query.trim() ? item.matches : [], 'name')}
                 </div>
                 <div className={styles.resultMeta}>
                   {item.format && <span className={styles.resultFormat}>{item.format.toUpperCase()}</span>}
@@ -311,33 +416,39 @@ export default function ContextSearch() {
                     </>
                   )}
                   <span className={styles.dot}>•</span>
-                  <span className={styles.action}>
-                    {focusedId === item.id ? "CLICK TO UNLOCK" : "CLICK TO OPEN"}
-                  </span>
                 </div>
               </div>
-              {!query && !focusedId && (
+              <div className={styles.resultActions}>
                 <button 
-                  className={styles.removeBtn} 
-                  onClick={(e) => removeRecent(e, item.id)}
-                  title="Remove from history"
+                  className={styles.viewBtn} 
+                  onClick={(e) => handleNavigate(e, item)}
+                  title="View Details"
                 >
-                  <X size={12} />
+                  <Eye size={14} />
                 </button>
-              )}
+                {!query && (
+                  <button 
+                    className={styles.removeBtn} 
+                    onClick={(e) => removeRecent(e, item.id)}
+                    title="Remove from history"
+                  >
+                    <X size={12} />
+                  </button>
+                )}
+              </div>
             </li>
           ))}
         </ul>
       )}
 
-      {!loading && query && results.length === 0 && !focusedId && (
+      {!loading && query && results.length === 0 && (
         <div className={styles.empty}>No results found</div>
       )}
 
       <div className={styles.hint}>
         <span>↑↓ navigate</span>
         <span>↵ select</span>
-        {focusedId ? <span>esc exit focus</span> : <span>esc close</span>}
+        <span>esc close</span>
       </div>
     </div>
   );
