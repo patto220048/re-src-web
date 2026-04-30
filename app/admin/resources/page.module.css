@@ -1,11 +1,12 @@
 .adminContainer {
   display: grid;
   grid-template-columns: 280px 1fr;
-  height: calc(100vh - 64px);
+  grid-template-rows: 1fr;
+  height: calc(100vh - (var(--space-6) * 2));
   background: var(--bg-primary);
   border-radius: 0;
   overflow: hidden;
-  border-top: 1px solid var(--border-default);
+  border: 1px solid var(--border-default);
 }
 
 .sidebar {
@@ -14,6 +15,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-height: 0;
 }
 
 .sidebarHeader {
@@ -29,12 +31,14 @@
   flex-direction: column;
   overflow: hidden;
   background: var(--bg-primary);
+  min-height: 0;
 }
 
 .pageHeader {
   padding: var(--space-8) var(--space-10);
   background: var(--bg-card);
   border-bottom: 1px solid var(--border-default);
+  flex-shrink: 0;
 }
 
 .topActions {
@@ -177,17 +181,17 @@
   border-color: var(--text-primary);
 }
 
-/* Resource Grid */
 .scrollArea {
   flex: 1;
   overflow-y: auto;
-  padding: var(--space-10);
+  padding: 0 var(--space-10) var(--space-10);
 }
 
 .resourceGrid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: var(--space-8);
+  margin-top: var(--space-10);
 }
 
 .selectionMode.listMode .listHeader,
@@ -518,6 +522,9 @@
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.1em;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
 .listRow {

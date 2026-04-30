@@ -2,6 +2,7 @@
 
 import { ReactLenis, useLenis } from 'lenis/react';
 import { useEffect, useRef } from 'react';
+import { usePathname } from 'next/navigation';
 
 function SnapHandler() {
   const lenis = useLenis();
@@ -48,6 +49,13 @@ function SnapHandler() {
 }
 
 export default function SmoothScroll({ children }) {
+  const pathname = usePathname();
+  
+  // Disable smooth scroll on admin dashboard
+  if (pathname?.startsWith('/admin')) {
+    return <>{children}</>;
+  }
+
   return (
     <ReactLenis root options={{ 
       lerp: 0.05, 
