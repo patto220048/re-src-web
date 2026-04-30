@@ -41,9 +41,9 @@ export default function FolderCard({
         <span className={styles.name}>
           {isBack ? "Back to Parent" : folder.name}
         </span>
-        {!isBack && folder.resourceCount > 0 && (
+        {!isBack && folder.totalResourceCount > 0 && (
           <span className={styles.count}>
-            {folder.resourceCount} {folder.resourceCount === 1 ? "item" : "items"}
+            {folder.totalResourceCount} {folder.totalResourceCount === 1 ? "item" : "items"}
           </span>
         )}
       </div>
