@@ -111,7 +111,13 @@ export default function Sidebar({
             }}
           >
             <ChevronRight size={14} />
-            <span>All Resources</span>
+            <span style={{ flex: 1 }}>All Resources</span>
+            {(() => {
+              const total = folders.reduce((acc, f) => acc + (f.totalResourceCount || 0), 0);
+              return total > 0 ? (
+                <span className={styles.allCount}>{total}</span>
+              ) : null;
+            })()}
           </button>
 
           <TreeFolder

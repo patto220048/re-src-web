@@ -109,3 +109,15 @@
   padding: 1px 6px;
   border-radius: var(--radius-full);
 }
+
+.countText {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  margin-left: 4px;
+  font-weight: 400;
+}
+
+.row.active .countText {
+  color: rgba(0, 0, 0, 0.6);
+}

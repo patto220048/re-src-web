@@ -137,6 +137,18 @@ function buildFolderTree(flatList) {
     });
   };
   sortChildren(roots);
+
+  // Recursive count calculation
+  const calculateRecursiveCount = (node) => {
+    let total = node.resourceCount || 0;
+    node.children.forEach(child => {
+      total += calculateRecursiveCount(child);
+    });
+    node.totalResourceCount = total;
+    return total;
+  };
+  roots.forEach(root => calculateRecursiveCount(root));
+
   return roots;
 }
 

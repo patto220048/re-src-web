@@ -170,3 +170,17 @@
     z-index: calc(var(--z-sidebar) - 1);
   }
 }
+
+.allCount {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  background: var(--bg-surface);
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+}
+
+.allBtn.allActive .allCount {
+  color: #000;
+  background: rgba(255, 255, 255, 0.8);
+}

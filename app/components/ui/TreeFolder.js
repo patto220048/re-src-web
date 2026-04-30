@@ -48,8 +48,8 @@ function TreeItem({ folder, selectedFolderId, onSelect, primaryColor, level = 0 
           <Folder size={16} className={styles.folderIcon} />
         )}
         <span className={styles.name}>{folder.name}</span>
-        {folder.resourceCount > 0 && (
-          <span className={styles.count}>{folder.resourceCount}</span>
+        {folder.totalResourceCount > 0 && (
+          <span className={styles.count}>{folder.totalResourceCount}</span>
         )}
       </button>
       {hasChildren && expanded && (
