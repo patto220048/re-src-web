@@ -182,8 +182,19 @@ export async function getResources({
     if (categorySlug) {
       query = query.eq("category_id", categorySlug);
     }
-    if (folderId) {
-      query = query.eq("folder_id", folderId);
+    if (folderId !== undefined) {
+      // If we are at the root (folderId === null), we only filter by null folder
+      // if there's no active global action (search, tags, or format filters).
+      // This allows search to remain global within the category.
+      const isGlobalAction = searchTerm || (selectedTags && selectedTags.length > 0) || (selectedFormats && selectedFormats.length > 0);
+      
+      if (folderId !== null || !isGlobalAction) {
+        if (folderId === null) {
+          query = query.is("folder_id", null);
+        } else {
+          query = query.eq("folder_id", folderId);
+        }
+      }
     }
 
     if (searchTerm) {
@@ -345,6 +356,7 @@ function mapFolder(folder) {
     ...folder,
     parentId: folder.parent_id,
     categorySlug: folder.category_id || folder.category_slug, // Handle both old and new schema
+    resourceCount: folder.resources?.[0]?.count || 0,
   };
 }
 
@@ -538,7 +550,10 @@ export const getAdminCategories = fetchCategoriesInternal;
 export async function getCategoryBySlug(slug) {
   const { data, error } = await supabase
     .from('categories')
-    .select('*')
+    .select(`
+      *,
+      resources:resources(count)
+    `)
     .eq('slug', slug)
     .single();
 
@@ -546,7 +561,12 @@ export async function getCategoryBySlug(slug) {
     console.error('Error fetching category by slug:', error);
     return null;
   }
-  return data;
+  
+  return {
+    ...data,
+    resourceCount: data.resources?.[0]?.count || 0,
+    formats: data.formats || []
+  };
 }
 
 
@@ -651,7 +671,7 @@ export async function getFolders(categorySlug, parentId) {
   const fetchFoldersLogic = async () => {
     let query = supabase
       .from('folders')
-      .select('*, category:categories!inner(slug)')
+      .select('*, category:categories!inner(slug), resources:resources(count)')
       .eq('categories.slug', categorySlug)
       .order('order', { ascending: true });
 

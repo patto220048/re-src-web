@@ -275,8 +275,11 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
       if (target) return [target];
     }
 
-    // folderId, selectedFormats, and selectedTags are now filtered at the server level
-    // so we don't need to filter them locally here, which avoids the infinite loop.
+    // Filter by folderId locally if not searching or filtering tags/formats
+    const isGlobalAction = resSlug || inPageSearch || selectedFormats.length > 0 || selectedTags.length > 0;
+    if (!isGlobalAction) {
+      results = results.filter(r => r.folderId === selectedFolderId);
+    }
 
     if (inPageSearch) {
       const q = inPageSearch.toLowerCase();
@@ -322,6 +325,18 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
       parentFolder: result?.parent || "root" // "root" string to represent back to All
     };
   }, [folders, selectedFolderId]);
+  
+  const currentFolder = useMemo(() => {
+    if (!selectedFolderId) return null;
+    return findInTree(folders, selectedFolderId)?.current;
+  }, [folders, selectedFolderId]);
+
+  const countToDisplay = useMemo(() => {
+    if (!inPageSearch && selectedFormats.length === 0 && selectedTags.length === 0) {
+      return currentFolder ? (currentFolder.resourceCount || 0) : (info.resourceCount || 0);
+    }
+    return filteredResources.length;
+  }, [currentFolder, info.resourceCount, inPageSearch, selectedFormats, selectedTags, filteredResources.length]);
 
   // --- Pagination Logic ---
 
@@ -503,6 +518,14 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
       });
 
       // 3. Resources
+      // Condition: Hide resources at root if there are folders AND no active search/filters
+      const isRootNoFilters = !selectedFolderId && !inPageSearch && selectedFormats.length === 0 && selectedTags.length === 0;
+      const hasFoldersAtRoot = folders.length > 0;
+      
+      if (isRootNoFilters && hasFoldersAtRoot) {
+        return items; // Skip resources, return only folders
+      }
+
       if (info.layout === "audio" || info.layout === "sound") {
         displayResources.forEach((resource) => {
           items.push(
@@ -640,7 +663,8 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
         </div>
 
         <h1 className={styles.title} style={{ color: info.color }}>
-          {info.name} ({filteredResources.length})
+          {currentFolder ? currentFolder.name : info.name}
+          {countToDisplay > 0 && ` (${countToDisplay})`}
         </h1>
 
         <div className={styles.navActions}>
