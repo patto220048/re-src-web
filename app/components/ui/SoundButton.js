@@ -170,8 +170,9 @@ export default function SoundButton({
     });
   }, [id, isPlaying, currentTime]);
 
+  // Reset state when ID changes or on unmount
   useEffect(() => {
-    return () => {
+    const cleanup = () => {
       const audio = audioRef.current;
       if (audio) {
         audio.pause();
@@ -180,8 +181,16 @@ export default function SoundButton({
         audioRef.current = null;
       }
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      
+      setIsPlaying(false);
+      setCurrentTime(0);
+      setDuration(0);
+      setIsScrubbing(false);
     };
-  }, []);
+
+    // Return cleanup to run on unmount or id change
+    return cleanup;
+  }, [id]);
 
   const handleMouseEnter = useCallback(() => {
     setIsHovered(true);

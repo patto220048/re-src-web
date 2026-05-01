@@ -204,6 +204,44 @@ export default function ResourceDetail({
     };
   }, [isScrubbing, isAudio, seek]);
 
+  // Reset state when resource changes or component unmounts
+  useEffect(() => {
+    const stopMedia = () => {
+      // Stop and clear current audio
+      if (audioRef.current) {
+        audioRef.current.pause();
+        mediaManager.stop(audioRef.current);
+        audioRef.current.src = "";
+        audioRef.current = null;
+      }
+      // Stop and reset current video
+      if (videoRef.current) {
+        videoRef.current.pause();
+        videoRef.current.currentTime = 0;
+        mediaManager.stop(videoRef.current);
+      }
+      
+      // Reset local UI state
+      setIsPlaying(false);
+      setCurrentTime(0);
+      setDuration(0);
+      setVideoStarted(false);
+      setIsScrubbing(false);
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+    };
+
+    // Initial reset
+    stopMedia();
+
+    // Cleanup on unmount or resource change
+    return () => {
+      stopMedia();
+    };
+  }, [resource.id]);
+
   // Sync with global volume settings
   useEffect(() => {
     const unsubscribe = mediaManager.subscribe((settings) => {
