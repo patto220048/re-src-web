@@ -90,6 +90,7 @@ export default function Sidebar({
           isResizing ? styles.isResizing : ""
         }`}
         id="category-sidebar"
+        data-lenis-prevent
         style={{ 
           "--cat-color": primaryColor,
           width: mobileOpen ? undefined : `${width}px` 

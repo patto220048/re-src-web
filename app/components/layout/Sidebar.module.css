@@ -8,6 +8,8 @@
   overflow-y: auto;
   overflow-x: hidden;
   flex-shrink: 0;
+  z-index: 10;
+  overscroll-behavior: contain;
   transition: width var(--transition-base); /* Transition only when not resizing */
   
   /* Standard thin scrollbar for Firefox */
