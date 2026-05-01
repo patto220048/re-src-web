@@ -204,20 +204,42 @@ export default function FilterBar({
       {tags.length > 0 && (
         <div className={styles.tagsRow}>
           <div className={styles.labelSection}>
-            <Tag size={14} className={styles.labelIcon} />
+            <Tag size={12} className={styles.labelIcon} />
             <span className={styles.labelText}>TAGS</span>
+            {selectedTags.length > 0 && (
+              <button 
+                className={styles.clearTagsBtn} 
+                onClick={() => onTagsChange([])}
+                title="Clear all tags"
+              >
+                <X size={10} />
+              </button>
+            )}
           </div>
           <div className={styles.tagsScroll}>
-            {tags.map((tag) => (
-              <button
-                key={tag}
-                className={`${styles.tagChip} ${selectedTags.includes(tag) ? styles.activeTag : ""}`}
-                onClick={() => toggleTag(tag)}
-                style={{ "--active-color": primaryColor }}
-              >
-                {tag}
-              </button>
-            ))}
+            <AnimatePresence mode="popLayout">
+              {tags.map((tag, idx) => (
+                <motion.button
+                  key={tag}
+                  layout
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.9 }}
+                  transition={{ 
+                    duration: 0.2, 
+                    delay: Math.min(idx * 0.02, 0.2),
+                    ease: "easeOut" 
+                  }}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className={`${styles.tagChip} ${selectedTags.includes(tag) ? styles.activeTag : ""}`}
+                  onClick={() => toggleTag(tag)}
+                  style={{ "--active-color": primaryColor }}
+                >
+                  {tag}
+                </motion.button>
+              ))}
+            </AnimatePresence>
           </div>
         </div>
       )}

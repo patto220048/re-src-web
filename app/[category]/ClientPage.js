@@ -550,17 +550,21 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
 
 
       // 2. Subfolders
-      currentSubfolders.forEach((sub) => {
-        items.push(
-          <FolderCard
-            key={sub.id}
-            folder={sub}
-            onClick={() => handleSelectFolder(sub)}
-            primaryColor={info.color}
-            index={globalIdx++}
-          />
-        );
-      });
+      const isFiltering = inPageSearch || selectedFormats.length > 0 || selectedTags.length > 0 || resSlug;
+      
+      if (!isFiltering) {
+        currentSubfolders.forEach((sub) => {
+          items.push(
+            <FolderCard
+              key={sub.id}
+              folder={sub}
+              onClick={() => handleSelectFolder(sub)}
+              primaryColor={info.color}
+              index={globalIdx++}
+            />
+          );
+        });
+      }
 
       // 3. Resources
       // Condition: Hide resources at root if there are folders AND no active search/filters
