@@ -72,6 +72,7 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
   const loadMoreRef = useRef(null);
   const abortControllerRef = useRef(null);
   const debounceTimerRef = useRef(null);
+  const isFirstRun = useRef(true);
 
   // --- Effects ---
 
@@ -225,12 +226,26 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
     }
 
     // --- Data Refresh Logic ---
-    setIsFetchLoading(true);
-
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
     if (abortControllerRef.current) abortControllerRef.current.abort();
 
     const refreshData = async () => {
+      // Optimization: Skip the very first fetch on mount IF the state matches the initial server load
+      if (hasLoadedInitialStateRef.current && isFirstRun.current) {
+        isFirstRun.current = false;
+        const hasNoFilters = !inPageSearch && selectedTags.length === 0 && selectedFormats.length === 0;
+        const isAtRoot = selectedFolderId === null;
+        
+        if (initialResources?.length > 0 && hasNoFilters && isAtRoot) {
+          console.log("🚀 Optimization: Skipping initial fetch, using server data.");
+          setAllLoadedResources(initialResources);
+          setServerOffset(initialResources.length);
+          setIsFetchLoading(false);
+          return;
+        }
+      }
+
+      setIsFetchLoading(true);
       const controller = new AbortController();
       abortControllerRef.current = controller;
 
@@ -240,30 +255,39 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
           selectedTags: selectedTags,
           selectedFormats: selectedFormats,
           folderId: selectedFolderId,
-          searchTerm: inPageSearch, // Pass search to server
+          searchTerm: inPageSearch,
           offset: 0,
           limit: PAGE_SIZE_BATCH,
           abortSignal: controller.signal
         });
 
         if (!controller.signal.aborted) {
-          setAllLoadedResources(fresh);
-          setServerOffset(fresh.length);
-          setHasMoreDB(fresh.length === PAGE_SIZE_BATCH);
+          setAllLoadedResources(fresh || []);
+          setServerOffset(fresh?.length || 0);
+          setHasMoreDB(fresh?.length === PAGE_SIZE_BATCH);
           setVisibleCount(PAGE_SIZE_DISPLAY);
         }
-      } catch (err) {
-        if (err.name !== 'AbortError') console.error("Failed to refresh resources:", err);
+      } catch (e) {
+        if (e.name !== 'AbortError') {
+          console.error("Refresh fetch failed:", e);
+        }
       } finally {
-        if (!controller.signal.aborted) setIsFetchLoading(false);
+        if (!controller.signal.aborted) {
+          setIsFetchLoading(false);
+        }
       }
     };
 
-    // Debounce search more aggressively than other filters
-    const delay = inPageSearch ? 500 : 300;
-    debounceTimerRef.current = setTimeout(refreshData, delay);
+    // Use 300ms debounce now that we have DB indexes for faster response
+    debounceTimerRef.current = setTimeout(refreshData, 300);
 
-    // --- Folder Tags Fetching ---
+    return () => {
+      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    };
+  }, [isInitialized, selectedFolderId, selectedFormats, selectedTags, sortBy, inPageSearch, slug]);
+
+  // --- Folder Tags Fetching ---
+  useEffect(() => {
     if (selectedFolderId) {
       const node = findInTree(folders, selectedFolderId)?.current;
       if (node) {
