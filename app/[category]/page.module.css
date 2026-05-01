@@ -6,10 +6,8 @@
 
 .main {
   flex: 1;
+  min-width: 0; /* Important for flex child to allow shrinking */
   padding: 40px 40px 80px 40px;
-  /* Use dynamic sidebar width + original 40px gutter */
-  padding-left: calc(var(--sidebar-width-current, var(--sidebar-width)) + 40px);
-  transition: padding-left var(--transition-base);
 }
 
 /* ---------- Breadcrumb ---------- */
@@ -22,6 +20,9 @@
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 1px;
+  min-height: 18px; /* Stabilize height */
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .breadcrumbItem {
@@ -45,17 +46,18 @@
 .pageHeader {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  flex-direction: row;
+  flex-wrap: nowrap; /* Rigid no wrap */
   margin-bottom: var(--space-6);
   gap: var(--space-4);
-}
-
-.headerSep {
-  color: var(--text-muted);
-  opacity: 0.3;
-  font-weight: 300;
-  font-size: 1.2rem;
-  margin: 0 var(--space-1);
+  height: 80px; /* Rigidly locked */
+  min-height: 80px;
+  overflow: hidden;
+  contain: layout;
+  position: sticky;
+  top: var(--navbar-height);
+  z-index: 100;
+  background: var(--bg-primary);
 }
 
 .title {
@@ -65,14 +67,39 @@
   color: var(--text-primary);
   text-transform: uppercase;
   letter-spacing: -0.5px;
-  line-height: 1.1;
-  margin-bottom: 0;
+  line-height: 1;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
 }
 
-/* ---------- Grid ---------- */
+.headerTop {
+  display: flex;
+  align-items: center;
+}
+
+.navGroup {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.headerSep {
+  color: var(--text-muted);
+  opacity: 0.2;
+  font-weight: 300;
+  font-size: 1.5rem;
+  margin: 0 4px;
+}
+
 .gridWrapper {
   position: relative;
   width: 100%;
+  min-height: 800px;
+  contain: layout;
+  will-change: transform, opacity;
 }
 
 .grid {
@@ -138,9 +165,10 @@
   }
 
   .pageHeader {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--space-3);
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-4);
   }
 
   .headerSep {
@@ -222,7 +250,8 @@
   border: 1px solid var(--border-default);
   border-radius: 0px;
   overflow: hidden;
-  height: 100%;
+  height: 380px; /* Perfectly synced with real ResourceCard */
+  box-sizing: border-box;
 }
 
 .skeletonThumb {
@@ -234,10 +263,10 @@
 }
 
 .skeletonCardBody {
-  padding: 12px;
+  padding: 16px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
   flex: 1;
 }
 
@@ -264,13 +293,13 @@
   background: var(--bg-card);
   border: 1px solid var(--border-default);
   gap: 16px;
-  height: 90px;
-  /* Matching the ~80-100px height for sounds */
+  height: 70px; /* Perfectly synced with real SoundButton */
+  box-sizing: border-box;
 }
 
 .skeletonThumbSound {
-  width: 60px;
-  height: 60px;
+  width: 70px;
+  height: 70px;
   background: var(--bg-surface);
   animation: shimmer 1.5s infinite ease-in-out;
   flex-shrink: 0;
@@ -302,6 +331,7 @@
   align-items: center;
   margin-top: 60px;
   margin-bottom: 40px;
+  min-height: 100px;
 }
 
 .loadMoreBtn {
@@ -404,8 +434,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 42px;
+  height: 42px;
   background: var(--bg-card);
   border: 1px solid var(--border-default);
   color: var(--text-muted);

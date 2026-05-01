@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef, useCallback } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback, useTransition } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import Sidebar from "@/app/components/layout/Sidebar";
@@ -45,6 +45,7 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
   const [selectedTags, setSelectedTags] = useState([]);
   const [sortBy, setSortBy] = useState("newest");
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isPending, startTransition] = useTransition();
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE_DISPLAY);
 
   // Folder History (internal navigation only, not browser history)
@@ -148,41 +149,32 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
   useEffect(() => {
     if (!isInitialized) return;
     
-    const folderId = searchParams.get("folder") || null;
-    if (folderId !== selectedFolderId) {
-      setSelectedFolderId(folderId);
-      const result = findInTree(folders, folderId);
-      setSelectedFolderName(result?.current ? (result.current.path || result.current.name) : null);
-      setVisibleCount(PAGE_SIZE_DISPLAY);
-
-      // CRITICAL: Sync historyPointer if the URL changed (browser back/forward)
-      const existingIdx = historyStackRef.current.indexOf(folderId);
-      if (existingIdx !== -1) {
-        setHistoryPointer(existingIdx);
-      } else {
-        setHistoryStack(prev => {
-          const next = [...prev, folderId];
-          historyStackRef.current = next;
-          return next;
-        });
-        setHistoryPointer(historyStackRef.current.length - 1);
+    startTransition(() => {
+      const folderId = searchParams.get("folder") || null;
+      if (folderId !== selectedFolderId) {
+        setSelectedFolderId(folderId);
+        const result = findInTree(folders, folderId);
+        setSelectedFolderName(result?.current ? (result.current.path || result.current.name) : null);
+        setVisibleCount(PAGE_SIZE_DISPLAY);
       }
-    }
-    
-    const formats = searchParams.get("format") ? searchParams.get("format").split(",") : [];
-    if (JSON.stringify(formats) !== JSON.stringify(selectedFormats)) {
-      setSelectedFormats(formats);
-    }
-    
-    const tags = searchParams.get("tags") ? searchParams.get("tags").split(",") : [];
-    if (JSON.stringify(tags) !== JSON.stringify(selectedTags)) {
-      setSelectedTags(tags);
-    }
-    
-    const sort = searchParams.get("sort") || "newest";
-    if (sort !== sortBy) {
-      setSortBy(sort);
-    }
+      
+      const formatsStr = searchParams.get("format") || "";
+      const currentFormatsStr = selectedFormats.join(",");
+      if (formatsStr !== currentFormatsStr) {
+        setSelectedFormats(formatsStr ? formatsStr.split(",") : []);
+      }
+      
+      const tagsStr = searchParams.get("tags") || "";
+      const currentTagsStr = selectedTags.join(",");
+      if (tagsStr !== currentTagsStr) {
+        setSelectedTags(tagsStr ? tagsStr.split(",") : []);
+      }
+      
+      const sort = searchParams.get("sort") || "newest";
+      if (sort !== sortBy) {
+        setSortBy(sort);
+      }
+    });
   }, [searchParams, isInitialized, folders]);
 
   // Handle deep-link to resource via ?res=slug
@@ -354,42 +346,52 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
 
   // Extract unique tags from loaded resources for FilterBar
   const availableTags = useMemo(() => {
-    // 1. Determine if any filter is active
     const isFiltered = selectedTags.length > 0 || inPageSearch || selectedFormats.length > 0;
+    const tagMap = {};
 
+    // 1. Calculate counts from currently loaded resources (respects current filters)
+    allLoadedResources.forEach(r => {
+      if (r.tags) {
+        r.tags.forEach(t => {
+          const lowTag = t.toLowerCase();
+          tagMap[lowTag] = (tagMap[lowTag] || 0) + 1;
+        });
+      }
+    });
+
+    let baseTags = [];
     if (isFiltered) {
-      const tags = new Set();
-      // Always include currently selected tags so they don't disappear
-      selectedTags.forEach(t => tags.add(t.toLowerCase()));
-      
-      // Add all tags found in the current matching resources
-      allLoadedResources.forEach(r => {
-        if (r.tags) r.tags.forEach(t => tags.add(t.toLowerCase()));
-      });
-
-      return Array.from(tags).sort((a, b) => {
-        // Pin selected tags to the front of the list
-        const aSelected = selectedTags.includes(a);
-        const bSelected = selectedTags.includes(b);
-        if (aSelected && !bSelected) return -1;
-        if (!aSelected && bSelected) return 1;
-        return a.localeCompare(b);
-      });
+      // Show intersection + selected tags
+      const tagsSet = new Set(selectedTags.map(t => t.toLowerCase()));
+      Object.keys(tagMap).forEach(t => tagsSet.add(t));
+      baseTags = Array.from(tagsSet);
+    } else {
+      // Default view for folder/category
+      baseTags = selectedFolderId 
+        ? (folderTags.length > 0 ? folderTags : []) 
+        : categoryTags;
     }
 
-    // 2. If no filters, show default folder or category tags
-    if (selectedFolderId) {
-      if (folderTags.length > 0) return folderTags;
+    return baseTags.map(tag => {
+      const lowName = tag.toLowerCase();
+      return {
+        name: lowName,
+        count: tagMap[lowName] || 0
+      };
+    }).sort((a, b) => {
+      const aSelected = selectedTags.includes(a.name);
+      const bSelected = selectedTags.includes(b.name);
       
-      // Fallback: calculate from resources if folderTags haven't loaded
-      const tags = new Set();
-      allLoadedResources.forEach(r => {
-        if (r.tags) r.tags.forEach(t => tags.add(t.toLowerCase()));
-      });
-      return Array.from(tags).sort();
-    }
-
-    return categoryTags;
+      // Primary: Selected tags first
+      if (aSelected && !bSelected) return -1;
+      if (!aSelected && bSelected) return 1;
+      
+      // Secondary: Sort by count descending (most relevant first)
+      if (a.count !== b.count) return b.count - a.count;
+      
+      // Tertiary: Alphabetical
+      return a.name.localeCompare(b.name);
+    });
   }, [allLoadedResources, selectedFolderId, categoryTags, folderTags, inPageSearch, selectedTags, selectedFormats]);
 
   // --- Folder Navigation Grid Logic ---
@@ -534,8 +536,11 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
 
     const queryString = params.toString();
     const finalUrl = `${pathname}${queryString ? `?${queryString}` : ""}`;
-    router.replace(finalUrl, { scroll: false });
-  }, [pathname, router, searchParams]);
+    
+    startTransition(() => {
+      router.replace(finalUrl, { scroll: false });
+    });
+  }, [pathname, router, searchParams, startTransition]);
 
   const handleSelectFolder = (folder, isHistoryMove = false) => {
     const folderId = folder ? folder.id : null;
@@ -543,20 +548,22 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
 
     if (selectedFolderId === folderId) return;
 
-    setSelectedFolderId(folderId);
-    setSelectedFolderName(folderName);
-    setVisibleCount(PAGE_SIZE_DISPLAY);
-    
-    updateUrl({ folder: folderId });
+    startTransition(() => {
+      setSelectedFolderId(folderId);
+      setSelectedFolderName(folderName);
+      setVisibleCount(PAGE_SIZE_DISPLAY);
+      
+      updateUrl({ folder: folderId });
 
-    // Update internal history stack if NOT moving via history buttons
-    if (!isHistoryMove) {
-      const newStack = historyStack.slice(0, historyPointer + 1);
-      newStack.push(folderId);
-      setHistoryStack(newStack);
-      historyStackRef.current = newStack;
-      setHistoryPointer(newStack.length - 1);
-    }
+      // Update internal history stack if NOT moving via history buttons
+      if (!isHistoryMove) {
+        const newStack = historyStack.slice(0, historyPointer + 1);
+        newStack.push(folderId);
+        setHistoryStack(newStack);
+        historyStackRef.current = newStack;
+        setHistoryPointer(newStack.length - 1);
+      }
+    });
   };
 
   const goBack = () => {
@@ -681,16 +688,15 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
     const gridClass = (info.layout === "audio" || info.layout === "sound") ? styles.soundGrid : styles.grid;
 
     return (
-      <div className={styles.gridWrapper}>
+      <div className={styles.gridWrapper} style={{ minHeight: '800px' }}>
         <motion.div 
           className={gridClass}
           initial={false}
           animate={{
-            filter: isFetchLoading ? "blur(12px) grayscale(0.2)" : "blur(0px) grayscale(0)",
-            opacity: isFetchLoading ? 0.3 : 1,
-            scale: isFetchLoading ? 0.98 : 1
+            filter: (isFetchLoading || isPending) ? "blur(8px) grayscale(0.2)" : "blur(0px) grayscale(0)",
+            opacity: (isFetchLoading || isPending) ? 0.4 : 1,
           }}
-          transition={{ duration: 0.4, ease: [0.4, 0, 0.2, 1] }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
         >
           {renderGridItems()}
         </motion.div>
@@ -797,7 +803,6 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
 
           <h1 className={styles.title} style={{ color: info.color }}>
             {currentFolder ? currentFolder.name : info.name}
-            {countToDisplay !== undefined && ` (${countToDisplay})`}
           </h1>
         </div>
 
@@ -805,28 +810,45 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
           formats={info.formats}
           selectedFormats={selectedFormats}
           onFormatsChange={(vals) => {
-            setSelectedFormats(vals);
-            updateUrl({ format: vals });
+            startTransition(() => {
+              setSelectedFormats(vals);
+              updateUrl({ format: vals });
+            });
           }}
           tags={availableTags}
           selectedTags={selectedTags}
           onTagsChange={(vals) => {
-            setSelectedTags(vals);
-            updateUrl({ tags: vals });
+            startTransition(() => {
+              setSelectedTags(vals);
+              updateUrl({ tags: vals });
+            });
           }}
           sortBy={sortBy}
           onSortChange={(val) => {
-            setSortBy(val);
-            updateUrl({ sort: val });
+            startTransition(() => {
+              setSortBy(val);
+              updateUrl({ sort: val });
+            });
           }}
           inPageSearch={inPageSearch}
-          onSearchChange={setInPageSearch}
+          onSearchChange={(val) => {
+            startTransition(() => {
+              setInPageSearch(val);
+            });
+          }}
           resSlug={resSlug}
           onClearRes={() => router.push(pathname)}
           primaryColor={info.color}
           breadcrumbs={breadcrumbs}
           categoryName={info.name}
-          onBreadcrumbClick={(id) => handleSelectFolder(id)}
+          onBreadcrumbClick={(id) => {
+            if (!id) {
+              handleSelectFolder(null);
+            } else {
+              const folder = findInTree(folders, id);
+              if (folder?.current) handleSelectFolder(folder.current);
+            }
+          }}
         />
 
         {renderResources()}

@@ -5,6 +5,10 @@
   padding: var(--space-3) 0;
   border-bottom: 1px solid var(--border-default);
   margin-bottom: var(--space-4);
+  height: 120px; /* Rigidly locked height */
+  min-height: 120px;
+  overflow: hidden;
+  contain: layout;
 }
 
 .topRow {
@@ -66,7 +70,13 @@
   align-items: center;
   gap: var(--space-1);
   margin-right: var(--space-2);
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.breadcrumbWrapper::-webkit-scrollbar {
+  display: none;
 }
 
 .breadcrumbPiece {
@@ -305,18 +315,28 @@
   align-items: center;
   gap: var(--space-1);
   padding-top: var(--space-2);
+  min-height: 62px; /* Buffer for 2 rows of tags to eliminate CLS */
 }
 
 .tagsScroll {
   flex: 1;
   display: flex;
   align-items: center;
-  gap: 6px;
-  flex-wrap: wrap;
-  padding: 2px 0;
+  gap: 8px;
+  flex-wrap: nowrap; /* Prevent vertical growth */
+  overflow-x: auto;
+  padding: 4px 0;
+  scrollbar-width: none; /* Hide for clean look */
+}
+
+.tagsScroll::-webkit-scrollbar {
+  display: none;
 }
 
 .tagChip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   padding: 4px 10px;
   font-size: 0.75rem;
   font-weight: 500;
@@ -326,10 +346,20 @@
   border: 1px solid rgba(255, 255, 255, 0.08);
   white-space: nowrap;
   cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.15s ease;
   font-family: var(--font-mono);
   text-transform: lowercase;
   backdrop-filter: blur(4px);
+  user-select: none;
+}
+
+.tagName {
+  line-height: 1;
+}
+
+.tagClearIcon {
+  margin-left: 2px;
+  opacity: 0.7;
 }
 
 .tagChip:hover {
@@ -337,18 +367,33 @@
   border-color: rgba(255, 255, 255, 0.2);
   color: var(--text-primary);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.tagChip:active {
+  transform: translateY(0) scale(0.96);
 }
 
 .activeTag {
-  background: var(--bg-hover) !important;
-  border-color: var(--active-color) !important;
   color: var(--active-color) !important;
   box-shadow:
     0 0 0 1px rgba(250, 203, 17, 0.1),
     0 4px 15px rgba(0, 0, 0, 0.3),
     inset 0 0 10px rgba(250, 203, 17, 0.05);
   transform: translateY(-1px);
+}
+ 
+.tagsPlaceholder {
+  display: flex;
+  gap: 8px;
+  padding: 4px 0;
+  opacity: 0.1;
+}
+
+.skeletonTag {
+  width: 60px;
+  height: 24px;
+  background: var(--text-muted);
+  border-radius: 4px;
 }
 
 @media (max-width: 768px) {

@@ -208,48 +208,47 @@ export default function FilterBar({
         </div>
       </div>
 
-      {tags.length > 0 && (
-        <div className={styles.tagsRow}>
-          <div className={styles.labelSection}>
-            <Tag size={12} className={styles.labelIcon} />
-            <span className={styles.labelText}>TAGS</span>
-            {selectedTags.length > 0 && (
-              <button 
-                className={styles.clearTagsBtn} 
-                onClick={() => onTagsChange([])}
-                title="Clear all tags"
-              >
-                <X size={10} />
-              </button>
-            )}
-          </div>
-          <div className={styles.tagsScroll}>
-            <AnimatePresence mode="popLayout">
-              {tags.map((tag, idx) => (
-                <motion.button
-                  key={tag}
-                  layout
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  transition={{ 
-                    duration: 0.2, 
-                    delay: Math.min(idx * 0.02, 0.2),
-                    ease: "easeOut" 
-                  }}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className={`${styles.tagChip} ${selectedTags.includes(tag) ? styles.activeTag : ""}`}
-                  onClick={() => toggleTag(tag)}
+      <div className={styles.tagsRow}>
+        {tags.length > 0 ? (
+          <>
+            <div className={styles.labelSection}>
+              <Tag size={12} className={styles.labelIcon} />
+              <span className={styles.labelText}>TAGS</span>
+              {selectedTags.length > 0 && (
+                <button 
+                  className={styles.clearTagsBtn} 
+                  onClick={() => onTagsChange([])}
+                  title="Clear all tags"
+                >
+                  <X size={10} />
+                </button>
+              )}
+            </div>
+            <div className={styles.tagsScroll}>
+              {tags.map((tag) => (
+                <button
+                  key={tag.name}
+                  className={`${styles.tagChip} ${selectedTags.includes(tag.name) ? styles.activeTag : ""}`}
+                  onClick={() => toggleTag(tag.name)}
                   style={{ "--active-color": primaryColor }}
                 >
-                  {tag}
-                </motion.button>
+                  <span className={styles.tagName}>{tag.name}</span>
+                  {selectedTags.includes(tag.name) && (
+                    <X size={10} className={styles.tagClearIcon} />
+                  )}
+                </button>
               ))}
-            </AnimatePresence>
+            </div>
+          </>
+        ) : (
+          <div className={styles.tagsPlaceholder}>
+            {/* Invisible spacer to maintain height */}
+            <div className={styles.skeletonTag} />
+            <div className={styles.skeletonTag} />
+            <div className={styles.skeletonTag} />
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
