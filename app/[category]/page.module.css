@@ -42,15 +42,31 @@
   opacity: 0.5;
 }
 
+.pageHeader {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  margin-bottom: var(--space-6);
+  gap: var(--space-4);
+}
+
+.headerSep {
+  color: var(--text-muted);
+  opacity: 0.3;
+  font-weight: 300;
+  font-size: 1.2rem;
+  margin: 0 var(--space-1);
+}
+
 .title {
   font-family: var(--font-heading);
   font-size: 1.8rem;
   font-weight: 800;
-  margin-bottom: var(--space-6);
   color: var(--text-primary);
   text-transform: uppercase;
   letter-spacing: -0.5px;
   line-height: 1.1;
+  margin-bottom: 0;
 }
 
 /* ---------- Grid ---------- */
@@ -119,6 +135,16 @@
   .main {
     padding: var(--space-6);
     padding-left: var(--space-6) !important;
+  }
+
+  .pageHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+
+  .headerSep {
+    display: none;
   }
 
   .title {
@@ -365,8 +391,7 @@
 .navActions {
   display: flex;
   align-items: center;
-  gap: 16px;
-  margin-bottom: 24px;
+  gap: 12px;
 }
 
 .navArrows {
@@ -379,8 +404,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 32px;
+  height: 32px;
   background: var(--bg-card);
   border: 1px solid var(--border-default);
   color: var(--text-muted);
