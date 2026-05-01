@@ -7,6 +7,9 @@
 .main {
   flex: 1;
   padding: 40px 40px 80px 40px;
+  /* Use dynamic sidebar width + original 40px gutter */
+  padding-left: calc(var(--sidebar-width-current, var(--sidebar-width)) + 40px);
+  transition: padding-left var(--transition-base);
 }
 
 /* ---------- Breadcrumb ---------- */
@@ -115,6 +118,7 @@
 
   .main {
     padding: var(--space-6);
+    padding-left: var(--space-6) !important;
   }
 
   .title {

@@ -22,6 +22,19 @@ export default function Sidebar({
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef(null);
 
+  // Sync width to CSS variable for dynamic layout adjustments
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      document.documentElement.style.setProperty('--sidebar-width-current', `${width}px`);
+    }
+    // Cleanup: Reset when sidebar is unmounted (e.g. navigating away)
+    return () => {
+      if (typeof document !== 'undefined') {
+        document.documentElement.style.setProperty('--sidebar-width-current', '0px');
+      }
+    };
+  }, [width]);
+
   // Load width from localStorage on mount
   useEffect(() => {
     const savedWidth = localStorage.getItem("sidebarWidth");

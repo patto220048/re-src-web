@@ -4,6 +4,9 @@
   width: 100%;
   color: var(--text-primary);
   padding-top: var(--space-12);
+  /* Respect sidebar width if present */
+  padding-left: var(--sidebar-width-current, 0px);
+  transition: padding-left var(--transition-base);
 }
 
 .inner,
@@ -262,6 +265,10 @@
   .linksGrid {
     grid-template-columns: 1fr;
     gap: var(--space-8);
+  }
+
+  .footer {
+    padding-left: 0 !important;
   }
 
   .innerBottom {
