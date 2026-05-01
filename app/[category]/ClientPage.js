@@ -404,6 +404,24 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
     return filteredResources.length;
   }, [currentFolder, info.resourceCount, inPageSearch, selectedFormats, selectedTags, filteredResources.length]);
 
+  const breadcrumbs = useMemo(() => {
+    const path = [];
+    if (!selectedFolderId || folders.length === 0) return path;
+
+    const findPath = (tree, targetId) => {
+      for (const node of tree) {
+        if (node.id === targetId) return [{ id: node.id, name: node.name }];
+        if (node.children) {
+          const subPath = findPath(node.children, targetId);
+          if (subPath) return [{ id: node.id, name: node.name }, ...subPath];
+        }
+      }
+      return null;
+    };
+
+    return findPath(folders, selectedFolderId) || [];
+  }, [folders, selectedFolderId]);
+
   // --- Pagination Logic ---
 
   const handleLoadMore = useCallback(async () => {
@@ -729,19 +747,6 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
       />
 
       <div className={styles.main}>
-        <div className={styles.breadcrumb}>
-          <span className={styles.breadcrumbItem}>{info.name}</span>
-          {selectedFolderName && (
-            <>
-              {selectedFolderName.split("/").map((part, idx) => (
-                <span key={idx}>
-                  <span className={styles.breadcrumbSep}>/</span>
-                  <span className={styles.breadcrumbItem}>{part}</span>
-                </span>
-              ))}
-            </>
-          )}
-        </div>
 
         <h1 className={styles.title} style={{ color: info.color }}>
           {currentFolder ? currentFolder.name : info.name}
@@ -800,6 +805,9 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
           resSlug={resSlug}
           onClearRes={() => router.push(pathname)}
           primaryColor={info.color}
+          breadcrumbs={breadcrumbs}
+          categoryName={info.name}
+          onBreadcrumbClick={(id) => handleSelectFolder(id)}
         />
 
         {renderResources()}

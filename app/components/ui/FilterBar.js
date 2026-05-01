@@ -18,6 +18,9 @@ export default function FilterBar({
   onSearchChange,
   resSlug,
   onClearRes,
+  breadcrumbs = [],
+  categoryName = "",
+  onBreadcrumbClick,
   primaryColor = "var(--premium-gold)",
 }) {
   const [isSortOpen, setIsSortOpen] = useState(false);
@@ -66,9 +69,31 @@ export default function FilterBar({
     <div className={styles.container} id="filter-bar">
       <div className={styles.topRow}>
         <div className={styles.leftGroup}>
-          <div className={styles.labelSection}>
-            <Filter size={14} className={styles.labelIcon} />
-            <span className={styles.labelText}>FILTER</span>
+          <div className={styles.breadcrumbWrapper}>
+            <button 
+              className={styles.breadcrumbBtn} 
+              onClick={() => {
+                onBreadcrumbClick?.(null);
+                onFormatsChange([]);
+                onTagsChange([]);
+              }}
+              title={`Back to all ${categoryName}`}
+            >
+              <Filter size={14} className={styles.breadcrumbIcon} />
+              <span className={styles.breadcrumbText}>{categoryName}</span>
+            </button>
+            
+            {breadcrumbs.map((bc, idx) => (
+              <div key={bc.id} className={styles.breadcrumbPiece}>
+                <span className={styles.breadcrumbSep}>/</span>
+                <button 
+                  className={`${styles.breadcrumbBtn} ${idx === breadcrumbs.length - 1 ? styles.activeBreadcrumb : ""}`}
+                  onClick={() => onBreadcrumbClick?.(bc.id)}
+                >
+                  {bc.name}
+                </button>
+              </div>
+            ))}
           </div>
 
           <div className={styles.chipGroup}>
