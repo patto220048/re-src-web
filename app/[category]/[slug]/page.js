@@ -1,4 +1,6 @@
-import { getResources, getResourceBySlug, getRelatedResources, REVALIDATE_TIME, mapResource } from "@/app/lib/api";
+import { getResources, getResourceBySlug, getRelatedResources, REVALIDATE_TIME, mapResource, getFolders } from "@/app/lib/api";
+import { buildFolderTree } from "@/app/lib/folderUtils";
+
 import { supabase } from "@/app/lib/supabase";
 import { unstable_cache } from "next/cache";
 import ResourceDetail from "./ResourceDetail";
@@ -110,7 +112,13 @@ export async function generateMetadata({ params }) {
 
 export default async function ResourcePage({ params }) {
   const { category, slug } = await params;
-  const resource = await getCachedResource(category, slug);
+  
+  const [resource, rawFolders] = await Promise.all([
+    getCachedResource(category, slug),
+    getFolders(category)
+  ]);
+
+  const folders = buildFolderTree(rawFolders);
 
   if (!resource) {
     return (
@@ -217,6 +225,7 @@ export default async function ResourcePage({ params }) {
       <ResourceDetail
         resource={resource}
         related={related}
+        folders={folders}
         categorySlug={category}
         categoryName={categoryName}
         categoryColor={categoryColor}

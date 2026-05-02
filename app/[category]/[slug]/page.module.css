@@ -1,7 +1,14 @@
 .page {
-  min-height: 100vh;
-  padding: 100px var(--space-6) 80px;
-  max-width: 1200px;
+  display: flex;
+  min-height: calc(100vh - var(--navbar-height));
+  background: var(--bg-primary);
+}
+
+.mainContent {
+  flex: 1;
+  min-width: 0;
+  padding: 40px var(--space-6) 80px;
+  max-width: 1400px;
   margin: 0 auto;
 }
 
@@ -76,7 +83,7 @@
   position: relative;
   width: 100%;
   aspect-ratio: 16 / 10;
-  border-radius: 12px;
+  border-radius: 0px;
   overflow: hidden;
   background: var(--bg-card);
   border: 1px solid var(--border-default);
@@ -174,7 +181,7 @@
   justify-content: center;
   width: 64px;
   height: 64px;
-  border-radius: 50%;
+  border-radius: 0px;
   border: 2px solid var(--cat-color, var(--text-primary));
   background: transparent;
   color: var(--cat-color, var(--text-primary));
@@ -222,7 +229,7 @@
   width: 100%;
   height: 4px;
   background: var(--border-default);
-  border-radius: 2px;
+  border-radius: 0px;
   cursor: pointer;
   position: relative;
   transition: height 0.15s;
@@ -234,7 +241,7 @@
 
 .audioProgressFill {
   height: 100%;
-  border-radius: 2px;
+  border-radius: 0px;
   transition: width 0.1s linear;
 }
 
@@ -341,6 +348,9 @@
 .metaValue {
   font-weight: 600;
   color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* ---------- Tags ---------- */

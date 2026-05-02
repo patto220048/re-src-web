@@ -1,26 +1,21 @@
-/* eslint-disable */
-"use client";
-
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, memo } from "react";
 import { ChevronRight, Folder, FolderOpen } from "lucide-react";
 import styles from "./TreeFolder.module.css";
 
-function TreeItem({ folder, selectedFolderId, onSelect, primaryColor, level = 0 }) {
-  const hasSelectedChild = useMemo(() => {
-    if (!selectedFolderId || !folder.children) return false;
-    const check = (f) => {
-      if (f.id === selectedFolderId) return true;
-      if (f.children) return f.children.some(check);
-      return false;
-    };
-    return folder.children.some(check);
-  }, [folder.children, selectedFolderId]);
-
-  const [expanded, setExpanded] = useState(hasSelectedChild);
+const TreeItem = memo(function TreeItem({ 
+  folder, 
+  selectedFolderId, 
+  onSelect, 
+  primaryColor, 
+  expandedNodes,
+  level = 0 
+}) {
+  const isExpandedInitially = expandedNodes.has(folder.id);
+  const [expanded, setExpanded] = useState(isExpandedInitially);
 
   useEffect(() => {
-    if (hasSelectedChild) setExpanded(true);
-  }, [hasSelectedChild]);
+    if (isExpandedInitially) setExpanded(true);
+  }, [isExpandedInitially]);
 
   const hasChildren = folder.children && folder.children.length > 0;
   const isSelected = selectedFolderId === folder.id;
@@ -61,6 +56,7 @@ function TreeItem({ folder, selectedFolderId, onSelect, primaryColor, level = 0 
               selectedFolderId={selectedFolderId}
               onSelect={onSelect}
               primaryColor={primaryColor}
+              expandedNodes={expandedNodes}
               level={level + 1}
             />
           ))}
@@ -68,9 +64,28 @@ function TreeItem({ folder, selectedFolderId, onSelect, primaryColor, level = 0 
       )}
     </li>
   );
-}
+});
 
-export default function TreeFolder({ folders = [], selectedFolderId, onSelect, primaryColor }) {
+const TreeFolder = memo(function TreeFolder({ folders = [], selectedFolderId, onSelect, primaryColor }) {
+  const expandedNodes = useMemo(() => {
+    const expanded = new Set();
+    if (!selectedFolderId) return expanded;
+
+    const findAndMark = (nodes) => {
+      for (const node of nodes) {
+        if (node.id === selectedFolderId) return true;
+        if (node.children && findAndMark(node.children)) {
+          expanded.add(node.id);
+          return true;
+        }
+      }
+      return false;
+    };
+
+    findAndMark(folders);
+    return expanded;
+  }, [folders, selectedFolderId]);
+
   return (
     <nav 
       className={styles.tree} 
@@ -85,9 +100,12 @@ export default function TreeFolder({ folders = [], selectedFolderId, onSelect, p
             selectedFolderId={selectedFolderId}
             onSelect={onSelect}
             primaryColor={primaryColor}
+            expandedNodes={expandedNodes}
           />
         ))}
       </ul>
     </nav>
   );
-}
+});
+
+export default TreeFolder;

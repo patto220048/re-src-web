@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { memo, useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Download, Eye } from "lucide-react";
 import { useAuth } from "@/app/lib/auth-context";
@@ -23,7 +23,7 @@ function formatTime(seconds) {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-export default function SoundButton({
+const SoundButton = memo(function SoundButton({
   id,
   name,
   fileName,
@@ -488,4 +488,6 @@ export default function SoundButton({
       </button>
     </div>
   );
-}
+});
+
+export default SoundButton;

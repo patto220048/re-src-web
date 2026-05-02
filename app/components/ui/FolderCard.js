@@ -1,9 +1,10 @@
 "use client";
 
+import { memo } from "react";
 import { Folder, CornerUpLeft } from "lucide-react";
 import styles from "./FolderCard.module.css";
 
-export default function FolderCard({ 
+const FolderCard = memo(function FolderCard({ 
   folder, 
   onClick, 
   isBack = false, 
@@ -49,4 +50,6 @@ export default function FolderCard({
       </div>
     </div>
   );
-}
+});
+
+export default FolderCard;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, memo } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -16,6 +16,7 @@ import {
   Music,
   Sparkles,
 } from "lucide-react";
+import { useSidebar } from "@/app/context/SidebarContext";
 import { mediaManager } from "@/app/lib/mediaManager";
 import DownloadButton from "@/app/components/ui/DownloadButton";
 import ResourceCard from "@/app/components/ui/ResourceCard";
@@ -27,6 +28,7 @@ import {
   isFontFormat,
   getOptimizedUrl,
 } from "@/app/lib/mediaUtils";
+import Sidebar from "@/app/components/layout/Sidebar";
 import styles from "./page.module.css";
 
 function formatSize(bytes) {
@@ -55,6 +57,7 @@ function formatTime(seconds) {
 export default function ResourceDetail({
   resource,
   related,
+  folders,
   categorySlug,
   categoryName,
   categoryColor,
@@ -69,6 +72,15 @@ export default function ResourceDetail({
 
   // Inline player state
   const [isPlaying, setIsPlaying] = useState(false);
+  const { setFolderId } = useSidebar();
+  
+  useEffect(() => {
+    if (resource?.folder_id) {
+      setFolderId(resource.folder_id);
+    }
+    return () => setFolderId(null);
+  }, [resource?.folder_id, setFolderId]);
+
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [videoStarted, setVideoStarted] = useState(false);
@@ -295,6 +307,10 @@ export default function ResourceDetail({
   }, [videoStarted, resource.id]);
 
   // Determine layout type for related cards
+  const handleSidebarSelect = useCallback((folder) => {
+    router.push(`/${categorySlug}?folder=${folder.id}`);
+  }, [categorySlug, router]);
+
   const categoryLayout = isAudio
     ? "sound"
     : isVideo
@@ -308,8 +324,10 @@ export default function ResourceDetail({
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
-    <div className={styles.page} style={{ "--cat-color": categoryColor }}>
-      {/* Breadcrumb */}
+    <>
+
+      <div className={styles.mainContent}>
+        {/* Breadcrumb */}
       <nav className={styles.breadcrumb}>
         <Link href="/" className={styles.breadcrumbLink}>
           Home
@@ -597,6 +615,8 @@ export default function ResourceDetail({
           </div>
         </section>
       )}
-    </div>
+      </div>
+    </>
   );
 }
+

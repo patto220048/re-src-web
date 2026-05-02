@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { memo, useState, useRef, useEffect, useCallback } from "react";
 import { Filter, ArrowUpDown, ChevronDown, Search, X, Tag, Check } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import styles from "./FilterBar.module.css";
 
-export default function FilterBar({
+const FilterBar = memo(function FilterBar({
   formats = [],
   selectedFormats = [],
   onFormatsChange,
@@ -251,4 +251,6 @@ export default function FilterBar({
       </div>
     </div>
   );
-}
+});
+
+export default FilterBar;

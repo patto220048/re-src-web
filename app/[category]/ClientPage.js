@@ -3,7 +3,8 @@
 import { useState, useMemo, useEffect, useRef, useCallback, useTransition } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import Sidebar from "@/app/components/layout/Sidebar";
+import { useSidebar } from "@/app/context/SidebarContext";
+
 import ResourceCard from "@/app/components/ui/ResourceCard";
 import FolderCard from "@/app/components/ui/FolderCard";
 import SoundButton from "@/app/components/ui/SoundButton";
@@ -47,6 +48,11 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
   const [isInitialized, setIsInitialized] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE_DISPLAY);
+  const { setFolderId } = useSidebar();
+
+  useEffect(() => {
+    setFolderId(selectedFolderId);
+  }, [selectedFolderId, setFolderId]);
 
   // Folder History (internal navigation only, not browser history)
   const [historyStack, setHistoryStack] = useState([]);
@@ -541,22 +547,27 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
     });
   }, [pathname, router, searchParams, startTransition]);
 
-  const handleSelectFolder = (folder, isHistoryMove = false) => {
+  const handleSelectFolder = useCallback((folder, isHistoryMove = false) => {
     const folderId = folder ? folder.id : null;
     const folderName = folder ? (folder.path || folder.name) : null;
 
     if (selectedFolderId === folderId) return;
 
+    // Use startTransition for the folder state update
     startTransition(() => {
       setSelectedFolderId(folderId);
       setSelectedFolderName(folderName);
       setVisibleCount(PAGE_SIZE_DISPLAY);
-      setAllLoadedResources([]); // Immediate clear to avoid "Old resources + New folders" jitter
-      setIsFetchLoading(true); // Force skeleton immediately
+      
+      // OPTIMIZATION: We no longer clear allLoadedResources here.
+      // Instead, we let the blur effect (isFetchLoading || isPending) 
+      // handle the visual transition while the new data is being fetched.
+      // This prevents the "empty grid" jump.
+      
+      setIsFetchLoading(true); // Signal fetch start
       
       updateUrl({ folder: folderId });
 
-      // Update internal history stack if NOT moving via history buttons
       if (!isHistoryMove) {
         const newStack = historyStack.slice(0, historyPointer + 1);
         newStack.push(folderId);
@@ -565,7 +576,7 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
         setHistoryPointer(newStack.length - 1);
       }
     });
-  };
+  }, [selectedFolderId, startTransition, updateUrl, historyStack, historyPointer]);
 
   const goBack = () => {
     if (historyPointer > 0) {
@@ -592,8 +603,9 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
   const renderResources = () => {
     const displayResources = filteredResources.slice(0, visibleCount);
     const hasCurrentFolders = currentSubfolders.length > 0 || parentFolder;
+    const isLoading = isFetchLoading || isPending;
 
-    if (filteredResources.length === 0 && !isFetchLoading && !hasCurrentFolders) {
+    if (filteredResources.length === 0 && !isLoading && !hasCurrentFolders) {
       return (
         <div className={styles.empty}>
           <p>
@@ -603,42 +615,11 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
       );
     }
 
-    // Prepare Grid Content (Subfolders + Back Button + Resources)
     const renderGridItems = () => {
       const items = [];
       let globalIdx = 0;
 
-      // 1. ADD SKELETONS if loading (this hides the gap better than empty grid)
-      if (isFetchLoading && filteredResources.length === 0) {
-        const isAudio = info.layout === "audio" || info.layout === "sound";
-        return Array.from({ length: 12 }).map((_, i) => (
-          <div 
-            key={`skeleton-${i}`} 
-            className={isAudio ? styles.skeletonCardSound : styles.skeletonCard}
-          >
-            {isAudio ? (
-              <>
-                <div className={styles.skeletonThumbSound} />
-                <div className={styles.skeletonInfoSound}>
-                  <div className={styles.skeletonLine} style={{ width: "60%" }} />
-                  <div className={styles.skeletonLine} style={{ width: "30%", opacity: 0.5 }} />
-                </div>
-              </>
-            ) : (
-              <>
-                <div className={styles.skeletonThumb} />
-                <div className={styles.skeletonCardBody}>
-                  <div className={styles.skeletonLine} style={{ width: "80%" }} />
-                  <div className={styles.skeletonLine} style={{ width: "40%", opacity: 0.5 }} />
-                </div>
-              </>
-            )}
-          </div>
-        ));
-      }
-
-
-      // 2. Subfolders
+      // Subfolders
       const isFiltering = inPageSearch || selectedFormats.length > 0 || selectedTags.length > 0 || resSlug;
       
       if (!isFiltering) {
@@ -655,13 +636,12 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
         });
       }
 
-      // 3. Resources
-      // Condition: Hide resources at root if there are folders AND no active search/filters
+      // Resources
       const isRootNoFilters = !selectedFolderId && !inPageSearch && selectedFormats.length === 0 && selectedTags.length === 0;
       const hasFoldersAtRoot = folders.length > 0;
       
       if (isRootNoFilters && hasFoldersAtRoot) {
-        return items; // Skip resources, return only folders
+        return items;
       }
 
       if (info.layout === "audio" || info.layout === "sound") {
@@ -710,56 +690,62 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
           className={gridClass}
           initial={false}
           animate={{
-            filter: (isFetchLoading || isPending) ? "blur(8px) grayscale(0.2)" : "blur(0px) grayscale(0)",
-            opacity: (isFetchLoading || isPending) ? 0.4 : 1,
+            filter: isLoading ? "blur(12px) grayscale(0.5)" : "blur(0px) grayscale(0)",
+            opacity: isLoading ? 0.3 : 1,
           }}
-          transition={{ duration: 0.3, ease: "easeOut" }}
+          transition={{ duration: 0.4, ease: "easeInOut" }}
         >
           {renderGridItems()}
         </motion.div>
         
-        {/* Skeleton Overlay - perfectly aligned with the blur area */}
-        {isFetchLoading && (
-          <div 
-            className={gridClass} 
-            style={{ 
-              position: 'absolute', 
-              top: 0, 
-              left: 0, 
-              width: '100%', 
-              pointerEvents: 'none', 
-              zIndex: 10,
-              opacity: 0.8
-            }}
-          >
-            {Array.from({ length: 12 }).map((_, i) => {
-              const isSoundLayout = gridClass === styles.soundGrid;
-              if (isSoundLayout) {
+        {/* Skeleton Overlay - Unified with isFetchLoading */}
+        <AnimatePresence>
+          {isFetchLoading && (
+            <motion.div 
+              key="skeleton-overlay"
+              className={gridClass} 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              style={{ 
+                position: 'absolute', 
+                top: 0, 
+                left: 0, 
+                width: '100%', 
+                pointerEvents: 'none', 
+                zIndex: 10
+              }}
+            >
+              {Array.from({ length: 12 }).map((_, i) => {
+                const isSoundLayout = gridClass === styles.soundGrid;
+                if (isSoundLayout) {
+                  return (
+                    <div key={`overlay-skeleton-${i}`} className={styles.skeletonCardSound}>
+                      <div className={styles.skeletonThumbSound} />
+                      <div className={styles.skeletonInfoSound}>
+                        <div className={styles.skeletonLine} style={{ width: '80%' }} />
+                        <div className={styles.skeletonLine} style={{ width: '40%' }} />
+                      </div>
+                    </div>
+                  );
+                }
                 return (
-                  <div key={`overlay-skeleton-${i}`} className={styles.skeletonCardSound}>
-                    <div className={styles.skeletonThumbSound} />
-                    <div className={styles.skeletonInfoSound}>
-                      <div className={styles.skeletonLine} style={{ width: '80%' }} />
+                  <div key={`overlay-skeleton-${i}`} className={styles.skeletonCard}>
+                    <div className={styles.skeletonThumb} />
+                    <div className={styles.skeletonCardBody}>
+                      <div className={styles.skeletonLine} style={{ width: '90%' }} />
                       <div className={styles.skeletonLine} style={{ width: '40%' }} />
                     </div>
+                    <div className={styles.skeletonAction} />
                   </div>
                 );
-              }
-              return (
-                <div key={`overlay-skeleton-${i}`} className={styles.skeletonCard}>
-                  <div className={styles.skeletonThumb} />
-                  <div className={styles.skeletonCardBody}>
-                    <div className={styles.skeletonLine} style={{ width: '90%' }} />
-                    <div className={styles.skeletonLine} style={{ width: '40%' }} />
-                    <div className={styles.skeletonLine} style={{ width: '60%', marginTop: 'auto' }} />
-                  </div>
-                  <div className={styles.skeletonAction} />
-                </div>
-              );
-            })}
-          </div>
-        )}
-        {/* Sentinel element for Infinite Scroll */}
+              })}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Sentinel for Infinite Scroll */}
         <div ref={loadMoreRef} className={styles.observerSentinel}>
           {(isFetchLoading || (visibleCount < filteredResources.length) || hasMoreDB) && (
             <div className={styles.loadMoreWrapper}>
@@ -775,14 +761,7 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
   };
 
   return (
-    <div className={styles.page} style={{ "--cat-color": info.color }}>
-      <Sidebar
-        categoryName={info.name}
-        folders={folders}
-        selectedFolderId={selectedFolderId}
-        onSelectFolder={handleSelectFolder}
-        primaryColor={info.color}
-      />
+    <>
 
       <div className={styles.main}>
 
@@ -871,6 +850,7 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
           showDownload={true} 
         />
       )}
-    </div>
+    </>
   );
 }
+

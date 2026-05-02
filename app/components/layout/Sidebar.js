@@ -1,8 +1,13 @@
 /* eslint-disable */
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { memo, useState, useEffect, useCallback, useRef } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { ChevronRight, Menu, X } from "lucide-react";
+import { useSidebar } from "@/app/context/SidebarContext";
+
+
+
 import TreeFolder from "@/app/components/ui/TreeFolder";
 import styles from "./Sidebar.module.css";
 
@@ -10,42 +15,56 @@ const MIN_WIDTH = 200;
 const MAX_WIDTH = 500;
 const DEFAULT_WIDTH = 260;
 
-export default function Sidebar({
+const Sidebar = memo(function Sidebar({
+  categorySlug,
   categoryName,
   folders = [],
   selectedFolderId,
   onSelectFolder,
   primaryColor = "#FFFFFF",
 }) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { selectedFolderId: contextFolderId } = useSidebar();
+  
+  const urlFolderId = searchParams?.get("folder");
+  const effectiveFolderId = selectedFolderId || contextFolderId || urlFolderId;
+
+
   const [mobileOpen, setMobileOpen] = useState(false);
+
   const [width, setWidth] = useState(DEFAULT_WIDTH);
   const [isResizing, setIsResizing] = useState(false);
   const [isReady, setIsReady] = useState(false);
   const sidebarRef = useRef(null);
 
-  // Sync width to CSS variable for dynamic layout adjustments
-  useEffect(() => {
-    if (typeof document !== 'undefined') {
-      document.documentElement.style.setProperty('--sidebar-width-current', `${width}px`);
-    }
-    // Cleanup: Reset when sidebar is unmounted (e.g. navigating away)
-    return () => {
-      if (typeof document !== 'undefined') {
-        document.documentElement.style.setProperty('--sidebar-width-current', '0px');
-      }
-    };
-  }, [width]);
-
-  // Load width from localStorage on mount
+  // Load width from localStorage and sync CSS variable on mount
   useEffect(() => {
     const savedWidth = localStorage.getItem("sidebarWidth");
+    let initialWidth = DEFAULT_WIDTH;
+    
     if (savedWidth) {
-      setWidth(parseInt(savedWidth, 10));
+      const parsed = parseInt(savedWidth, 10);
+      if (!isNaN(parsed) && parsed >= MIN_WIDTH && parsed <= MAX_WIDTH) {
+        initialWidth = parsed;
+        setWidth(parsed);
+      }
     }
+    
+    // Set CSS variable immediately to prevent layout shifts in components that depend on it
+    document.documentElement.style.setProperty('--sidebar-width', `${initialWidth}px`);
+    
     // Small delay to ensure browser has applied width before enabling transitions
-    const timer = setTimeout(() => setIsReady(true), 50);
+    const timer = setTimeout(() => setIsReady(true), 150);
     return () => clearTimeout(timer);
   }, []);
+
+  // Update CSS variable when width changes during resize
+  useEffect(() => {
+    if (isResizing && typeof document !== 'undefined') {
+      document.documentElement.style.setProperty('--sidebar-width', `${width}px`);
+    }
+  }, [width, isResizing]);
 
   const startResizing = useCallback((e) => {
     e.preventDefault();
@@ -140,9 +159,21 @@ export default function Sidebar({
 
           <TreeFolder
             folders={folders}
-            selectedFolderId={selectedFolderId}
+            selectedFolderId={effectiveFolderId}
             onSelect={(folder) => {
-              onSelectFolder?.(folder);
+              if (onSelectFolder) {
+                onSelectFolder(folder);
+              } else {
+                // Default navigation logic for Sidebar when used in a Layout
+                const params = new URLSearchParams(searchParams.toString());
+                if (folder) {
+                  params.set("folder", folder.id);
+                } else {
+                  params.delete("folder");
+                }
+                // When in a layout, we typically want to go back to the category root list view
+                router.push(`/${categorySlug || ""}?${params.toString()}`);
+              }
               setMobileOpen(false);
             }}
           />
@@ -155,4 +186,6 @@ export default function Sidebar({
       )}
     </>
   );
-}
+});
+
+export default Sidebar;

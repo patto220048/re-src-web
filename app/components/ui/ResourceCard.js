@@ -1,7 +1,7 @@
 /* eslint-disable */
 "use client";
 
-import { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import { memo, useState, useRef, useCallback, useEffect, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Download as DownloadCount, Play, Eye, Volume2, VolumeX } from "lucide-react";
@@ -17,7 +17,7 @@ function formatSize(bytes) {
   return `${(bytes / 1048576).toFixed(1)} MB`;
 }
 
-export default function ResourceCard({
+const ResourceCard = memo(function ResourceCard({
   id,
   name,
   downloadUrl,
@@ -405,4 +405,6 @@ export default function ResourceCard({
       </div>
     </div>
   );
-}
+});
+
+export default ResourceCard;
