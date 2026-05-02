@@ -149,33 +149,32 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
   useEffect(() => {
     if (!isInitialized) return;
     
-    startTransition(() => {
-      const folderId = searchParams.get("folder") || null;
-      if (folderId !== selectedFolderId) {
-        setSelectedFolderId(folderId);
-        const result = findInTree(folders, folderId);
-        setSelectedFolderName(result?.current ? (result.current.path || result.current.name) : null);
-        setVisibleCount(PAGE_SIZE_DISPLAY);
-      }
-      
-      const formatsStr = searchParams.get("format") || "";
-      const currentFormatsStr = selectedFormats.join(",");
-      if (formatsStr !== currentFormatsStr) {
-        setSelectedFormats(formatsStr ? formatsStr.split(",") : []);
-      }
-      
-      const tagsStr = searchParams.get("tags") || "";
-      const currentTagsStr = selectedTags.join(",");
-      if (tagsStr !== currentTagsStr) {
-        setSelectedTags(tagsStr ? tagsStr.split(",") : []);
-      }
-      
-      const sort = searchParams.get("sort") || "newest";
-      if (sort !== sortBy) {
-        setSortBy(sort);
-      }
-    });
-  }, [searchParams, isInitialized, folders]);
+    // Sync state from URL search params
+    const folderId = searchParams.get("folder") || null;
+    if (folderId !== selectedFolderId) {
+      setSelectedFolderId(folderId);
+      const result = findInTree(folders, folderId);
+      setSelectedFolderName(result?.current ? (result.current.path || result.current.name) : null);
+      setVisibleCount(PAGE_SIZE_DISPLAY);
+    }
+    
+    const formatsStr = searchParams.get("format") || "";
+    const currentFormatsStr = selectedFormats.join(",");
+    if (formatsStr !== currentFormatsStr) {
+      setSelectedFormats(formatsStr ? formatsStr.split(",") : []);
+    }
+    
+    const tagsStr = searchParams.get("tags") || "";
+    const currentTagsStr = selectedTags.join(",");
+    if (tagsStr !== currentTagsStr) {
+      setSelectedTags(tagsStr ? tagsStr.split(",") : []);
+    }
+    
+    const sort = searchParams.get("sort") || "newest";
+    if (sort !== sortBy) {
+      setSortBy(sort);
+    }
+  }, [searchParams, isInitialized, folders]); // Removed startTransition here to ensure state sync is reliable
 
   // Handle deep-link to resource via ?res=slug
   useEffect(() => {
@@ -810,31 +809,24 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
           formats={info.formats}
           selectedFormats={selectedFormats}
           onFormatsChange={(vals) => {
-            startTransition(() => {
-              setSelectedFormats(vals);
-              updateUrl({ format: vals });
-            });
+            setSelectedFormats(vals);
+            updateUrl({ format: vals });
           }}
           tags={availableTags}
           selectedTags={selectedTags}
           onTagsChange={(vals) => {
-            startTransition(() => {
-              setSelectedTags(vals);
-              updateUrl({ tags: vals });
-            });
+            setSelectedTags(vals);
+            updateUrl({ tags: vals });
           }}
           sortBy={sortBy}
           onSortChange={(val) => {
-            startTransition(() => {
-              setSortBy(val);
-              updateUrl({ sort: val });
-            });
+            setSortBy(val);
+            updateUrl({ sort: val });
           }}
           inPageSearch={inPageSearch}
           onSearchChange={(val) => {
-            startTransition(() => {
-              setInPageSearch(val);
-            });
+            setInPageSearch(val);
+            // Search is typically local or debounced, no immediate URL update needed here
           }}
           resSlug={resSlug}
           onClearRes={() => router.push(pathname)}

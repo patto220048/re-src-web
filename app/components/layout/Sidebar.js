@@ -20,6 +20,7 @@ export default function Sidebar({
   const [mobileOpen, setMobileOpen] = useState(false);
   const [width, setWidth] = useState(DEFAULT_WIDTH);
   const [isResizing, setIsResizing] = useState(false);
+  const [isReady, setIsReady] = useState(false);
   const sidebarRef = useRef(null);
 
   // Sync width to CSS variable for dynamic layout adjustments
@@ -41,6 +42,9 @@ export default function Sidebar({
     if (savedWidth) {
       setWidth(parseInt(savedWidth, 10));
     }
+    // Small delay to ensure browser has applied width before enabling transitions
+    const timer = setTimeout(() => setIsReady(true), 50);
+    return () => clearTimeout(timer);
   }, []);
 
   const startResizing = useCallback((e) => {
@@ -101,7 +105,7 @@ export default function Sidebar({
         ref={sidebarRef}
         className={`${styles.sidebar} ${mobileOpen ? styles.open : ""} ${
           isResizing ? styles.isResizing : ""
-        }`}
+        } ${isReady ? styles.isReady : ""}`}
         id="category-sidebar"
         data-lenis-prevent
         style={{ 

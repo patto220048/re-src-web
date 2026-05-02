@@ -10,9 +10,15 @@
   overflow-x: hidden;
   z-index: var(--z-sidebar);
   overscroll-behavior: contain;
-  transition: width var(--transition-base); /* Transition only when not resizing */
-  
-  /* Standard thin scrollbar for Firefox */
+  transition: none; /* No transition on mount to prevent CLS */
+}
+
+.isReady {
+  transition: width var(--transition-base);
+}
+
+/* Standard thin scrollbar for Firefox */
+.sidebar {
   scrollbar-width: thin;
   scrollbar-color: var(--border-default) transparent;
 }
@@ -166,8 +172,6 @@
 
   .overlay {
     display: block;
-    position: fixed;
-    inset: 0;
     background: rgba(0, 0, 0, 0.4);
     backdrop-filter: blur(2px);
     z-index: calc(var(--z-sidebar) - 1);
