@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useState, useRef, useEffect, useCallback } from "react";
+import { memo, useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Filter, ArrowUpDown, ChevronDown, Search, X, Tag, Check } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import styles from "./FilterBar.module.css";
@@ -22,6 +22,7 @@ const FilterBar = memo(function FilterBar({
   categoryName = "",
   onBreadcrumbClick,
   primaryColor = "var(--premium-gold)",
+  isLoading = false,
 }) {
   const [isSortOpen, setIsSortOpen] = useState(false);
   const [isSearchExpanded, setIsSearchExpanded] = useState(inPageSearch.length > 0);
@@ -39,9 +40,11 @@ const FilterBar = memo(function FilterBar({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  const selectedFormatsSet = useMemo(() => new Set(selectedFormats), [selectedFormats]);
+  const selectedTagsSet = useMemo(() => new Set(selectedTags), [selectedTags]);
+
   const toggleFormat = (format) => {
-    const isSelected = selectedFormats.includes(format);
-    if (isSelected) {
+    if (selectedFormatsSet.has(format)) {
       onFormatsChange(selectedFormats.filter((f) => f !== format));
     } else {
       onFormatsChange([...selectedFormats, format]);
@@ -49,8 +52,7 @@ const FilterBar = memo(function FilterBar({
   };
 
   const toggleTag = (tag) => {
-    const isSelected = selectedTags.includes(tag);
-    if (isSelected) {
+    if (selectedTagsSet.has(tag)) {
       onTagsChange(selectedTags.filter((t) => t !== tag));
     } else {
       onTagsChange([...selectedTags, tag]);
@@ -109,13 +111,13 @@ const FilterBar = memo(function FilterBar({
               <button
                 key={format}
                 className={`${styles.chip} ${
-                  selectedFormats.includes(format) ? styles.activeChip : ""
+                  selectedFormatsSet.has(format) ? styles.activeChip : ""
                 }`}
                 onClick={() => toggleFormat(format)}
                 style={{ "--active-color": primaryColor }}
               >
                 .{format}
-                {selectedFormats.includes(format) && (
+                {selectedFormatsSet.has(format) && (
                   <Check size={10} className={styles.checkIcon} />
                 )}
               </button>
@@ -206,47 +208,48 @@ const FilterBar = memo(function FilterBar({
         </div>
       </div>
 
-      <div className={styles.tagsRow}>
-        {tags.length > 0 ? (
-          <>
-            <div className={styles.labelSection}>
-              <Tag size={12} className={styles.labelIcon} />
-              <span className={styles.labelText}>TAGS</span>
-              {selectedTags.length > 0 && (
-                <button 
-                  className={styles.clearTagsBtn} 
-                  onClick={() => onTagsChange([])}
-                  title="Clear all tags"
-                >
-                  <X size={10} />
-                </button>
-              )}
+      { (tags.length > 0 || isLoading) && (
+        <div className={styles.tagsRow}>
+          {tags.length > 0 ? (
+            <>
+              <div className={styles.labelSection}>
+                <Tag size={12} className={styles.labelIcon} />
+                <span className={styles.labelText}>TAGS</span>
+                {selectedTags.length > 0 && (
+                  <button 
+                    className={styles.clearTagsBtn} 
+                    onClick={() => onTagsChange([])}
+                    title="Clear all tags"
+                  >
+                    <X size={10} />
+                  </button>
+                )}
+              </div>
+              <div className={styles.tagsScroll}>
+                {tags.map((tag) => (
+                  <button
+                    key={tag.name}
+                    className={`${styles.tagChip} ${selectedTagsSet.has(tag.name) ? styles.activeTag : ""}`}
+                    onClick={() => toggleTag(tag.name)}
+                    style={{ "--active-color": primaryColor }}
+                  >
+                    <span className={styles.tagName}>{tag.name}</span>
+                    {selectedTagsSet.has(tag.name) && (
+                      <X size={10} className={styles.tagClearIcon} />
+                    )}
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className={styles.tagsPlaceholder}>
+              <div className={styles.skeletonTag} />
+              <div className={styles.skeletonTag} />
+              <div className={styles.skeletonTag} />
             </div>
-            <div className={styles.tagsScroll}>
-              {tags.map((tag) => (
-                <button
-                  key={tag.name}
-                  className={`${styles.tagChip} ${selectedTags.includes(tag.name) ? styles.activeTag : ""}`}
-                  onClick={() => toggleTag(tag.name)}
-                  style={{ "--active-color": primaryColor }}
-                >
-                  <span className={styles.tagName}>{tag.name}</span>
-                  {selectedTags.includes(tag.name) && (
-                    <X size={10} className={styles.tagClearIcon} />
-                  )}
-                </button>
-              ))}
-            </div>
-          </>
-        ) : (
-          <div className={styles.tagsPlaceholder}>
-            {/* Invisible spacer to maintain height */}
-            <div className={styles.skeletonTag} />
-            <div className={styles.skeletonTag} />
-            <div className={styles.skeletonTag} />
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   );
 });

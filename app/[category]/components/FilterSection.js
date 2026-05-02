@@ -21,7 +21,8 @@ const FilterSection = memo(function FilterSection({
   router,
   pathname,
   folders,
-  findInTree
+  findInTree,
+  isLoading
 }) {
   const [isPending, startTransition] = useTransition();
 
@@ -72,6 +73,7 @@ const FilterSection = memo(function FilterSection({
       breadcrumbs={breadcrumbs}
       categoryName={info.name}
       onBreadcrumbClick={handleBreadcrumbClick}
+      isLoading={isLoading}
     />
   );
 });

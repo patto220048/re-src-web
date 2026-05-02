@@ -316,32 +316,55 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
     return results;
   }, [allLoadedResources, sortBy, resSlug, selectedFolderId, debouncedSearch, debouncedTags, debouncedFormats]);
 
+  // 1. Tối ưu: Chỉ tính toán bản đồ tần suất tag khi danh sách tài nguyên thay đổi
+  const tagFrequencyMap = useMemo(() => {
+    const map = new Map();
+    allLoadedResources.forEach(r => {
+      if (r.tags) {
+        for (const t of r.tags) {
+          const lowTag = t.toLowerCase();
+          map.set(lowTag, (map.get(lowTag) || 0) + 1);
+        }
+      }
+    });
+    return map;
+  }, [allLoadedResources]);
+
+  // 2. Tối ưu: Tính toán danh sách tag hiển thị dựa trên trạng thái hiện tại
   const availableTags = useMemo(() => {
     const isFiltered = selectedTags.length > 0 || inPageSearch || selectedFormats.length > 0;
-    const tagMap = {};
-    allLoadedResources.forEach(r => {
-      if (r.tags) r.tags.forEach(t => {
-        const lowTag = t.toLowerCase();
-        tagMap[lowTag] = (tagMap[lowTag] || 0) + 1;
+    const selectedTagsSet = new Set(selectedTags.map(t => t.toLowerCase()));
+    
+    let baseTagsNames;
+    if (isFiltered) {
+      // Trong chế độ lọc, hiển thị tất cả tag có trong tài nguyên đã load + tag đang chọn
+      const names = new Set(selectedTagsSet);
+      for (const name of tagFrequencyMap.keys()) {
+        names.add(name);
+      }
+      baseTagsNames = Array.from(names);
+    } else {
+      // Trong chế độ duyệt, ưu tiên tag của folder hoặc category
+      const currentContextTags = selectedFolderId ? (folderTags.length > 0 ? folderTags : []) : categoryTags;
+      baseTagsNames = currentContextTags.map(t => t.toLowerCase());
+    }
+
+    return baseTagsNames
+      .map(name => ({
+        name,
+        count: tagFrequencyMap.get(name) || 0
+      }))
+      .sort((a, b) => {
+        // Ưu tiên các tag đang được chọn lên đầu
+        const aSelected = selectedTagsSet.has(a.name);
+        const bSelected = selectedTagsSet.has(b.name);
+        if (aSelected && !bSelected) return -1;
+        if (!aSelected && bSelected) return 1;
+        // Sau đó sắp xếp theo số lượng giảm dần
+        if (a.count !== b.count) return b.count - a.count;
+        return a.name.localeCompare(b.name);
       });
-    });
-
-    let baseTags = isFiltered 
-      ? Array.from(new Set([...selectedTags.map(t => t.toLowerCase()), ...Object.keys(tagMap)]))
-      : (selectedFolderId ? (folderTags.length > 0 ? folderTags : []) : categoryTags);
-
-    return baseTags.map(tag => ({
-      name: tag.toLowerCase(),
-      count: tagMap[tag.toLowerCase()] || 0
-    })).sort((a, b) => {
-      const aSelected = selectedTags.includes(a.name);
-      const bSelected = selectedTags.includes(b.name);
-      if (aSelected && !bSelected) return -1;
-      if (!aSelected && bSelected) return 1;
-      if (a.count !== b.count) return b.count - a.count;
-      return a.name.localeCompare(b.name);
-    });
-  }, [allLoadedResources, selectedFolderId, categoryTags, folderTags, inPageSearch, selectedTags, selectedFormats]);
+  }, [tagFrequencyMap, selectedFolderId, categoryTags, folderTags, inPageSearch, selectedTags, selectedFormats]);
 
   const { currentSubfolders, parentFolder } = useMemo(() => {
     if (!selectedFolderId) return { currentSubfolders: folders, parentFolder: null };
@@ -445,6 +468,7 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
           pathname={pathname}
           folders={folders}
           findInTree={findInTree}
+          isLoading={isInitialLoading || isFetchLoading}
         />
 
         <ResourceGrid 
