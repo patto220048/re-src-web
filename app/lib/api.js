@@ -138,28 +138,30 @@ export async function getRelatedResources(resourceId, limit = 6) {
   if (!resourceId) return [];
 
   try {
-    // 1. Get the embedding and category of the current resource
+    // 1. Get the embedding from resource_embeddings and category from resources
     const { data: current, error: fetchError } = await supabase
-      .from('resources')
-      .select('embedding, category_id')
+      .from('resource_embeddings')
+      .select('embedding, resources(category_id)')
       .eq('id', resourceId)
       .single();
 
     if (fetchError || !current?.embedding) {
-      console.warn("Could not fetch embedding for related resources:", fetchError);
+      console.warn("Could not fetch embedding from resource_embeddings:", fetchError);
       return [];
     }
 
-    // 2. Call the RPC to match similar resources
-    const { data, error } = await supabase.rpc('match_resources', {
+    const categoryId = current.resources?.category_id;
+
+    // 2. Call the RPC v2 to match similar resources
+    const { data, error } = await supabase.rpc('match_resources_v2', {
       query_embedding: current.embedding,
-      match_threshold: 0.3, // Lowered threshold to ensure we get results
-      match_count: limit * 2, // Fetch more to allow for re-sorting
+      match_threshold: 0.3,
+      match_count: limit * 2,
       p_exclude_id: resourceId
     });
 
     if (error) {
-      console.error('Error fetching related resources:', error);
+      console.error('Error fetching related resources (v2):', error);
       return [];
     }
 
@@ -188,7 +190,7 @@ export async function getRelatedResources(resourceId, limit = 6) {
       const fullDetail = detailsMap[item.id] || {};
       let finalSimilarity = item.similarity;
       // Small boost for same category to improve relevance
-      if (item.category_id === current.category_id || fullDetail.category_id === current.category_id) {
+      if (item.category_id === categoryId || fullDetail.category_id === categoryId) {
         finalSimilarity += 0.05;
       }
 
@@ -692,6 +694,8 @@ async function fetchCategoryBySlugInternal(slug) {
     return null;
   }
   
+  if (!data) return null;
+
   return {
     ...data,
     formats: data.formats || []

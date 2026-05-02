@@ -159,7 +159,35 @@ export const mediaManager = {
     }
     
     notify();
+  },
+
+  /**
+   * Get the singleton audio instance for sounds.
+   * This prevents creating hundreds of Audio objects.
+   */
+  getSharedAudio() {
+    if (!sharedAudio && typeof window !== 'undefined') {
+      sharedAudio = new Audio();
+      
+      // Auto-register shared audio events if needed
+      sharedAudio.addEventListener('ended', () => {
+        if (activeCallback) activeCallback();
+        this.stop(sharedAudio);
+      });
+    }
+    return sharedAudio;
+  },
+
+  /**
+   * Check if a specific resource ID is currently playing
+   * @param {string} id 
+   * @returns {boolean}
+   */
+  isIdActive(id) {
+    return activeMediaId === id;
   }
 };
+
+let sharedAudio = null;
 
 

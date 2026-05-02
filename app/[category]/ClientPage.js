@@ -1,17 +1,20 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef, useCallback, useTransition } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback, useTransition, useDeferredValue } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useSidebar } from "@/app/context/SidebarContext";
 import useSWR from "swr";
 import { useDebounce } from "@/app/hooks/useDebounce";
 
-import ResourceCard from "@/app/components/ui/ResourceCard";
-import FolderCard from "@/app/components/ui/FolderCard";
-import SoundButton from "@/app/components/ui/SoundButton";
-import FilterBar from "@/app/components/ui/FilterBar";
-import PreviewOverlay from "@/app/components/ui/PreviewOverlay";
+import dynamic from "next/dynamic";
+const PreviewOverlay = dynamic(() => import("@/app/components/ui/PreviewOverlay"));
 import { getResources, getResourceBySlug, getCategoryTags } from "@/app/lib/api";
+
+// Sub-components
+import NavigationHeader from "./components/NavigationHeader";
+import FilterSection from "./components/FilterSection";
+import ResourceGrid from "./components/ResourceGrid";
+
 import styles from "./page.module.css";
 
 const PAGE_SIZE_DISPLAY = 24;
@@ -40,7 +43,6 @@ const getDescendantIds = (node) => {
 };
 
 export default function ClientPage({ slug, info, folders, resources: initialResources, categoryTags = [] }) {
-  // --- States ---
   const [selectedFolderId, setSelectedFolderId] = useState(null);
   const [selectedFolderName, setSelectedFolderName] = useState(null);
   const [selectedFormats, setSelectedFormats] = useState([]);
@@ -48,107 +50,90 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
   const [sortBy, setSortBy] = useState("newest");
   const [isInitialized, setIsInitialized] = useState(false);
   const [isPending, startTransition] = useTransition();
+
+  const [allLoadedResources, setAllLoadedResources] = useState(initialResources || []);
   const [visibleCount, setVisibleCount] = useState(PAGE_SIZE_DISPLAY);
-  const { setFolderId } = useSidebar();
-
-  useEffect(() => {
-    setFolderId(selectedFolderId);
-  }, [selectedFolderId, setFolderId]);
-
-  // Folder History (internal navigation only, not browser history)
-  const [historyStack, setHistoryStack] = useState([]);
-  const [historyPointer, setHistoryPointer] = useState(-1);
-  const historyStackRef = useRef([]);
-  const isInternalNavRef = useRef(false);
-  const hasLoadedInitialStateRef = useRef(false);
-  const prevSlugRef = useRef(slug);
-  
-  // Resources State
-  const [allLoadedResources, setAllLoadedResources] = useState(initialResources);
-  const [serverOffset, setServerOffset] = useState(initialResources.length);
-  const [hasMoreDB, setHasMoreDB] = useState(initialResources.length === PAGE_SIZE_BATCH);
-  const [isInitialLoading, setIsInitialLoading] = useState(false);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [isFetchLoading, setIsFetchLoading] = useState(false);
-  
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMoreDB, setHasMoreDB] = useState(initialResources?.length === PAGE_SIZE_BATCH);
+  const [serverOffset, setServerOffset] = useState(initialResources?.length || 0);
   const [previewResource, setPreviewResource] = useState(null);
   const [inPageSearch, setInPageSearch] = useState("");
+  const deferredSearch = useDeferredValue(inPageSearch);
   const [folderTags, setFolderTags] = useState([]);
-  
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const resSlug = searchParams.get("res");
+
+  const [historyStack, setHistoryStack] = useState([null]);
+  const [historyPointer, setHistoryPointer] = useState(0);
+
   const loadMoreRef = useRef(null);
   const abortControllerRef = useRef(null);
   const lastRequestIdRef = useRef(0);
   const isFirstRun = useRef(true);
+  const hasLoadedInitialStateRef = useRef(false);
+  const historyStackRef = useRef([null]);
+  const prevSlugRef = useRef(slug);
 
-  // Debounced filters for API calls
-  const debouncedFolderId = useDebounce(selectedFolderId, 300);
-  const debouncedTags = useDebounce(selectedTags, 500);
-  const debouncedFormats = useDebounce(selectedFormats, 500);
-  const debouncedSearch = useDebounce(inPageSearch, 500);
-  const debouncedSortBy = useDebounce(sortBy, 300);
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const resSlug = searchParams.get("res");
+  const { setFolderId } = useSidebar();
 
-  // Computed refining state: True if raw state differs from debounced state
-  const isRefining = useMemo(() => {
-    if (!isInitialized) return false;
-    return (
-      selectedFolderId !== debouncedFolderId ||
-      inPageSearch !== debouncedSearch ||
-      sortBy !== debouncedSortBy ||
-      JSON.stringify(selectedTags) !== JSON.stringify(debouncedTags) ||
-      JSON.stringify(selectedFormats) !== JSON.stringify(debouncedFormats)
-    );
-  }, [isInitialized, selectedFolderId, debouncedFolderId, inPageSearch, debouncedSearch, sortBy, debouncedSortBy, selectedTags, debouncedTags, selectedFormats, debouncedFormats]);
+  const debouncedSearch = useDebounce(deferredSearch, 400);
+  const debouncedTags = useDebounce(selectedTags, 300);
+  const debouncedFormats = useDebounce(selectedFormats, 300);
+  const debouncedFolderId = useDebounce(selectedFolderId, 100);
+  const debouncedSortBy = useDebounce(sortBy, 100);
 
-  // --- Effects ---
-
-  // Initialize state from URL or LocalStorage
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    // 1. Try URL first
-    const urlFolderId = searchParams.get("folder");
-    const urlFormat = searchParams.get("format");
-    const urlTags = searchParams.get("tags");
-    const urlSort = searchParams.get("sort");
-
-    let initialFolderId = urlFolderId;
-    let initialFormats = urlFormat ? urlFormat.split(",") : [];
-    let initialTags = urlTags ? urlTags.split(",") : [];
-    let initialSort = urlSort || "newest";
-
-    // 2. If URL is incomplete, try LocalStorage
-    if (!urlFolderId || !urlFormat || !urlSort) {
-      try {
-        const saved = localStorage.getItem(`last_state_${slug}`);
-        if (saved) {
-          const data = JSON.parse(saved);
-          if (!urlFolderId && data.folderId) initialFolderId = data.folderId;
-          if (!urlFormat && data.formats) initialFormats = data.formats;
-          if (!urlTags && data.tags) initialTags = data.tags;
-          if (!urlSort && data.sort) initialSort = data.sort;
-        }
-      } catch (e) {
-        console.warn("Failed to load state from localStorage:", e);
+  const updateUrl = useCallback((updates) => {
+    const params = new URLSearchParams(searchParams);
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value === null || value === undefined || (Array.isArray(value) && value.length === 0)) {
+        params.delete(key);
+      } else if (Array.isArray(value)) {
+        params.set(key, value.join(","));
+      } else {
+        params.set(key, value);
       }
-    }
+    });
+    router.push(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [pathname, router, searchParams]);
 
-    // 3. Apply initial state with reference checks to prevent loops
+  const handleSelectFolder = useCallback((folder, isHistoryMove = false) => {
+    const id = folder?.id || null;
+    const name = folder ? (folder.path || folder.name) : null;
+
+    startTransition(() => {
+      setSelectedFolderId(id);
+      setSelectedFolderName(name);
+      setVisibleCount(PAGE_SIZE_DISPLAY);
+      setFolderId(id);
+      updateUrl({ folder: id });
+
+      if (!isHistoryMove) {
+        const newStack = historyStackRef.current.slice(0, historyPointer + 1);
+        newStack.push(id);
+        setHistoryStack(newStack);
+        setHistoryPointer(newStack.length - 1);
+        historyStackRef.current = newStack;
+      }
+    });
+  }, [historyPointer, setFolderId, updateUrl]);
+
+  useEffect(() => {
+    const initialFolderId = searchParams.get("folder") || null;
+    const initialFormats = searchParams.get("format")?.split(",") || [];
+    const initialTags = searchParams.get("tags")?.split(",") || [];
+    const initialSort = searchParams.get("sort") || "newest";
+
     if (initialFolderId) {
       setSelectedFolderId(initialFolderId);
       const result = findInTree(folders, initialFolderId);
-      if (result?.current) {
-        setSelectedFolderName(result.current.path || result.current.name);
-      }
-    } else {
-      setSelectedFolderId(null);
-      setSelectedFolderName(null);
+      setSelectedFolderName(result?.current ? (result.current.path || result.current.name) : null);
+      setFolderId(initialFolderId);
     }
 
-    // 4. Initialize history stack ONLY ONCE (or when category changes)
     if (!hasLoadedInitialStateRef.current || prevSlugRef.current !== slug) {
       const initialStack = initialFolderId ? [initialFolderId] : [null];
       setHistoryStack(initialStack);
@@ -158,26 +143,16 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
       prevSlugRef.current = slug;
     }
     
-    if (initialFormats.length > 0 && JSON.stringify(initialFormats) !== JSON.stringify(selectedFormats)) {
-      setSelectedFormats(initialFormats);
-    }
-
-    if (initialTags.length > 0 && JSON.stringify(initialTags) !== JSON.stringify(selectedTags)) {
-      setSelectedTags(initialTags);
-    }
-
-    if (initialSort && initialSort !== sortBy) {
-      setSortBy(initialSort);
-    }
+    if (initialFormats.length > 0) setSelectedFormats(initialFormats);
+    if (initialTags.length > 0) setSelectedTags(initialTags);
+    if (initialSort) setSortBy(initialSort);
     
     setIsInitialized(true);
-  }, [slug, folders]); // Keep dependencies stable. searchParams is intentionally excluded to avoid loops on URL change.
+  }, [slug, folders]);
 
-  // Sync URL changes back to local state (supports browser back/forward)
   useEffect(() => {
     if (!isInitialized || isPending) return;
     
-    // Sync state from URL search params
     const folderId = searchParams.get("folder") || null;
     if (folderId !== selectedFolderId) {
       setSelectedFolderId(folderId);
@@ -187,52 +162,38 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
     }
     
     const formatsStr = searchParams.get("format") || "";
-    const currentFormatsStr = selectedFormats.join(",");
-    if (formatsStr !== currentFormatsStr) {
+    if (formatsStr !== selectedFormats.join(",")) {
       setSelectedFormats(formatsStr ? formatsStr.split(",") : []);
     }
     
     const tagsStr = searchParams.get("tags") || "";
-    const currentTagsStr = selectedTags.join(",");
-    if (tagsStr !== currentTagsStr) {
+    if (tagsStr !== selectedTags.join(",")) {
       setSelectedTags(tagsStr ? tagsStr.split(",") : []);
     }
     
     const sort = searchParams.get("sort") || "newest";
-    if (sort !== sortBy) {
-      setSortBy(sort);
-    }
+    if (sort !== sortBy) setSortBy(sort);
   }, [searchParams, isInitialized, folders, selectedFolderId, selectedFormats, selectedTags, sortBy, isPending]);
 
-  // Handle deep-link to resource via ?res=slug
   useEffect(() => {
     if (!isInitialized || !resSlug) return;
-    
     const existing = allLoadedResources.find(r => r.slug === resSlug);
     if (!existing) {
-      // If not in current pool, fetch it specifically
       getResourceBySlug(resSlug).then(resource => {
-        if (resource) {
-          setAllLoadedResources(prev => [resource, ...prev]);
-        }
+        if (resource) setAllLoadedResources(prev => [resource, ...prev]);
       });
     }
   }, [resSlug, allLoadedResources, isInitialized]);
 
-  // Listen for in-page search from ContextSearch
   useEffect(() => {
-    const handleLocalSearch = (e) => {
-      setInPageSearch(e.detail || "");
-    };
+    const handleLocalSearch = (e) => setInPageSearch(e.detail || "");
     window.addEventListener("local-search", handleLocalSearch);
     return () => window.removeEventListener("local-search", handleLocalSearch);
   }, []);
 
-  // Reset when primary filters change with DEBOUNCE and ABORT
   useEffect(() => {
     if (!isInitialized) return;
 
-    // Sync explicitly to localStorage whenever these change
     try {
       localStorage.setItem(`last_state_${slug}`, JSON.stringify({
         folderId: selectedFolderId,
@@ -240,24 +201,17 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
         tags: selectedTags,
         sort: sortBy
       }));
-    } catch (e) {
-      console.warn("Save to localStorage failed:", e);
-    }
+    } catch (e) { console.warn("Save to localStorage failed:", e); }
 
-    // --- Data Refresh Logic ---
     const requestId = ++lastRequestIdRef.current;
     if (abortControllerRef.current) abortControllerRef.current.abort();
 
     const refreshData = async () => {
-      // Optimization: Skip the very first fetch on mount IF the state matches the initial server load
       if (hasLoadedInitialStateRef.current && isFirstRun.current) {
         isFirstRun.current = false;
         const hasNoFilters = !debouncedSearch && debouncedTags.length === 0 && debouncedFormats.length === 0;
-        const isAtRoot = debouncedFolderId === null;
-        
-        if (initialResources?.length > 0 && hasNoFilters && isAtRoot) {
+        if (initialResources?.length > 0 && hasNoFilters && debouncedFolderId === null) {
           if (requestId === lastRequestIdRef.current) {
-            console.log("🚀 Optimization: Skipping initial fetch, using server data.");
             setAllLoadedResources(initialResources);
             setServerOffset(initialResources.length);
             setIsInitialLoading(false);
@@ -267,25 +221,18 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
         }
       }
 
-      // If we are resetting filters/folder, it's a "fresh" load for the grid
       const isFreshLoad = debouncedSearch || debouncedFormats.length > 0 || debouncedTags.length > 0 || debouncedFolderId !== null;
-      if (allLoadedResources.length === 0 || isFreshLoad) {
-        setIsInitialLoading(true);
-      } else {
-        setIsFetchLoading(true);
-      }
+      if (allLoadedResources.length === 0 || isFreshLoad) setIsInitialLoading(true);
+      else setIsFetchLoading(true);
+
       const controller = new AbortController();
       abortControllerRef.current = controller;
 
-      // When filtering (tags/search), we search the whole subtree of the current folder
       const isFiltering = debouncedSearch || debouncedFormats.length > 0 || debouncedTags.length > 0 || resSlug;
       let folderIdToPass = debouncedFolderId;
-      
       if (isFiltering && debouncedFolderId) {
         const node = findInTree(folders, debouncedFolderId)?.current;
-        if (node) {
-          folderIdToPass = getDescendantIds(node);
-        }
+        if (node) folderIdToPass = getDescendantIds(node);
       }
 
       try {
@@ -306,11 +253,8 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
           setHasMoreDB(fresh?.length === PAGE_SIZE_BATCH);
           setVisibleCount(PAGE_SIZE_DISPLAY);
         }
-      } catch (e) {
-        if (e.name !== 'AbortError') {
-          console.error("Refresh fetch failed:", e);
-        }
-      } finally {
+      } catch (e) { if (e.name !== 'AbortError') console.error("Refresh fetch failed:", e); }
+      finally {
         if (requestId === lastRequestIdRef.current) {
           setIsInitialLoading(false);
           setIsFetchLoading(false);
@@ -319,8 +263,6 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
     };
 
     refreshData();
-
-    // Safety net: Force clear loading states after 8 seconds
     const timeoutId = setTimeout(() => {
       if (requestId === lastRequestIdRef.current) {
         setIsInitialLoading(false);
@@ -328,16 +270,10 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
       }
     }, 8000);
 
-    return () => {
-      clearTimeout(timeoutId);
-    };
+    return () => clearTimeout(timeoutId);
   }, [isInitialized, debouncedFolderId, debouncedFormats, debouncedTags, debouncedSortBy, debouncedSearch, slug]);
 
-  // --- Folder Tags Fetching with SWR ---
-  const tagKey = (debouncedFolderId && isInitialized) 
-    ? [`tags`, slug, debouncedFolderId] 
-    : null;
-
+  const tagKey = (debouncedFolderId && isInitialized) ? [`tags`, slug, debouncedFolderId] : null;
   useSWR(tagKey, async ([, category, folder]) => {
     const node = findInTree(folders, folder)?.current;
     if (node) {
@@ -349,13 +285,8 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
     return [];
   }, { revalidateOnFocus: false, dedupingInterval: 60000 });
 
-  useEffect(() => {
-    if (!selectedFolderId) {
-      setFolderTags([]);
-    }
-  }, [selectedFolderId]);
+  useEffect(() => { if (!selectedFolderId) setFolderTags([]); }, [selectedFolderId]);
 
-  // Synchronize internal state with server-provided initialResources ONLY when category changes
   useEffect(() => {
     setAllLoadedResources(initialResources);
     setServerOffset(initialResources.length);
@@ -363,261 +294,75 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
     setVisibleCount(PAGE_SIZE_DISPLAY);
   }, [slug]);
 
-  // --- Core Filtering (Now mostly sorting since search/tags are server-side) ---
   const filteredResources = useMemo(() => {
-    let results = [...allLoadedResources];
+    // Nếu đang ở cấp gốc (không chọn folder) và KHÔNG có bộ lọc nào kích hoạt,
+    // chúng ta sẽ ẩn danh sách Resource để chỉ hiện các Folder con.
+    const isAtRoot = !selectedFolderId;
+    const isFiltering = debouncedSearch || debouncedTags.length > 0 || debouncedFormats.length > 0 || resSlug;
 
+    if (isAtRoot && !isFiltering) {
+      return [];
+    }
+
+    let results = [...allLoadedResources];
     if (resSlug) {
       const target = results.find(r => r.slug === resSlug);
       if (target) return [target];
     }
-
-    // Note: Search, Tags, and Formats are now filtered at the Server level via getResources.
-    // allLoadedResources already contains the matching set.
-
     switch (sortBy) {
-      case "popular":
-        results.sort((a, b) => (b.downloadCount || 0) - (a.downloadCount || 0));
-        break;
-      case "name":
-        results.sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-        break;
-      default:
-        // Newest is handled by server sort order
-        break;
+      case "popular": results.sort((a, b) => (b.downloadCount || 0) - (a.downloadCount || 0)); break;
+      case "name": results.sort((a, b) => (a.name || "").localeCompare(b.name || "")); break;
     }
     return results;
-  }, [allLoadedResources, sortBy, resSlug]);
+  }, [allLoadedResources, sortBy, resSlug, selectedFolderId, debouncedSearch, debouncedTags, debouncedFormats]);
 
-  // Extract unique tags from loaded resources for FilterBar
   const availableTags = useMemo(() => {
     const isFiltered = selectedTags.length > 0 || inPageSearch || selectedFormats.length > 0;
     const tagMap = {};
-
-    // 1. Calculate counts from currently loaded resources (respects current filters)
     allLoadedResources.forEach(r => {
-      if (r.tags) {
-        r.tags.forEach(t => {
-          const lowTag = t.toLowerCase();
-          tagMap[lowTag] = (tagMap[lowTag] || 0) + 1;
-        });
-      }
+      if (r.tags) r.tags.forEach(t => {
+        const lowTag = t.toLowerCase();
+        tagMap[lowTag] = (tagMap[lowTag] || 0) + 1;
+      });
     });
 
-    let baseTags = [];
-    if (isFiltered) {
-      // Show intersection + selected tags
-      const tagsSet = new Set(selectedTags.map(t => t.toLowerCase()));
-      Object.keys(tagMap).forEach(t => tagsSet.add(t));
-      baseTags = Array.from(tagsSet);
-    } else {
-      // Default view for folder/category
-      baseTags = selectedFolderId 
-        ? (folderTags.length > 0 ? folderTags : []) 
-        : categoryTags;
-    }
+    let baseTags = isFiltered 
+      ? Array.from(new Set([...selectedTags.map(t => t.toLowerCase()), ...Object.keys(tagMap)]))
+      : (selectedFolderId ? (folderTags.length > 0 ? folderTags : []) : categoryTags);
 
-    return baseTags.map(tag => {
-      const lowName = tag.toLowerCase();
-      return {
-        name: lowName,
-        count: tagMap[lowName] || 0
-      };
-    }).sort((a, b) => {
+    return baseTags.map(tag => ({
+      name: tag.toLowerCase(),
+      count: tagMap[tag.toLowerCase()] || 0
+    })).sort((a, b) => {
       const aSelected = selectedTags.includes(a.name);
       const bSelected = selectedTags.includes(b.name);
-      
-      // Primary: Selected tags first
       if (aSelected && !bSelected) return -1;
       if (!aSelected && bSelected) return 1;
-      
-      // Secondary: Sort by count descending (most relevant first)
       if (a.count !== b.count) return b.count - a.count;
-      
-      // Tertiary: Alphabetical
       return a.name.localeCompare(b.name);
     });
   }, [allLoadedResources, selectedFolderId, categoryTags, folderTags, inPageSearch, selectedTags, selectedFormats]);
 
-  // --- Folder Navigation Grid Logic ---
   const { currentSubfolders, parentFolder } = useMemo(() => {
-    if (!selectedFolderId) {
-      return { currentSubfolders: folders, parentFolder: null };
-    }
-
+    if (!selectedFolderId) return { currentSubfolders: folders, parentFolder: null };
     const result = findInTree(folders, selectedFolderId);
-    return {
-      currentSubfolders: result?.current?.children || [],
-      parentFolder: result?.parent || "root" // "root" string to represent back to All
-    };
-  }, [folders, selectedFolderId]);
-  
-  const currentFolder = useMemo(() => {
-    if (!selectedFolderId) return null;
-    return findInTree(folders, selectedFolderId)?.current;
+    return { currentSubfolders: result?.current?.children || [], parentFolder: result?.parent };
   }, [folders, selectedFolderId]);
 
-  const countToDisplay = useMemo(() => {
-    if (!inPageSearch && selectedFormats.length === 0 && selectedTags.length === 0) {
-      return currentFolder 
-        ? (currentFolder.totalResourceCount ?? currentFolder.resourceCount ?? 0) 
-        : (info.resourceCount || initialResources.length || 0);
-    }
-    return filteredResources.length;
-  }, [currentFolder, info.resourceCount, initialResources.length, inPageSearch, selectedFormats, selectedTags, filteredResources.length]);
+  const currentFolder = useMemo(() => 
+    selectedFolderId ? findInTree(folders, selectedFolderId)?.current : null,
+    [folders, selectedFolderId]
+  );
 
   const breadcrumbs = useMemo(() => {
-    const path = [];
-    if (!selectedFolderId || folders.length === 0) return path;
-
-    const findPath = (tree, targetId) => {
-      for (const node of tree) {
-        if (node.id === targetId) return [{ id: node.id, name: node.name }];
-        if (node.children) {
-          const subPath = findPath(node.children, targetId);
-          if (subPath) return [{ id: node.id, name: node.name }, ...subPath];
-        }
-      }
-      return null;
-    };
-
-    return findPath(folders, selectedFolderId) || [];
+    const crumbs = [];
+    let curr = findInTree(folders, selectedFolderId);
+    while (curr) {
+      crumbs.unshift({ id: curr.current.id, name: curr.current.name });
+      curr = curr.parent ? findInTree(folders, curr.parent.id) : null;
+    }
+    return crumbs;
   }, [folders, selectedFolderId]);
-
-  // --- Pagination Logic ---
-
-  const handleLoadMore = useCallback(async () => {
-    if (isInitialLoading || isLoadingMore || isFetchLoading || isPending || isRefining) return;
-
-    // SAFETY GUARD: If we have no more DB items AND we've shown all local items, stop.
-    if (!hasMoreDB && visibleCount >= filteredResources.length) return;
-
-    // 1. Check if we have more in our LOCAL pool of loaded resources
-    if (visibleCount + PAGE_SIZE_DISPLAY <= filteredResources.length) {
-      setVisibleCount(prev => prev + PAGE_SIZE_DISPLAY);
-      return;
-    }
-
-    // 2. If we are near the end of the local pool AND the server might have more
-    if (hasMoreDB) {
-      setIsLoadingMore(true);
-
-      const isFiltering = inPageSearch || selectedFormats.length > 0 || selectedTags.length > 0 || resSlug;
-      let folderIdToPass = selectedFolderId;
-      if (isFiltering && selectedFolderId) {
-        const node = findInTree(folders, selectedFolderId)?.current;
-        if (node) {
-          folderIdToPass = getDescendantIds(node);
-        }
-      }
-
-      try {
-        const nextBatch = await getResources({ 
-          categorySlug: slug, 
-          selectedTags: selectedTags,
-          selectedFormats: selectedFormats,
-          folderId: folderIdToPass,
-          searchTerm: inPageSearch, // Important for infinite scroll in search results
-          offset: serverOffset, 
-          limit: PAGE_SIZE_BATCH 
-        });
-
-        if (nextBatch.length > 0) {
-          setAllLoadedResources(prev => [...prev, ...nextBatch]);
-          setServerOffset(prev => prev + nextBatch.length);
-          // If we got fewer than requested, we've hit the end
-          if (nextBatch.length < PAGE_SIZE_BATCH) {
-            setHasMoreDB(false);
-          }
-          // Increment visibility
-          setVisibleCount(prev => prev + PAGE_SIZE_DISPLAY);
-        } else {
-          setHasMoreDB(false);
-        }
-      } catch (err) {
-        console.error("Failed to fetch more resources:", err);
-      } finally {
-        setIsLoadingMore(false);
-      }
-    } else {
-      // Just show remaining if any
-      if (visibleCount < filteredResources.length) {
-        setVisibleCount(filteredResources.length);
-      }
-    }
-  }, [isFetchLoading, visibleCount, filteredResources.length, hasMoreDB, slug, serverOffset]);
-
-  // --- Infinite Scroll Observer ---
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          handleLoadMore();
-        }
-      },
-      { threshold: 0.1, rootMargin: '200px' }
-    );
-
-    const currentRef = loadMoreRef.current;
-    if (currentRef) {
-      observer.observe(currentRef);
-    }
-
-    return () => {
-      if (currentRef) observer.unobserve(currentRef);
-    };
-  }, [handleLoadMore]);
-
-  const updateUrl = useCallback((updates) => {
-    // Use window.location.search directly to avoid stale state from the searchParams hook during rapid navigation
-    const params = new URLSearchParams(window.location.search);
-    
-    Object.entries(updates).forEach(([key, value]) => {
-      if (value === null || value === undefined || (Array.isArray(value) && value.length === 0)) {
-        params.delete(key);
-      } else {
-        params.set(key, Array.isArray(value) ? value.join(",") : value);
-      }
-    });
-
-    const queryString = params.toString();
-    const finalUrl = `${pathname}${queryString ? `?${queryString}` : ""}`;
-    
-    startTransition(() => {
-      router.replace(finalUrl, { scroll: false });
-    });
-  }, [pathname, router, searchParams, startTransition]);
-
-  const handleSelectFolder = useCallback((folder, isHistoryMove = false) => {
-    const folderId = folder ? folder.id : null;
-    const folderName = folder ? (folder.path || folder.name) : null;
-
-    if (selectedFolderId === folderId) return;
-
-    // Use startTransition for the folder state update
-    startTransition(() => {
-      setSelectedFolderId(folderId);
-      setSelectedFolderName(folderName);
-      setVisibleCount(PAGE_SIZE_DISPLAY);
-      
-      // OPTIMIZATION: We no longer clear allLoadedResources here.
-      // Instead, we let the blur effect (isFetchLoading || isPending) 
-      // handle the visual transition while the new data is being fetched.
-      // This prevents the "empty grid" jump.
-      
-      // setIsFetchLoading(true) is now handled by the computed isRefining state
-      
-      updateUrl({ folder: folderId });
-
-      if (!isHistoryMove) {
-        const newStack = historyStack.slice(0, historyPointer + 1);
-        newStack.push(folderId);
-        setHistoryStack(newStack);
-        historyStackRef.current = newStack;
-        setHistoryPointer(newStack.length - 1);
-      }
-    });
-  }, [selectedFolderId, startTransition, updateUrl, historyStack, historyPointer]);
 
   const goBack = () => {
     if (historyPointer > 0) {
@@ -637,236 +382,90 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
     }
   };
 
-  const resetToRoot = () => {
-    handleSelectFolder(null);
-  };
+  const resetToRoot = () => handleSelectFolder(null);
 
-  const renderResources = () => {
-    const displayResources = filteredResources.slice(0, visibleCount);
-    const hasCurrentFolders = currentSubfolders.length > 0 || parentFolder;
-    const isLoading = isInitialLoading || isFetchLoading || isPending || isRefining;
+  const handleLoadMore = useCallback(() => {
+    if (isInitialLoading || isFetchLoading || isLoadingMore || !hasMoreDB) return;
 
-    if (filteredResources.length === 0 && !isLoading && !isLoadingMore && !hasCurrentFolders) {
-      return (
-        <div className={styles.empty}>
-          <p>
-            No resources found{selectedFolderName ? ` in "${selectedFolderName}"` : ""}.
-          </p>
-        </div>
-      );
+    setIsLoadingMore(true);
+    const isFiltering = debouncedSearch || debouncedFormats.length > 0 || debouncedTags.length > 0;
+    let folderIdToPass = debouncedFolderId;
+    if (isFiltering && debouncedFolderId) {
+      const node = findInTree(folders, debouncedFolderId)?.current;
+      if (node) folderIdToPass = getDescendantIds(node);
     }
-
-    const renderGridItems = () => {
-      const items = [];
-      let globalIdx = 0;
-
-      // Subfolders
-      const isFiltering = inPageSearch || selectedFormats.length > 0 || selectedTags.length > 0 || resSlug;
-      
-      if (!isFiltering) {
-        currentSubfolders.forEach((sub) => {
-          items.push(
-            <FolderCard
-              key={sub.id}
-              folder={sub}
-              onClick={() => handleSelectFolder(sub)}
-              primaryColor={info.color}
-              index={globalIdx++}
-            />
-          );
-        });
-      }
-
-      // Resources
-      const isRootNoFilters = !selectedFolderId && !inPageSearch && selectedFormats.length === 0 && selectedTags.length === 0;
-      const hasFoldersAtRoot = folders.length > 0;
-      
-      if (isRootNoFilters && hasFoldersAtRoot) {
-        return items;
-      }
-
-      if (info.layout === "audio" || info.layout === "sound") {
-        displayResources.forEach((resource) => {
-          items.push(
-            <SoundButton
-              key={resource.id}
-              {...resource}
-              downloadUrl={resource.downloadUrl || resource.fileUrl}
-              index={globalIdx++ % PAGE_SIZE_DISPLAY}
-              onPreview={() => resource.slug ? router.push(`/${slug}/${resource.slug}`) : setPreviewResource(resource)}
-              primaryColor={info.color}
-            />
-          );
-        });
-      } else {
-        displayResources.forEach((resource) => {
-          items.push(
-            <ResourceCard
-              key={resource.id}
-              {...resource}
-              downloadUrl={resource.downloadUrl || resource.fileUrl}
-              cardType={
-                info.layout === "font" ? "font" :
-                info.layout === "video" || info.layout === "image" ? info.layout :
-                slug === "image-overlay" ? "image" :
-                slug === "preset-lut" ? "preview" : "video"
-              }
-              index={globalIdx++ % PAGE_SIZE_DISPLAY}
-              onPreview={() => setPreviewResource(resource)}
-              detailUrl={resource.slug ? `/${slug}/${resource.slug}` : null}
-              primaryColor={info.color}
-            />
-          );
-        });
-      }
-
-      return items;
-    };
-
-    const gridClass = (info.layout === "audio" || info.layout === "sound") ? styles.soundGrid : styles.grid;
-
-    return (
-      <div className={styles.gridWrapper}>
-        <div 
-          className={`${gridClass} ${isLoading ? styles.gridLoading : ''}`}
-        >
-          {renderGridItems()}
-        </div>
-        
-        {/* Skeleton Overlay - Shows during major transitions or initial load */}
-        {isInitialLoading && (
-          <div 
-            className={`${gridClass} ${styles.skeletonOverlay}`}
-          >
-              {Array.from({ length: 12 }).map((_, i) => {
-                const isSoundLayout = gridClass === styles.soundGrid;
-                if (isSoundLayout) {
-                  return (
-                    <div key={`overlay-skeleton-${i}`} className={styles.skeletonCardSound}>
-                      <div className={styles.skeletonThumbSound} />
-                      <div className={styles.skeletonInfoSound}>
-                        <div className={styles.skeletonLine} style={{ width: '80%' }} />
-                        <div className={styles.skeletonLine} style={{ width: '40%' }} />
-                      </div>
-                    </div>
-                  );
-                }
-                return (
-                  <div key={`overlay-skeleton-${i}`} className={styles.skeletonCard}>
-                    <div className={styles.skeletonThumb} />
-                    <div className={styles.skeletonCardBody}>
-                      <div className={styles.skeletonLine} style={{ width: '90%' }} />
-                      <div className={styles.skeletonLine} style={{ width: '40%' }} />
-                    </div>
-                    <div className={styles.skeletonAction} />
-                  </div>
-                );
-              })}
-          </div>
-        )}
-
-        {/* Sentinel for Infinite Scroll */}
-        <div ref={loadMoreRef} className={styles.observerSentinel}>
-          {(isInitialLoading || isFetchLoading || isLoadingMore || (visibleCount < filteredResources.length) || hasMoreDB) && (
-            <div className={styles.loadMoreWrapper}>
-              <div className={styles.infiniteLoader}>
-                <span className={styles.loaderIcon}></span>
-                <span>Optimizing your creative flow...</span>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
+    
+    getResources({
+      categorySlug: slug,
+      selectedTags: debouncedTags,
+      selectedFormats: debouncedFormats,
+      folderId: folderIdToPass,
+      searchTerm: debouncedSearch,
+      offset: serverOffset,
+      limit: PAGE_SIZE_BATCH,
+    }).then(more => {
+      if (more?.length > 0) {
+        setAllLoadedResources(prev => [...prev, ...more]);
+        setServerOffset(prev => prev + more.length);
+        setHasMoreDB(more.length === PAGE_SIZE_BATCH);
+      } else setHasMoreDB(false);
+    }).finally(() => setIsLoadingMore(false));
+  }, [isInitialLoading, isFetchLoading, isLoadingMore, hasMoreDB, serverOffset, debouncedSearch, debouncedFormats, debouncedTags, debouncedFolderId, slug, folders]);
 
   return (
     <>
-
       <div className={styles.main}>
-
-        <div className={styles.pageHeader}>
-          <div className={styles.navActions}>
-            <button 
-              className={styles.navBtn} 
-              onClick={resetToRoot} 
-              title="Home Root"
-              disabled={selectedFolderId === null}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-            </button>
-            <div className={styles.navArrows}>
-              <button 
-                className={styles.navBtn} 
-                onClick={goBack} 
-                disabled={historyPointer <= 0}
-                title="Back"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
-              </button>
-              <button 
-                className={styles.navBtn} 
-                onClick={goForward} 
-                disabled={historyPointer >= historyStack.length - 1}
-                title="Forward"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m9 18 6-6-6-6"/></svg>
-              </button>
-            </div>
-          </div>
-          
-          <span className={styles.headerSep}>|</span>
-
-          <h1 className={styles.title} style={{ color: info.color }}>
-            {currentFolder ? currentFolder.name : info.name}
-          </h1>
-        </div>
-
-        <FilterBar
-          formats={info.formats}
-          selectedFormats={selectedFormats}
-          onFormatsChange={(vals) => {
-            startTransition(() => {
-              setSelectedFormats(vals);
-              updateUrl({ format: vals });
-            });
-          }}
-          tags={availableTags}
-          selectedTags={selectedTags}
-          onTagsChange={(vals) => {
-            startTransition(() => {
-              setSelectedTags(vals);
-              updateUrl({ tags: vals });
-            });
-          }}
-          sortBy={sortBy}
-          onSortChange={(val) => {
-            startTransition(() => {
-              setSortBy(val);
-              updateUrl({ sort: val });
-            });
-          }}
-          inPageSearch={inPageSearch}
-          onSearchChange={(val) => {
-            setInPageSearch(val);
-            // Search is typically local or debounced, no immediate URL update needed here
-          }}
-          resSlug={resSlug}
-          onClearRes={() => router.push(pathname)}
-          primaryColor={info.color}
-          breadcrumbs={breadcrumbs}
-          categoryName={info.name}
-          onBreadcrumbClick={(id) => {
-            if (!id) {
-              handleSelectFolder(null);
-            } else {
-              const folder = findInTree(folders, id);
-              if (folder?.current) handleSelectFolder(folder.current);
-            }
-          }}
+        <NavigationHeader 
+          selectedFolderId={selectedFolderId}
+          resetToRoot={resetToRoot}
+          goBack={goBack}
+          goForward={goForward}
+          historyPointer={historyPointer}
+          historyStack={historyStack}
+          currentFolder={currentFolder}
+          info={info}
         />
 
-        {renderResources()}
+        <FilterSection
+          info={info}
+          selectedFormats={selectedFormats}
+          setSelectedFormats={setSelectedFormats}
+          availableTags={availableTags}
+          selectedTags={selectedTags}
+          setSelectedTags={setSelectedTags}
+          sortBy={sortBy}
+          setSortBy={setSortBy}
+          inPageSearch={inPageSearch}
+          setInPageSearch={setInPageSearch}
+          resSlug={resSlug}
+          breadcrumbs={breadcrumbs}
+          handleSelectFolder={handleSelectFolder}
+          updateUrl={updateUrl}
+          router={router}
+          pathname={pathname}
+          folders={folders}
+          findInTree={findInTree}
+        />
+
+        <ResourceGrid 
+          filteredResources={filteredResources}
+          currentSubfolders={currentSubfolders}
+          isInitialLoading={isInitialLoading}
+          isFetchLoading={isFetchLoading}
+          isPending={isPending}
+          isLoadingMore={isLoadingMore}
+          hasMoreDB={hasMoreDB}
+          info={info}
+          slug={slug}
+          handleSelectFolder={handleSelectFolder}
+          setPreviewResource={setPreviewResource}
+          router={router}
+          inPageSearch={deferredSearch}
+          selectedFormats={selectedFormats}
+          selectedTags={selectedTags}
+          resSlug={resSlug}
+          onLoadMore={handleLoadMore}
+        />
       </div>
 
       {previewResource && (
@@ -879,4 +478,3 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
     </>
   );
 }
-

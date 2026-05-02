@@ -69,82 +69,55 @@ const SoundButton = memo(function SoundButton({
     }
   }, [isScrubbing]);
 
-  // Helper to initialize audio on demand
+  // Helper to initialize audio on demand (now using Shared Singleton)
   const initAudio = useCallback(() => {
-    if (!downloadUrl) return null;
+    if (!downloadUrl || typeof window === 'undefined') return null;
     
-    // Normalize absolute URL for comparison and source assignment
+    // Use Shared Audio Singleton
+    const audio = mediaManager.getSharedAudio();
+    if (!audio) return null;
+
+    // Normalize absolute URL
     let normalizedUrl = downloadUrl;
-    if (typeof window !== 'undefined') {
-      try {
-        normalizedUrl = new URL(downloadUrl, window.location.origin).href;
-      } catch (e) {
-        console.warn("URL normalization failed:", downloadUrl);
-      }
-    }
-    
-    // If audio object already exists but URL is different, update its src
-    if (audioRef.current) {
-      const currentSrc = audioRef.current.src;
+    try {
+      normalizedUrl = new URL(downloadUrl, window.location.origin).href;
+    } catch (e) {}
 
-      if (currentSrc !== normalizedUrl && normalizedUrl) {
-        audioRef.current.pause();
-        audioRef.current.src = normalizedUrl;
-        audioRef.current.load();
-      }
-      
-      // Sync duration if already available
-      if (audioRef.current.duration && !isNaN(audioRef.current.duration)) {
-        setDuration(audioRef.current.duration);
-      }
-      return audioRef.current;
-    }
-    
-    const audio = new Audio();
-    
-    // NOTE: Removed crossOrigin="anonymous" because it requires strict server configuration.
-    // Standard public URLs in Supabase are more compatible with default "opaque" loading.
-    audio.preload = "metadata";
-    audio.src = normalizedUrl;
+    // Attach listeners only once per "active" session
+    const setupListeners = () => {
+      // Remove previous to avoid duplicates if re-called
+      audio.onloadedmetadata = null;
+      audio.onerror = null;
+      // Note: 'ended' is handled by mediaManager singleton
 
-    audio.addEventListener("loadedmetadata", () => {
-      if (audioRef.current === audio) {
-        setDuration(audio.duration);
-      }
-    });
-    
-    audio.addEventListener("ended", () => {
-      setIsPlaying(false);
-      setCurrentTime(0);
-      mediaManager.stop(audio);
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    });
-    
-    audio.addEventListener("error", (e) => {
-      const error = audio.error;
-      let msg = "Unknown error";
-      if (error) {
-        switch (error.code) {
-          case 1: msg = "Aborted"; break;
-          case 2: msg = "Network error"; break;
-          case 3: msg = "Decoding error"; break;
-          case 4: msg = "Format not supported or Access Denied"; break;
+      audio.onloadedmetadata = () => {
+        if (mediaManager.isIdActive(id)) {
+          setDuration(audio.duration);
         }
-      }
-      
-      // Don't log error if src was programmatically cleared during cleanup
-      if (audio.src === "" || audio.src === window.location.href) return;
+      };
 
-      console.error(`Playback element error [${msg}]:`, normalizedUrl, {
-        code: error?.code,
-        message: error?.message,
-        url: normalizedUrl,
-        readyState: audio.readyState
-      });
-      setIsPlaying(false);
-      mediaManager.stop(audio);
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    });
+      audio.onerror = () => {
+        if (!mediaManager.isIdActive(id)) return;
+        if (audio.src === "" || audio.src === window.location.href) return;
+        setIsPlaying(false);
+        mediaManager.stop(audio);
+      };
+    };
+
+    // If this audio is already playing our ID, just return it
+    if (mediaManager.isIdActive(id)) {
+      audioRef.current = audio;
+      return audio;
+    }
+
+    // If it's a different source, update it
+    if (audio.src !== normalizedUrl && !mediaManager.isIdActive(id)) {
+      // Only pause if we are about to change the source
+      // But wait, mediaManager.play will handle pausing other things.
+      audio.src = normalizedUrl;
+      audio.load();
+      setupListeners();
+    }
     
     audioRef.current = audio;
     return audio;
@@ -153,42 +126,41 @@ const SoundButton = memo(function SoundButton({
   // Sync volume settings and handle global reset
   useEffect(() => {
     return mediaManager.subscribe(({ activeMediaId }) => {
-      // If another item started playing, and we are not that item, but we have progress
+      // If another item started playing, and we are not that item, but we were playing
       if (activeMediaId && activeMediaId !== id) {
         if (isPlaying || currentTime > 0) {
           setIsPlaying(false);
           setCurrentTime(0);
           if (rafRef.current) cancelAnimationFrame(rafRef.current);
           
-          // Actually stop the audio if it was the one playing
-          if (audioRef.current && !audioRef.current.paused) {
-            audioRef.current.pause();
-            audioRef.current.currentTime = 0;
-          }
+          // Note: We don't need to pause the audio here because mediaManager.play 
+          // already pauses the previous active media.
+        }
+      } else if (activeMediaId === id) {
+        // If we are the active item (e.g. remounted while playing)
+        const audio = mediaManager.getSharedAudio();
+        if (audio && !audio.paused) {
+          setIsPlaying(true);
+          setCurrentTime(audio.currentTime);
+          setDuration(audio.duration);
+          if (!rafRef.current) rafRef.current = requestAnimationFrame(updateTime);
         }
       }
     });
-  }, [id, isPlaying, currentTime]);
+  }, [id, isPlaying, currentTime, updateTime]);
 
   // Reset state when ID changes or on unmount
   useEffect(() => {
     const cleanup = () => {
-      const audio = audioRef.current;
-      if (audio) {
-        audio.pause();
-        mediaManager.stop(audio);
-        audio.src = "";
-        audioRef.current = null;
-      }
+      // We DO NOT stop the audio on unmount anymore, to allow background playback while scrolling.
+      // The mediaManager subscription will handle stopping if another sound starts.
+      
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       
-      setIsPlaying(false);
-      setCurrentTime(0);
-      setDuration(0);
-      setIsScrubbing(false);
+      // We keep the local state for a moment, but it will be gone on next mount
+      // unless synced by the useEffect above.
     };
 
-    // Return cleanup to run on unmount or id change
     return cleanup;
   }, [id]);
 

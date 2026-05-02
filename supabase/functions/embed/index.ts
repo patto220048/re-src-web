@@ -30,15 +30,17 @@ serve(async (req) => {
       normalize: true,
     });
 
-    // 4. Lưu vào database
+    // 4. Lưu vào bảng phụ resource_embeddings (Upsert)
     const { error } = await supabase
-      .from('resources')
-      .update({ embedding: Array.from(embedding) })
-      .eq('id', record.id)
+      .from('resource_embeddings')
+      .upsert({ 
+        id: record.id, 
+        embedding: Array.from(embedding) 
+      })
 
     if (error) throw error
 
-    console.log(`Thành công! Đã lưu Vector cho ${record.name}`)
+    console.log(`Thành công! Đã lưu Vector vào bảng phụ cho ${record.name}`)
 
     return new Response(JSON.stringify({ success: true }), { 
       headers: { 'Content-Type': 'application/json' } 
