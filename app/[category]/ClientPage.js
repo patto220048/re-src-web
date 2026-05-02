@@ -229,6 +229,8 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
     if (abortControllerRef.current) abortControllerRef.current.abort();
 
     const refreshData = async () => {
+      const isFolderChangeOnly = debouncedFolderId !== lastSyncedFolderRef.current && !debouncedSearch && debouncedTags.length === 0 && debouncedFormats.length === 0;
+      
       if (hasLoadedInitialStateRef.current && isFirstRun.current) {
         isFirstRun.current = false;
         const hasNoFilters = !debouncedSearch && debouncedTags.length === 0 && debouncedFormats.length === 0;
@@ -243,9 +245,15 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
         }
       }
 
-      const isFreshLoad = debouncedSearch || debouncedFormats.length > 0 || debouncedTags.length > 0 || debouncedFolderId !== null;
-      if (allLoadedResources.length === 0 || isFreshLoad) setIsInitialLoading(true);
-      else setIsFetchLoading(true);
+      const isFreshLoad = (debouncedSearch || debouncedFormats.length > 0 || debouncedTags.length > 0) && !isFolderChangeOnly;
+      
+      // Chỉ hiện initial loading (skeleton toàn phần) khi load lần đầu hoặc thay đổi filter lớn.
+      // Khi chỉ đổi folder, chúng ta giữ dữ liệu cũ và chỉ hiện fetch loading (mờ grid).
+      if ((allLoadedResources.length === 0 || isFreshLoad) && !isFolderChangeOnly) {
+        setIsInitialLoading(true);
+      } else {
+        setIsFetchLoading(true);
+      }
 
       const controller = new AbortController();
       abortControllerRef.current = controller;
@@ -307,7 +315,9 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
     return [];
   }, { revalidateOnFocus: false, dedupingInterval: 60000 });
 
-  useEffect(() => { if (!selectedFolderId) setFolderTags([]); }, [selectedFolderId]);
+  // Không xóa folderTags ngay lập tức để tránh flicker khi chuyển folder.
+  // SWR sẽ tự động cập nhật khi key thay đổi.
+  // useEffect(() => { if (!selectedFolderId) setFolderTags([]); }, [selectedFolderId]);
 
   useEffect(() => {
     setAllLoadedResources(initialResources);
@@ -389,9 +399,14 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
       }
       baseTagsNames = Array.from(names);
     } else {
-      // Trong chế độ duyệt, ưu tiên tag của folder hoặc category
-      const currentContextTags = selectedFolderId ? (folderTags.length > 0 ? folderTags : []) : categoryTags;
-      baseTagsNames = currentContextTags.map(t => t.toLowerCase());
+      // Trong chế độ duyệt:
+      // 1. Ưu tiên tag của folder hiện tại nếu đã load xong
+      // 2. Nếu đang load hoặc folder chưa có tag, dùng categoryTags làm nền tảng để không bị trống
+      const currentContextTags = (selectedFolderId && folderTags && folderTags.length > 0) 
+        ? folderTags 
+        : categoryTags;
+        
+      baseTagsNames = currentContextTags.map(t => (typeof t === 'string' ? t : t.name).toLowerCase());
     }
 
     return baseTagsNames

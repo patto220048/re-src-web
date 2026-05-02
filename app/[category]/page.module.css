@@ -117,9 +117,10 @@
 
 /* Loading blur state (replaces framer-motion) */
 .gridLoading {
-  filter: blur(12px) grayscale(0.5);
-  opacity: 0.3;
+  filter: blur(4px);
+  opacity: 0.7;
   pointer-events: none;
+  transition: filter 0.3s ease, opacity 0.3s ease;
 }
 
 /* Skeleton overlay (replaces AnimatePresence motion.div) */
