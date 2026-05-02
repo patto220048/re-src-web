@@ -349,7 +349,7 @@ export async function getResources({
   if (!isServer) {
     const params = new URLSearchParams();
     if (categorySlug) params.set("categorySlug", categorySlug);
-    if (folderId) params.set("folderId", folderId);
+    if (folderId !== undefined) params.set("folderId", folderId === null ? "null" : folderId);
     if (searchTerm) params.set("search", searchTerm);
     if (selectedTags.length) params.set("tags", selectedTags.join(","));
     if (selectedFormats.length) params.set("formats", selectedFormats.join(","));

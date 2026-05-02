@@ -5,18 +5,26 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url);
   
   const categorySlug = searchParams.get('categorySlug');
-  const folderId = searchParams.get('folderId');
-  const searchTerm = searchParams.get('searchTerm');
+  const folderIdParam = searchParams.get('folderId');
+  const searchTerm = searchParams.get('search'); // Matches api.js
   const tags = searchParams.get('tags') ? searchParams.get('tags').split(',') : [];
   const formats = searchParams.get('formats') ? searchParams.get('formats').split(',') : [];
   const limit = parseInt(searchParams.get('limit') || '40');
   const offset = parseInt(searchParams.get('offset') || '0');
-  const sortOrder = searchParams.get('sortOrder') || 'newest';
+  const sortOrder = searchParams.get('sort') || 'newest'; // Matches api.js
+
+  // Handle folderId parsing (can be single UUID, array string, or 'null')
+  let folderId = undefined;
+  if (folderIdParam === 'null') {
+    folderId = null;
+  } else if (folderIdParam && folderIdParam !== 'undefined') {
+    folderId = folderIdParam.includes(',') ? folderIdParam.split(',') : folderIdParam;
+  }
 
   try {
     const resources = await getResources({
       categorySlug,
-      folderId: folderId === 'null' ? null : (folderId === 'undefined' ? undefined : folderId),
+      folderId,
       searchTerm,
       selectedTags: tags,
       selectedFormats: formats,
