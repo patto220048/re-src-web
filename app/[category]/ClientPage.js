@@ -9,6 +9,7 @@ import { useDebounce } from "@/app/hooks/useDebounce";
 import dynamic from "next/dynamic";
 const PreviewOverlay = dynamic(() => import("@/app/components/ui/PreviewOverlay"));
 import { getResources, getResourceBySlug, getCategoryTags } from "@/app/lib/api";
+import { mediaManager } from "@/app/lib/mediaManager";
 
 // Sub-components
 import NavigationHeader from "./components/NavigationHeader";
@@ -229,6 +230,7 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
     if (abortControllerRef.current) abortControllerRef.current.abort();
 
     const refreshData = async () => {
+      mediaManager.stopAll();
       const isFolderChangeOnly = debouncedFolderId !== lastSyncedFolderRef.current && !debouncedSearch && debouncedTags.length === 0 && debouncedFormats.length === 0;
       
       if (hasLoadedInitialStateRef.current && isFirstRun.current) {
