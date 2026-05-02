@@ -30,7 +30,7 @@ export function mapResource(res) {
     ...res,
     categoryId: res.category_id || res.category_slug, // Handle both old and new schema
     folderId: res.folder_id,
-    fileFormat: res.file_format,
+    fileFormat: res.file_format || (res.name && res.name.includes('.') ? res.name.split('.').pop() : (res.file_name && res.file_name.includes('.') ? res.file_name.split('.').pop() : '')),
     fileSize: res.file_size,
     fileName: res.file_name,
     isPremium: res.is_premium,
@@ -163,20 +163,44 @@ export async function getRelatedResources(resourceId, limit = 6) {
       return [];
     }
 
-    // 3. Post-process: Boost same-category results and map
-    const results = (data || []).map(item => {
+    if (!data || data.length === 0) return [];
+
+    // 3. Fetch full details for these resources to get file_format, download_count, etc.
+    const ids = data.map(item => item.id);
+    const { data: details, error: detailsError } = await supabase
+      .from('resources')
+      .select(RESOURCE_SUMMARY_COLUMNS)
+      .in('id', ids);
+
+    if (detailsError) {
+      console.error('Error fetching related details:', detailsError);
+      // Fallback to minimal data if details fetch fails
+    }
+
+    // Create a map for quick lookup
+    const detailsMap = (details || []).reduce((acc, item) => {
+      acc[item.id] = item;
+      return acc;
+    }, {});
+
+    // 4. Post-process: Boost same-category results and map
+    const results = data.map(item => {
+      const fullDetail = detailsMap[item.id] || {};
       let finalSimilarity = item.similarity;
       // Small boost for same category to improve relevance
-      if (item.category_id === current.category_id) {
+      if (item.category_id === current.category_id || fullDetail.category_id === current.category_id) {
         finalSimilarity += 0.05;
       }
 
       return {
         ...mapResource({
-          ...item,
-          categories: { name: item.category_name, slug: item.category_slug }
+          ...fullDetail,
+          ...item, // RPC data takes precedence for similarity, but fullDetail provides missing fields
+          categories: item.category_name 
+            ? { name: item.category_name, slug: item.category_slug }
+            : (fullDetail.categories || null)
         }),
-        similarity: Math.min(0.99, finalSimilarity) // Cap at 99% for realism
+        similarity: Math.min(0.99, finalSimilarity)
       };
     });
 

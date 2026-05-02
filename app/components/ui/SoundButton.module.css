@@ -9,7 +9,7 @@
   padding: var(--space-3) var(--space-4);
   background: var(--bg-card);
   border: 1px solid var(--border-default);
-  border-radius: var(--radius-md);
+  border-radius: 0px;
   height: 70px;
   box-sizing: border-box;
   transition: all var(--transition-base);
@@ -162,7 +162,7 @@
   letter-spacing: 0.5px;
   background: rgba(var(--text-primary-rgb), 0.1);
   padding: 2px 8px;
-  border-radius: var(--radius-sm);
+  border-radius: 0px;
   transition: all 0.3s ease;
   margin-left: auto;
   flex-shrink: 0;
@@ -244,7 +244,7 @@
   color: var(--cat-color);
   background: rgba(var(--text-primary-rgb), 0.05);
   padding: 4px 8px;
-  border-radius: 4px;
+  border-radius: 0px;
   white-space: nowrap;
   letter-spacing: 0.5px;
   margin-left: auto;
@@ -259,14 +259,14 @@
 
 .format {
   font-family: var(--font-mono);
-  font-size: 0.62rem;
+  font-size: 0.7rem;
   font-weight: 600;
   color: var(--text-primary);
   text-transform: uppercase;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.1);
   padding: 1px 6px;
-  border-radius: 3px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
   letter-spacing: 0.5px;
   flex-shrink: 0;
 }
