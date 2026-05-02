@@ -3,13 +3,15 @@
 import { useState, useMemo, useEffect, useRef, useCallback, useTransition } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useSidebar } from "@/app/context/SidebarContext";
+import useSWR from "swr";
+import { useDebounce } from "@/app/hooks/useDebounce";
 
 import ResourceCard from "@/app/components/ui/ResourceCard";
 import FolderCard from "@/app/components/ui/FolderCard";
 import SoundButton from "@/app/components/ui/SoundButton";
 import FilterBar from "@/app/components/ui/FilterBar";
 import PreviewOverlay from "@/app/components/ui/PreviewOverlay";
-import { getResources, getResourceBySlug } from "@/app/lib/api";
+import { getResources, getResourceBySlug, getCategoryTags } from "@/app/lib/api";
 import styles from "./page.module.css";
 
 const PAGE_SIZE_DISPLAY = 24;
@@ -65,6 +67,8 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
   const [allLoadedResources, setAllLoadedResources] = useState(initialResources);
   const [serverOffset, setServerOffset] = useState(initialResources.length);
   const [hasMoreDB, setHasMoreDB] = useState(initialResources.length === PAGE_SIZE_BATCH);
+  const [isInitialLoading, setIsInitialLoading] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isFetchLoading, setIsFetchLoading] = useState(false);
   
   const [previewResource, setPreviewResource] = useState(null);
@@ -77,8 +81,27 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
   const resSlug = searchParams.get("res");
   const loadMoreRef = useRef(null);
   const abortControllerRef = useRef(null);
-  const debounceTimerRef = useRef(null);
+  const lastRequestIdRef = useRef(0);
   const isFirstRun = useRef(true);
+
+  // Debounced filters for API calls
+  const debouncedFolderId = useDebounce(selectedFolderId, 300);
+  const debouncedTags = useDebounce(selectedTags, 500);
+  const debouncedFormats = useDebounce(selectedFormats, 500);
+  const debouncedSearch = useDebounce(inPageSearch, 500);
+  const debouncedSortBy = useDebounce(sortBy, 300);
+
+  // Computed refining state: True if raw state differs from debounced state
+  const isRefining = useMemo(() => {
+    if (!isInitialized) return false;
+    return (
+      selectedFolderId !== debouncedFolderId ||
+      inPageSearch !== debouncedSearch ||
+      sortBy !== debouncedSortBy ||
+      JSON.stringify(selectedTags) !== JSON.stringify(debouncedTags) ||
+      JSON.stringify(selectedFormats) !== JSON.stringify(debouncedFormats)
+    );
+  }, [isInitialized, selectedFolderId, debouncedFolderId, inPageSearch, debouncedSearch, sortBy, debouncedSortBy, selectedTags, debouncedTags, selectedFormats, debouncedFormats]);
 
   // --- Effects ---
 
@@ -152,7 +175,7 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
 
   // Sync URL changes back to local state (supports browser back/forward)
   useEffect(() => {
-    if (!isInitialized) return;
+    if (!isInitialized || isPending) return;
     
     // Sync state from URL search params
     const folderId = searchParams.get("folder") || null;
@@ -179,7 +202,7 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
     if (sort !== sortBy) {
       setSortBy(sort);
     }
-  }, [searchParams, isInitialized, folders]); // Removed startTransition here to ensure state sync is reliable
+  }, [searchParams, isInitialized, folders, selectedFolderId, selectedFormats, selectedTags, sortBy, isPending]);
 
   // Handle deep-link to resource via ?res=slug
   useEffect(() => {
@@ -222,35 +245,44 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
     }
 
     // --- Data Refresh Logic ---
-    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    const requestId = ++lastRequestIdRef.current;
     if (abortControllerRef.current) abortControllerRef.current.abort();
 
     const refreshData = async () => {
       // Optimization: Skip the very first fetch on mount IF the state matches the initial server load
       if (hasLoadedInitialStateRef.current && isFirstRun.current) {
         isFirstRun.current = false;
-        const hasNoFilters = !inPageSearch && selectedTags.length === 0 && selectedFormats.length === 0;
-        const isAtRoot = selectedFolderId === null;
+        const hasNoFilters = !debouncedSearch && debouncedTags.length === 0 && debouncedFormats.length === 0;
+        const isAtRoot = debouncedFolderId === null;
         
         if (initialResources?.length > 0 && hasNoFilters && isAtRoot) {
-          console.log("🚀 Optimization: Skipping initial fetch, using server data.");
-          setAllLoadedResources(initialResources);
-          setServerOffset(initialResources.length);
-          setIsFetchLoading(false);
+          if (requestId === lastRequestIdRef.current) {
+            console.log("🚀 Optimization: Skipping initial fetch, using server data.");
+            setAllLoadedResources(initialResources);
+            setServerOffset(initialResources.length);
+            setIsInitialLoading(false);
+            setIsFetchLoading(false);
+          }
           return;
         }
       }
 
-      setIsFetchLoading(true);
+      // If we are resetting filters/folder, it's a "fresh" load for the grid
+      const isFreshLoad = debouncedSearch || debouncedFormats.length > 0 || debouncedTags.length > 0 || debouncedFolderId !== null;
+      if (allLoadedResources.length === 0 || isFreshLoad) {
+        setIsInitialLoading(true);
+      } else {
+        setIsFetchLoading(true);
+      }
       const controller = new AbortController();
       abortControllerRef.current = controller;
 
       // When filtering (tags/search), we search the whole subtree of the current folder
-      const isFiltering = inPageSearch || selectedFormats.length > 0 || selectedTags.length > 0 || resSlug;
-      let folderIdToPass = selectedFolderId;
+      const isFiltering = debouncedSearch || debouncedFormats.length > 0 || debouncedTags.length > 0 || resSlug;
+      let folderIdToPass = debouncedFolderId;
       
-      if (isFiltering && selectedFolderId) {
-        const node = findInTree(folders, selectedFolderId)?.current;
+      if (isFiltering && debouncedFolderId) {
+        const node = findInTree(folders, debouncedFolderId)?.current;
         if (node) {
           folderIdToPass = getDescendantIds(node);
         }
@@ -259,10 +291,10 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
       try {
         const fresh = await getResources({
           categorySlug: slug,
-          selectedTags: selectedTags,
-          selectedFormats: selectedFormats,
+          selectedTags: debouncedTags,
+          selectedFormats: debouncedFormats,
           folderId: folderIdToPass,
-          searchTerm: inPageSearch,
+          searchTerm: debouncedSearch,
           offset: 0,
           limit: PAGE_SIZE_BATCH,
           abortSignal: controller.signal
@@ -279,40 +311,49 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
           console.error("Refresh fetch failed:", e);
         }
       } finally {
-        if (!controller.signal.aborted) {
+        if (requestId === lastRequestIdRef.current) {
+          setIsInitialLoading(false);
           setIsFetchLoading(false);
         }
       }
     };
 
-    // Use 300ms debounce now that we have DB indexes for faster response
-    debounceTimerRef.current = setTimeout(refreshData, 300);
+    refreshData();
+
+    // Safety net: Force clear loading states after 8 seconds
+    const timeoutId = setTimeout(() => {
+      if (requestId === lastRequestIdRef.current) {
+        setIsInitialLoading(false);
+        setIsFetchLoading(false);
+      }
+    }, 8000);
 
     return () => {
-      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+      clearTimeout(timeoutId);
     };
-  }, [isInitialized, selectedFolderId, selectedFormats, selectedTags, sortBy, inPageSearch, slug]);
+  }, [isInitialized, debouncedFolderId, debouncedFormats, debouncedTags, debouncedSortBy, debouncedSearch, slug]);
 
-  // --- Folder Tags Fetching ---
+  // --- Folder Tags Fetching with SWR ---
+  const tagKey = (debouncedFolderId && isInitialized) 
+    ? [`tags`, slug, debouncedFolderId] 
+    : null;
+
+  useSWR(tagKey, async ([, category, folder]) => {
+    const node = findInTree(folders, folder)?.current;
+    if (node) {
+      const allSubFolderIds = getDescendantIds(node);
+      const tags = await getCategoryTags(category, allSubFolderIds);
+      setFolderTags(tags);
+      return tags;
+    }
+    return [];
+  }, { revalidateOnFocus: false, dedupingInterval: 60000 });
+
   useEffect(() => {
-    if (selectedFolderId) {
-      const node = findInTree(folders, selectedFolderId)?.current;
-      if (node) {
-        const allSubFolderIds = getDescendantIds(node);
-        import("@/app/lib/api").then(api => {
-          api.getCategoryTags(slug, allSubFolderIds).then(tags => {
-            setFolderTags(tags);
-          });
-        });
-      }
-    } else {
+    if (!selectedFolderId) {
       setFolderTags([]);
     }
-
-    return () => {
-      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-    };
-  }, [selectedFolderId, selectedFormats, selectedTags, inPageSearch, slug, isInitialized, sortBy]);
+  }, [selectedFolderId]);
 
   // Synchronize internal state with server-provided initialResources ONLY when category changes
   useEffect(() => {
@@ -446,7 +487,7 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
   // --- Pagination Logic ---
 
   const handleLoadMore = useCallback(async () => {
-    if (isFetchLoading) return;
+    if (isInitialLoading || isLoadingMore || isFetchLoading || isPending || isRefining) return;
 
     // SAFETY GUARD: If we have no more DB items AND we've shown all local items, stop.
     if (!hasMoreDB && visibleCount >= filteredResources.length) return;
@@ -459,7 +500,7 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
 
     // 2. If we are near the end of the local pool AND the server might have more
     if (hasMoreDB) {
-      setIsFetchLoading(true);
+      setIsLoadingMore(true);
 
       const isFiltering = inPageSearch || selectedFormats.length > 0 || selectedTags.length > 0 || resSlug;
       let folderIdToPass = selectedFolderId;
@@ -496,7 +537,7 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
       } catch (err) {
         console.error("Failed to fetch more resources:", err);
       } finally {
-        setIsFetchLoading(false);
+        setIsLoadingMore(false);
       }
     } else {
       // Just show remaining if any
@@ -528,7 +569,8 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
   }, [handleLoadMore]);
 
   const updateUrl = useCallback((updates) => {
-    const params = new URLSearchParams(searchParams.toString());
+    // Use window.location.search directly to avoid stale state from the searchParams hook during rapid navigation
+    const params = new URLSearchParams(window.location.search);
     
     Object.entries(updates).forEach(([key, value]) => {
       if (value === null || value === undefined || (Array.isArray(value) && value.length === 0)) {
@@ -563,7 +605,7 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
       // handle the visual transition while the new data is being fetched.
       // This prevents the "empty grid" jump.
       
-      setIsFetchLoading(true); // Signal fetch start
+      // setIsFetchLoading(true) is now handled by the computed isRefining state
       
       updateUrl({ folder: folderId });
 
@@ -602,9 +644,9 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
   const renderResources = () => {
     const displayResources = filteredResources.slice(0, visibleCount);
     const hasCurrentFolders = currentSubfolders.length > 0 || parentFolder;
-    const isLoading = isFetchLoading || isPending;
+    const isLoading = isInitialLoading || isFetchLoading || isPending || isRefining;
 
-    if (filteredResources.length === 0 && !isLoading && !hasCurrentFolders) {
+    if (filteredResources.length === 0 && !isLoading && !isLoadingMore && !hasCurrentFolders) {
       return (
         <div className={styles.empty}>
           <p>
@@ -691,8 +733,8 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
           {renderGridItems()}
         </div>
         
-        {/* Skeleton Overlay - Unified with isFetchLoading */}
-        {isFetchLoading && (
+        {/* Skeleton Overlay - Shows during major transitions or initial load */}
+        {isInitialLoading && (
           <div 
             className={`${gridClass} ${styles.skeletonOverlay}`}
           >
@@ -725,7 +767,7 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
 
         {/* Sentinel for Infinite Scroll */}
         <div ref={loadMoreRef} className={styles.observerSentinel}>
-          {(isFetchLoading || (visibleCount < filteredResources.length) || hasMoreDB) && (
+          {(isInitialLoading || isFetchLoading || isLoadingMore || (visibleCount < filteredResources.length) || hasMoreDB) && (
             <div className={styles.loadMoreWrapper}>
               <div className={styles.infiniteLoader}>
                 <span className={styles.loaderIcon}></span>
@@ -784,19 +826,25 @@ export default function ClientPage({ slug, info, folders, resources: initialReso
           formats={info.formats}
           selectedFormats={selectedFormats}
           onFormatsChange={(vals) => {
-            setSelectedFormats(vals);
-            updateUrl({ format: vals });
+            startTransition(() => {
+              setSelectedFormats(vals);
+              updateUrl({ format: vals });
+            });
           }}
           tags={availableTags}
           selectedTags={selectedTags}
           onTagsChange={(vals) => {
-            setSelectedTags(vals);
-            updateUrl({ tags: vals });
+            startTransition(() => {
+              setSelectedTags(vals);
+              updateUrl({ tags: vals });
+            });
           }}
           sortBy={sortBy}
           onSortChange={(val) => {
-            setSortBy(val);
-            updateUrl({ sort: val });
+            startTransition(() => {
+              setSortBy(val);
+              updateUrl({ sort: val });
+            });
           }}
           inPageSearch={inPageSearch}
           onSearchChange={(val) => {

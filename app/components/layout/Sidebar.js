@@ -142,7 +142,13 @@ const Sidebar = memo(function Sidebar({
           <button
             className={`${styles.allBtn} ${!selectedFolderId ? styles.allActive : ""}`}
             onClick={() => {
-              onSelectFolder?.(null);
+              if (onSelectFolder) {
+                onSelectFolder(null);
+              } else {
+                const params = new URLSearchParams(window.location.search);
+                params.delete("folder");
+                router.push(`/${categorySlug || ""}?${params.toString()}`);
+              }
               setMobileOpen(false);
             }}
           >
@@ -164,7 +170,7 @@ const Sidebar = memo(function Sidebar({
                 onSelectFolder(folder);
               } else {
                 // Default navigation logic for Sidebar when used in a Layout
-                const params = new URLSearchParams(searchParams.toString());
+                const params = new URLSearchParams(window.location.search);
                 if (folder) {
                   params.set("folder", folder.id);
                 } else {

@@ -74,8 +74,6 @@ const FilterBar = memo(function FilterBar({
               className={styles.breadcrumbBtn} 
               onClick={() => {
                 onBreadcrumbClick?.(null);
-                onFormatsChange([]);
-                onTagsChange([]);
               }}
               title={`Back to all ${categoryName}`}
             >

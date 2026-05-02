@@ -598,7 +598,8 @@ export async function incrementDownloadCount(id) {
   if (error) {
     // Fallback if RPC isn't defined yet
     console.warn('RPC increment_download_count not found, using manual update');
-    const { data: current } = await supabase.from('resources').select('download_count').eq('id', id).single();
+    const { data: current } = await supabase.from('resources').select('download_count').eq('id', id).maybeSingle();
+    if (!current) return null;
     return supabase.from('resources').update({ download_count: (current?.download_count || 0) + 1 }).eq('id', id);
   }
   return data;
@@ -684,7 +685,7 @@ async function fetchCategoryBySlugInternal(slug) {
     .from('categories')
     .select('*')
     .eq('slug', slug)
-    .single();
+    .maybeSingle();
 
   if (error) {
     console.error('Error fetching category by slug:', error);
