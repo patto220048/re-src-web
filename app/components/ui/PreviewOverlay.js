@@ -20,15 +20,93 @@ export default function PreviewOverlay({ resource, onClose, showDownload = false
     return () => window.removeEventListener("keydown", handleEsc);
   }, [onClose]);
 
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+
   // Sync with mediaManager
   useEffect(() => {
-    if (resource && mediaRef.current && isVideoFormat(resource)) {
+    if (!resource) return;
+    
+    if (isVideoFormat(resource) && mediaRef.current) {
       mediaManager.play(mediaRef.current, 'video');
+    } else if (isAudioFormat(resource)) {
+      const audio = mediaManager.getSharedAudio();
+      
+      const handleTimeUpdate = () => {
+        if (mediaManager.isIdActive(resource.id)) {
+          setCurrentTime(audio.currentTime);
+        }
+      };
+      const handleDurationChange = () => {
+        if (mediaManager.isIdActive(resource.id)) {
+          setDuration(audio.duration);
+        }
+      };
+      const handleEnded = () => {
+        if (mediaManager.isIdActive(resource.id)) {
+          setIsPlaying(false);
+          mediaManager.stop(audio);
+        }
+      };
+
+      const unsubscribe = mediaManager.subscribe(({ activeMediaId }) => {
+        if (activeMediaId === resource.id) {
+          setIsPlaying(!audio.paused);
+          setDuration(audio.duration);
+          setCurrentTime(audio.currentTime);
+          
+          audio.addEventListener('timeupdate', handleTimeUpdate);
+          audio.addEventListener('durationchange', handleDurationChange);
+          audio.addEventListener('ended', handleEnded);
+        } else {
+          setIsPlaying(false);
+          audio.removeEventListener('timeupdate', handleTimeUpdate);
+          audio.removeEventListener('durationchange', handleDurationChange);
+          audio.removeEventListener('ended', handleEnded);
+        }
+      });
+
+      // Handover check
+      if (mediaManager.isIdActive(resource.id)) {
+        setIsPlaying(!audio.paused);
+        setDuration(audio.duration);
+        setCurrentTime(audio.currentTime);
+      } else {
+        // Start playing if it's a preview
+        const url = resource.downloadUrl || resource.fileUrl;
+        if (url) {
+          mediaManager.play(audio, 'audio', () => setIsPlaying(false), resource.id);
+          audio.src = url;
+          audio.load();
+          audio.play().catch(() => {});
+          setIsPlaying(true);
+        }
+      }
+
+      audio.addEventListener('timeupdate', handleTimeUpdate);
+      audio.addEventListener('durationchange', handleDurationChange);
+      audio.addEventListener('ended', handleEnded);
+
+      return () => {
+        unsubscribe();
+        audio.removeEventListener('timeupdate', handleTimeUpdate);
+        audio.removeEventListener('durationchange', handleDurationChange);
+        audio.removeEventListener('ended', handleEnded);
+      };
     }
-    return () => {
-      if (mediaRef.current) mediaManager.stop(mediaRef.current);
-    };
   }, [resource]);
+
+  const toggleAudio = () => {
+    const audio = mediaManager.getSharedAudio();
+    if (isPlaying) {
+      audio.pause();
+      setIsPlaying(false);
+    } else {
+      audio.play().catch(() => {});
+      setIsPlaying(true);
+    }
+  };
 
   const handleMediaEnter = () => {
     setIsHovering(true);
@@ -70,8 +148,6 @@ export default function PreviewOverlay({ resource, onClose, showDownload = false
               src={getOptimizedUrl(resource)} 
               poster={getOptimizedUrl(resource.thumbnailUrl || resource.previewUrl, { width: 1200 })}
               controls 
-              autoPlay 
-              muted
               loop
               playsInline 
               preload="metadata"
@@ -100,15 +176,30 @@ export default function PreviewOverlay({ resource, onClose, showDownload = false
           )}
           {isAudio && (
             <div className={styles.largePreviewAudio}>
-              <div className={styles.audioIconWrapper}>
-                <Music size={80} />
+              <div className={styles.audioPlayerUI} onClick={toggleAudio}>
+                <div className={styles.audioIconWrapper}>
+                  {isPlaying ? (
+                    <div className={styles.playingBars}>
+                      <span className={styles.bar}></span>
+                      <span className={styles.bar}></span>
+                      <span className={styles.bar}></span>
+                    </div>
+                  ) : (
+                    <Music size={80} />
+                  )}
+                </div>
+                <div className={styles.audioControls}>
+                   <div className={styles.audioProgress}>
+                      <div 
+                        className={styles.audioProgressFill} 
+                        style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }} 
+                      />
+                   </div>
+                   <div className={styles.audioTime}>
+                      {duration > 0 && `${Math.floor(currentTime)}s / ${Math.floor(duration)}s`}
+                   </div>
+                </div>
               </div>
-              <audio 
-                controls 
-                autoPlay 
-                src={resource.downloadUrl || resource.fileUrl}
-                className={styles.largePreviewAudioPlayer}
-              />
             </div>
           )}
           

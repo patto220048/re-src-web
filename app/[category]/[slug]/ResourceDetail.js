@@ -86,59 +86,99 @@ export default function ResourceDetail({
   const [videoStarted, setVideoStarted] = useState(false);
   const [isScrubbing, setIsScrubbing] = useState(false);
 
-  const audioRef = useRef(null);
   const videoRef = useRef(null);
   const rafRef = useRef(null);
   const wasPlayingRef = useRef(false);
 
-  // Helper to initialize audio on demand
-  const initAudio = useCallback(() => {
-    if (!resolvedUrl) return null;
-    if (!audioRef.current) {
-      const audio = new Audio(resolvedUrl);
-      audioRef.current = audio;
-      audio.addEventListener("loadedmetadata", () => setDuration(audio.duration));
-      audio.addEventListener("ended", () => {
-        setIsPlaying(false);
-        setCurrentTime(0);
-        mediaManager.stop(audio);
-      });
-      // Initial apply volume settings
-      mediaManager.applySettings(audio, 'audio');
-    }
-    return audioRef.current;
-  }, [resolvedUrl]);
-
   // --- Audio inline player ---
   const toggleAudio = useCallback(() => {
-    const audio = initAudio();
-    if (!audio) return;
+    const audio = mediaManager.getSharedAudio();
+    if (!audio || !resolvedUrl) return;
 
-    if (isPlaying) {
+    if (isPlaying && mediaManager.isIdActive(resource.id)) {
       audio.pause();
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
       setIsPlaying(false);
       mediaManager.stop(audio);
     } else {
       // Register with global media manager
       mediaManager.play(audio, 'audio', () => {
         setIsPlaying(false);
-        if (rafRef.current) cancelAnimationFrame(rafRef.current);
       }, resource.id);
 
+      // Only update src if it's different to allow seamless handover
+      const currentSrc = audio.src ? new URL(audio.src, window.location.href).href : "";
+      const targetSrc = new URL(resolvedUrl, window.location.href).href;
+      
+      if (currentSrc !== targetSrc) {
+        audio.src = resolvedUrl;
+        audio.load();
+      }
+
       audio.play().catch(() => {});
-      const tick = () => {
-        setCurrentTime(audio.currentTime);
-        rafRef.current = requestAnimationFrame(tick);
-      };
-      rafRef.current = requestAnimationFrame(tick);
       setIsPlaying(true);
     }
-  }, [initAudio, isPlaying, resource.id]);
+  }, [isPlaying, resource.id, resolvedUrl]);
+
+  // Sync audio/video state with global manager
+  useEffect(() => {
+    const audio = mediaManager.getSharedAudio();
+    
+    const handleTimeUpdate = () => {
+      if (mediaManager.isIdActive(resource.id)) {
+        setCurrentTime(audio.currentTime);
+      }
+    };
+    const handleDurationChange = () => {
+      if (mediaManager.isIdActive(resource.id)) {
+        setDuration(audio.duration);
+      }
+    };
+    const handleEnded = () => {
+      if (mediaManager.isIdActive(resource.id)) {
+        setIsPlaying(false);
+        setCurrentTime(0);
+        mediaManager.stop(audio);
+      }
+    };
+
+    const unsubscribe = mediaManager.subscribe(({ activeMediaId }) => {
+      if (activeMediaId === resource.id) {
+        setIsPlaying(!audio.paused);
+        setDuration(audio.duration);
+        setCurrentTime(audio.currentTime);
+        
+        audio.addEventListener('timeupdate', handleTimeUpdate);
+        audio.addEventListener('durationchange', handleDurationChange);
+        audio.addEventListener('ended', handleEnded);
+      } else {
+        if (isPlaying) setIsPlaying(false);
+        audio.removeEventListener('timeupdate', handleTimeUpdate);
+        audio.removeEventListener('durationchange', handleDurationChange);
+        audio.removeEventListener('ended', handleEnded);
+      }
+    });
+
+    // Initial check for handover
+    if (mediaManager.isIdActive(resource.id)) {
+      setIsPlaying(!audio.paused);
+      setDuration(audio.duration);
+      setCurrentTime(audio.currentTime);
+      audio.addEventListener('timeupdate', handleTimeUpdate);
+      audio.addEventListener('durationchange', handleDurationChange);
+      audio.addEventListener('ended', handleEnded);
+    }
+
+    return () => {
+      unsubscribe();
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('durationchange', handleDurationChange);
+      audio.removeEventListener('ended', handleEnded);
+    };
+  }, [resource.id]);
 
   // --- Unified Seeking Logic ---
   const seek = useCallback((clientX, container) => {
-    const media = isAudio ? audioRef.current : videoRef.current;
+    const media = isAudio ? mediaManager.getSharedAudio() : videoRef.current;
     if (!media) return;
 
     const rect = container.getBoundingClientRect();
@@ -163,7 +203,7 @@ export default function ResourceDetail({
 
   const handleMouseDown = useCallback((e) => {
     e.stopPropagation();
-    const media = isAudio ? initAudio() : videoRef.current;
+    const media = isAudio ? mediaManager.getSharedAudio() : videoRef.current;
     if (!media) return;
 
     // YouTube style: Pause while scrubbing, remember if it was playing
@@ -177,7 +217,7 @@ export default function ResourceDetail({
 
     setIsScrubbing(true);
     seek(e.clientX, e.currentTarget);
-  }, [isAudio, initAudio, seek]);
+  }, [isAudio, seek]);
 
   useEffect(() => {
     if (!isScrubbing) return;
@@ -192,7 +232,7 @@ export default function ResourceDetail({
 
     const handleMouseUp = (e) => {
       setIsScrubbing(false);
-      const media = isAudio ? audioRef.current : videoRef.current;
+      const media = isAudio ? mediaManager.getSharedAudio() : videoRef.current;
       if (!media) return;
 
       // Resume if it was playing before
@@ -219,13 +259,6 @@ export default function ResourceDetail({
   // Reset state when resource changes or component unmounts
   useEffect(() => {
     const stopMedia = () => {
-      // Stop and clear current audio
-      if (audioRef.current) {
-        audioRef.current.pause();
-        mediaManager.stop(audioRef.current);
-        audioRef.current.src = "";
-        audioRef.current = null;
-      }
       // Stop and reset current video
       if (videoRef.current) {
         videoRef.current.pause();
@@ -257,9 +290,10 @@ export default function ResourceDetail({
   // Sync with global volume settings
   useEffect(() => {
     const unsubscribe = mediaManager.subscribe((settings) => {
-      if (audioRef.current) {
-        audioRef.current.volume = settings.audio.volume;
-        audioRef.current.muted = settings.audio.muted;
+      const audio = mediaManager.getSharedAudio();
+      if (audio) {
+        audio.volume = settings.audio.volume;
+        audio.muted = settings.audio.muted;
       }
       if (videoRef.current) {
         videoRef.current.volume = settings.video.volume;
@@ -268,7 +302,8 @@ export default function ResourceDetail({
     });
     
     // Initial apply
-    if (audioRef.current) mediaManager.applySettings(audioRef.current, 'audio');
+    const audio = mediaManager.getSharedAudio();
+    if (audio) mediaManager.applySettings(audio, 'audio');
     if (videoRef.current) mediaManager.applySettings(videoRef.current, 'video');
 
     return unsubscribe;

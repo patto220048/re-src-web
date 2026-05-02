@@ -88,6 +88,78 @@
   object-fit: contain;
 }
 
+.audioPlayerUI {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 30px;
+  width: 100%;
+  max-width: 400px;
+  cursor: pointer;
+}
+
+.playingBars {
+  display: flex;
+  align-items: flex-end;
+  gap: 4px;
+  height: 80px;
+}
+
+.bar {
+  width: 8px;
+  background: var(--text-primary);
+  border-radius: 4px;
+  animation: playBar 1s ease-in-out infinite;
+}
+
+.bar:nth-child(2) {
+  animation-delay: 0.2s;
+  height: 60%;
+}
+
+.bar:nth-child(1) {
+  animation-delay: 0.4s;
+  height: 40%;
+}
+
+.bar:nth-child(3) {
+  animation-delay: 0s;
+  height: 80%;
+}
+
+@keyframes playBar {
+  0%, 100% { height: 30%; }
+  50% { height: 100%; }
+}
+
+.audioControls {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.audioProgress {
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.audioProgressFill {
+  height: 100%;
+  background: var(--text-primary);
+  transition: width 0.1s linear;
+}
+
+.audioTime {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
 .largePreviewFont {
   padding: 40px;
   background: white;

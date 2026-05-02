@@ -83,40 +83,12 @@ const SoundButton = memo(function SoundButton({
       normalizedUrl = new URL(downloadUrl, window.location.origin).href;
     } catch (e) {}
 
-    // Attach listeners only once per "active" session
-    const setupListeners = () => {
-      // Remove previous to avoid duplicates if re-called
-      audio.onloadedmetadata = null;
-      audio.onerror = null;
-      // Note: 'ended' is handled by mediaManager singleton
+    const currentSrc = audio.src ? new URL(audio.src, window.location.href).href : "";
+    const targetSrc = normalizedUrl ? new URL(normalizedUrl, window.location.href).href : "";
 
-      audio.onloadedmetadata = () => {
-        if (mediaManager.isIdActive(id)) {
-          setDuration(audio.duration);
-        }
-      };
-
-      audio.onerror = () => {
-        if (!mediaManager.isIdActive(id)) return;
-        if (audio.src === "" || audio.src === window.location.href) return;
-        setIsPlaying(false);
-        mediaManager.stop(audio);
-      };
-    };
-
-    // If this audio is already playing our ID, just return it
-    if (mediaManager.isIdActive(id)) {
-      audioRef.current = audio;
-      return audio;
-    }
-
-    // If it's a different source, update it
-    if (audio.src !== normalizedUrl && !mediaManager.isIdActive(id)) {
-      // Only pause if we are about to change the source
-      // But wait, mediaManager.play will handle pausing other things.
+    if (currentSrc !== targetSrc && !mediaManager.isIdActive(id)) {
       audio.src = normalizedUrl;
       audio.load();
-      setupListeners();
     }
     
     audioRef.current = audio;
@@ -125,29 +97,52 @@ const SoundButton = memo(function SoundButton({
 
   // Sync volume settings and handle global reset
   useEffect(() => {
-    return mediaManager.subscribe(({ activeMediaId }) => {
-      // If another item started playing, and we are not that item, but we were playing
-      if (activeMediaId && activeMediaId !== id) {
+    const audio = mediaManager.getSharedAudio();
+    
+    const handleTimeUpdate = () => {
+      if (mediaManager.isIdActive(id)) {
+        setCurrentTime(audio.currentTime);
+      }
+    };
+    const handleDurationChange = () => {
+      if (mediaManager.isIdActive(id)) {
+        setDuration(audio.duration);
+      }
+    };
+    const handleEnded = () => {
+      if (mediaManager.isIdActive(id)) {
+        setIsPlaying(false);
+        setCurrentTime(0);
+        mediaManager.stop(audio);
+      }
+    };
+
+    const unsubscribe = mediaManager.subscribe(({ activeMediaId }) => {
+      if (activeMediaId === id) {
+        setIsPlaying(!audio.paused);
+        // Attach listeners when we become active
+        audio.addEventListener('timeupdate', handleTimeUpdate);
+        audio.addEventListener('durationchange', handleDurationChange);
+        audio.addEventListener('ended', handleEnded);
+      } else {
+        // Detach and reset when someone else becomes active
         if (isPlaying || currentTime > 0) {
           setIsPlaying(false);
           setCurrentTime(0);
-          if (rafRef.current) cancelAnimationFrame(rafRef.current);
-          
-          // Note: We don't need to pause the audio here because mediaManager.play 
-          // already pauses the previous active media.
         }
-      } else if (activeMediaId === id) {
-        // If we are the active item (e.g. remounted while playing)
-        const audio = mediaManager.getSharedAudio();
-        if (audio && !audio.paused) {
-          setIsPlaying(true);
-          setCurrentTime(audio.currentTime);
-          setDuration(audio.duration);
-          if (!rafRef.current) rafRef.current = requestAnimationFrame(updateTime);
-        }
+        audio.removeEventListener('timeupdate', handleTimeUpdate);
+        audio.removeEventListener('durationchange', handleDurationChange);
+        audio.removeEventListener('ended', handleEnded);
       }
     });
-  }, [id, isPlaying, currentTime, updateTime]);
+
+    return () => {
+      unsubscribe();
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('durationchange', handleDurationChange);
+      audio.removeEventListener('ended', handleEnded);
+    };
+  }, [id, isPlaying, currentTime]);
 
   // Reset state when ID changes or on unmount
   useEffect(() => {
@@ -168,13 +163,21 @@ const SoundButton = memo(function SoundButton({
     if (preloadTimeoutRef.current) clearTimeout(preloadTimeoutRef.current);
     
     preloadTimeoutRef.current = setTimeout(() => {
-      const audio = initAudio();
-      if (audio && audio.readyState < 2 && audio.paused) {
-        audio.preload = "auto";
-        audio.load();
+      const audio = mediaManager.getSharedAudio();
+      if (audio) {
+        const normalizedUrl = downloadUrl?.startsWith('http') ? downloadUrl : downloadUrl;
+        // Only set src if it's different to avoid interrupting buffer
+        const currentSrc = audio.src ? new URL(audio.src, window.location.href).href : "";
+        const targetSrc = normalizedUrl ? new URL(normalizedUrl, window.location.href).href : "";
+        
+        if (currentSrc !== targetSrc) {
+          audio.src = normalizedUrl;
+          audio.load();
+        }
+        return audio;
       }
     }, 200);
-  }, [initAudio]);
+  }, [downloadUrl]);
 
   const handleMouseLeave = useCallback(() => {
     setIsHovered(false);

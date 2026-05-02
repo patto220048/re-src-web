@@ -62,15 +62,21 @@ export const mediaManager = {
    * @param {string} id - unique resource ID
    */
   play(element, type = 'video', onStopped, id = null) {
-    // 1. Stop currently active media
-    if (activeMedia && activeMedia !== element) {
+    // 1. Stop currently active media if it's a different element or different resource ID
+    if (activeMedia && (activeMedia !== element || activeMediaId !== id)) {
       try {
-        activeMedia.pause();
-        activeMedia.currentTime = 0;
+        if (activeMedia && activeMedia !== element) {
+          activeMedia.pause();
+          activeMedia.currentTime = 0;
+          if (activeCallback) activeCallback();
+        } else if (activeMedia === element && activeMediaId !== id) {
+          // Same element but different resource (Singleton being reused)
+          activeMedia.pause(); // Ensure previous is paused before swapping
+          if (activeCallback) activeCallback();
+        }
       } catch (_) {
         // ignore if already disposed
       }
-      if (activeCallback) activeCallback();
     }
 
     // 2. Set as active
@@ -106,7 +112,35 @@ export const mediaManager = {
       activeMedia = null;
       activeCallback = null;
       activeType = null;
+      activeMediaId = null;
+      notify();
     }
+  },
+
+  /**
+   * Stop all media and clear state (useful for route changes).
+   */
+  stopAll() {
+    if (activeMedia) {
+      try {
+        activeMedia.pause();
+        // Important: clear src to stop background loading
+        if (activeMedia instanceof HTMLAudioElement || activeMedia instanceof HTMLVideoElement) {
+          activeMedia.src = "";
+          activeMedia.load();
+        }
+      } catch (_) {
+        // ignore errors
+      }
+    }
+    
+    if (activeCallback) activeCallback();
+    
+    activeMedia = null;
+    activeCallback = null;
+    activeType = null;
+    activeMediaId = null;
+    notify();
   },
 
   /**

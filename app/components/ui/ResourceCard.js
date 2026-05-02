@@ -139,6 +139,92 @@ const ResourceCard = memo(function ResourceCard({
     };
   }, [isScrubbing, id, seek]);
 
+  // --- Audio inline player ---
+  const toggleAudio = useCallback(() => {
+    const audio = mediaManager.getSharedAudio();
+    if (!audio || !resolvedUrl) return;
+
+    if (isPlaying && mediaManager.isIdActive(id)) {
+      audio.pause();
+      setIsPlaying(false);
+      mediaManager.stop(audio);
+    } else {
+      // Register with global media manager
+      mediaManager.play(audio, 'audio', () => {
+        setIsPlaying(false);
+      }, id);
+
+      // Only update src if it's different to allow seamless handover
+      const currentSrc = audio.src ? new URL(audio.src, window.location.href).href : "";
+      const targetSrc = new URL(resolvedUrl, window.location.href).href;
+      
+      if (currentSrc !== targetSrc) {
+        audio.src = resolvedUrl;
+        audio.load();
+      }
+
+      audio.play().catch(() => {});
+      setIsPlaying(true);
+    }
+  }, [isPlaying, id, resolvedUrl]);
+
+  // Sync audio/video state with global manager
+  useEffect(() => {
+    const audio = mediaManager.getSharedAudio();
+    
+    const handleTimeUpdate = () => {
+      if (mediaManager.isIdActive(id)) {
+        setCurrentTime(audio.currentTime);
+      }
+    };
+    const handleDurationChange = () => {
+      if (mediaManager.isIdActive(id)) {
+        setDuration(audio.duration);
+      }
+    };
+    const handleEnded = () => {
+      if (mediaManager.isIdActive(id)) {
+        setIsPlaying(false);
+        setCurrentTime(0);
+        mediaManager.stop(audio);
+      }
+    };
+
+    const unsubscribe = mediaManager.subscribe(({ activeMediaId }) => {
+      if (activeMediaId === id) {
+        setIsPlaying(!audio.paused);
+        setDuration(audio.duration);
+        setCurrentTime(audio.currentTime);
+        
+        audio.addEventListener('timeupdate', handleTimeUpdate);
+        audio.addEventListener('durationchange', handleDurationChange);
+        audio.addEventListener('ended', handleEnded);
+      } else {
+        if (isPlaying) setIsPlaying(false);
+        audio.removeEventListener('timeupdate', handleTimeUpdate);
+        audio.removeEventListener('durationchange', handleDurationChange);
+        audio.removeEventListener('ended', handleEnded);
+      }
+    });
+
+    // Initial check for handover
+    if (mediaManager.isIdActive(id)) {
+      setIsPlaying(!audio.paused);
+      setDuration(audio.duration);
+      setCurrentTime(audio.currentTime);
+      audio.addEventListener('timeupdate', handleTimeUpdate);
+      audio.addEventListener('durationchange', handleDurationChange);
+      audio.addEventListener('ended', handleEnded);
+    }
+
+    return () => {
+      unsubscribe();
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('durationchange', handleDurationChange);
+      audio.removeEventListener('ended', handleEnded);
+    };
+  }, [id]);
+
   // Sync with global settings
   useEffect(() => {
     const unsubscribe = mediaManager.subscribe((settings) => {
