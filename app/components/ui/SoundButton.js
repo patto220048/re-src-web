@@ -62,12 +62,12 @@ const SoundButton = memo(function SoundButton({
 
   // Update time via requestAnimationFrame for smooth progress
   const updateTime = useCallback(() => {
-    const audio = audioRef.current;
-    if (audio && !audio.paused && !isScrubbing) {
+    const audio = mediaManager.getSharedAudio();
+    if (audio && !audio.paused && !isScrubbing && mediaManager.isIdActive(id)) {
       setCurrentTime(audio.currentTime);
       rafRef.current = requestAnimationFrame(updateTime);
     }
-  }, [isScrubbing]);
+  }, [isScrubbing, id]);
 
   // Helper to initialize audio on demand (now using Shared Singleton)
   const initAudio = useCallback(() => {
@@ -163,6 +163,10 @@ const SoundButton = memo(function SoundButton({
     if (preloadTimeoutRef.current) clearTimeout(preloadTimeoutRef.current);
     
     preloadTimeoutRef.current = setTimeout(() => {
+      // If ANY item is already playing globally, don't interrupt it for a hover preload
+      const activeId = mediaManager.getActiveId();
+      if (activeId) return;
+
       const audio = mediaManager.getSharedAudio();
       if (audio) {
         const normalizedUrl = downloadUrl?.startsWith('http') ? downloadUrl : downloadUrl;
@@ -174,10 +178,9 @@ const SoundButton = memo(function SoundButton({
           audio.src = normalizedUrl;
           audio.load();
         }
-        return audio;
       }
     }, 200);
-  }, [downloadUrl]);
+  }, [downloadUrl, id]);
 
   const handleMouseLeave = useCallback(() => {
     setIsHovered(false);
@@ -226,8 +229,8 @@ const SoundButton = memo(function SoundButton({
 
   // Global seek logic using clientX for accuracy
   const seek = useCallback((clientX, target) => {
-    const audio = audioRef.current;
-    if (!audio) return;
+    const audio = mediaManager.getSharedAudio();
+    if (!audio || !mediaManager.isIdActive(id)) return;
     
     // Use native duration as priority, fallback to state
     const audioDuration = (audio.duration && !isNaN(audio.duration) && audio.duration > 0) 

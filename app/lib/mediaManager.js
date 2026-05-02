@@ -219,6 +219,14 @@ export const mediaManager = {
    */
   isIdActive(id) {
     return activeMediaId === id;
+  },
+
+  /**
+   * Get the currently active resource ID
+   * @returns {string|null}
+   */
+  getActiveId() {
+    return activeMediaId;
   }
 };
 
