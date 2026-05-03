@@ -71,7 +71,7 @@ const Row = memo(({ index, style, ...rowProps }) => {
                 (info.layout === "video" || info.layout === "image" || info.layout === "font" || info.layout === "lut") ? info.layout :
                 (category === "green-screen" || category === "greenscreen" || category === "video-meme" || category === "animation") ? "video" : 
                 category === "image-overlay" ? "image" :
-                category === "preset-lut" ? "lut" :
+                (category === "preset-lut" || category === "lut") ? "lut" :
                 "video"
               }
               index={startIndex + i}

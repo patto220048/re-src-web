@@ -437,29 +437,85 @@ const ResourceCard = memo(function ResourceCard({
             <div className={styles.lutCardHeader}>
               <span className={styles.lutTypeBadge}>LUT PRESET</span>
             </div>
-            {thumbnailUrl ? (
+            
+            <div className={styles.staticLutThumbnail} style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden' }}>
               <Image
-                src={getOptimizedUrl(thumbnailUrl, { width: 480 })}
+                src={getOptimizedUrl(thumbnailUrl || "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?q=80&w=1964&auto=format&fit=crop", { width: 1200, quality: 90 })}
                 alt={displayName}
                 fill
                 className={styles.cardImage}
+                style={{ objectFit: 'cover', zIndex: 1 }}
                 priority={index < 4}
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
               />
-            ) : (
-              <div className={styles.placeholderThumb}>
-                <div className={styles.lutPreview}>
-                  <div className={styles.lutStrip}>
-                    <span className={styles.lutColor} style={{ background: "#ff6b6b" }} />
-                    <span className={styles.lutColor} style={{ background: "#feca57" }} />
-                    <span className={styles.lutColor} style={{ background: "#48dbfb" }} />
-                    <span className={styles.lutColor} style={{ background: "#ff9ff3" }} />
-                    <span className={styles.lutColor} style={{ background: "#54a0ff" }} />
-                  </div>
+              
+              <div style={{ 
+                position: 'absolute', 
+                inset: 0, 
+                zIndex: 99, 
+                pointerEvents: 'none',
+                display: 'flex',
+                flexDirection: 'column'
+              }}>
+                <div style={{ 
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '50%',
+                  height: '100%',
+                  borderRight: '1px solid rgba(255,255,255,0.3)',
+                  backgroundColor: 'rgba(0, 50, 150, 0.05)',
+                  backdropFilter: 'contrast(1.1) saturate(1.1)',
+                  WebkitBackdropFilter: 'contrast(1.1) saturate(1.1)',
+                  zIndex: 100
+                }}>
+                  <div style={{
+                    position: 'absolute',
+                    top: '50%',
+                    right: '-8px',
+                    width: '16px',
+                    height: '16px',
+                    backgroundColor: 'white',
+                    borderRadius: '50%',
+                    transform: 'translateY(-50%)',
+                    boxShadow: '0 0 5px rgba(0,0,0,0.3)',
+                    zIndex: 101
+                  }} />
                 </div>
-                <span className={styles.formatBig}>{fileFormat?.toUpperCase() || "LUT"}</span>
+                
+                <div style={{ 
+                  position: 'absolute',
+                  bottom: '12px',
+                  left: 0,
+                  right: 0,
+                  display: 'flex',
+                  justifyContent: 'space-around',
+                  padding: 0,
+                  zIndex: 110
+                }}>
+                  <span style={{ 
+                    background: 'rgba(0,0,0,0.6)', 
+                    color: 'white', 
+                    padding: '3px 8px', 
+                    fontSize: '9px', 
+                    fontWeight: 'bold',
+                    borderRadius: '2px',
+                    backdropFilter: 'blur(4px)'
+                  }}>LUT PREVIEW</span>
+                  <span style={{ 
+                    background: 'rgba(0,0,0,0.6)', 
+                    color: 'white', 
+                    padding: '3px 8px', 
+                    fontSize: '9px', 
+                    fontWeight: 'bold',
+                    borderRadius: '2px',
+                    backdropFilter: 'blur(4px)'
+                  }}>ORIGINAL</span>
+                </div>
               </div>
-            )}
-            <div className={styles.formatBadge}>{fileFormat || "LUT"}</div>
+            </div>
+            
+            <div className={styles.formatBadge}>{fileFormat?.toUpperCase() || "LUT"}</div>
           </div>
         );
 

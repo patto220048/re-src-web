@@ -26,9 +26,11 @@ import {
   isImageFormat,
   isAudioFormat,
   isFontFormat,
+  isLUTFormat,
   getOptimizedUrl,
 } from "@/app/lib/mediaUtils";
 import Sidebar from "@/app/components/layout/Sidebar";
+import LUTPreview from "@/app/components/ui/LUTPreview";
 import styles from "./page.module.css";
 
 function formatSize(bytes) {
@@ -68,6 +70,7 @@ export default function ResourceDetail({
   const isImage = isImageFormat(resource);
   const isAudio = isAudioFormat(resource);
   const isFont = isFontFormat(resource);
+  const isLUT = isLUTFormat(resource) || categorySlug === 'lut';
   const resolvedUrl = resource.downloadUrl || resource.fileUrl;
 
   // Inline player state
@@ -508,9 +511,25 @@ export default function ResourceDetail({
               </div>
             </div>
           )}
+          
+          {/* === LUT: interactive split-view === */}
+          {isLUT && (
+            <div className={styles.previewBox} style={{ cursor: 'default' }}>
+              <LUTPreview 
+                lutUrl={resolvedUrl}
+                resourceName={resource.name}
+                thumbnailUrl={resource.thumbnailUrl}
+                categorySlug={categorySlug}
+                height="100%"
+              />
+              <div className={styles.formatBadge}>
+                {resource.fileFormat?.toUpperCase()}
+              </div>
+            </div>
+          )}
 
           {/* === GENERIC file === */}
-          {!isVideo && !isImage && !isAudio && !isFont && (
+          {!isVideo && !isImage && !isAudio && !isFont && !isLUT && (
             <div className={styles.previewBox}>
               <div className={styles.genericPreview}>
                 <FileText size={48} strokeWidth={1} />

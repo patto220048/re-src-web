@@ -12,9 +12,9 @@
 }
 
 .header {
-  padding: 12px 20px;
+  padding: 16px 24px;
   background: #0a0a0a;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -81,36 +81,33 @@
   width: 100%;
   height: 100%;
   display: block;
-  object-fit: contain;
+  object-fit: cover;
 }
 
 .labels {
   position: absolute;
-  top: 20px;
+  top: 40px;
   left: 0;
   right: 0;
   display: flex;
-  justify-content: space-between;
-  padding: 0 30px;
+  justify-content: space-around;
+  padding: 0;
   pointer-events: none;
-  z-index: 10;
+  z-index: 30;
 }
 
-.labelItem {
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(12px);
+.labelBefore, .labelAfter {
+  background: rgba(20, 20, 20, 0.85);
+  backdrop-filter: blur(8px);
   color: #fff;
-  padding: 8px 18px;
-  border-radius: 4px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  transition: opacity 0.1s ease;
-}
-
-.labelText {
-  font-size: 0.7rem;
+  padding: 8px 16px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.15em;
+  letter-spacing: 1.5px;
   text-transform: uppercase;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
 .slider {
@@ -129,21 +126,15 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 44px;
-  height: 44px;
+  width: 32px;
+  height: 32px;
   background: #fff;
   border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   pointer-events: auto;
   cursor: grab;
-  box-shadow: 0 0 30px rgba(0, 0, 0, 0.8);
-  transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
-.sliderHandle:hover {
-  transform: translate(-50%, -50%) scale(1.1);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  transition: transform 0.2s ease;
 }
 
 .sliderHandle:active {
@@ -200,13 +191,78 @@
   to { transform: rotate(360deg); }
 }
 
+.container.cardMode {
+  height: 100%;
+  padding: 0;
+  background: transparent;
+  border-radius: 0;
+  border: none;
+  pointer-events: none; /* Let clicks pass through to the Link */
+}
+
+.cardMode .slider {
+  pointer-events: auto; /* Re-enable for the slider */
+}
+
+.cardMode .comparisonWrapper {
+  height: 100%;
+  border-radius: 0;
+  cursor: pointer;
+}
+
+.cardMode .canvas {
+  filter: contrast(1.1) saturate(1.1) brightness(1.05);
+}
+
+.cardMode .labels {
+  display: flex;
+  justify-content: space-around;
+  position: absolute;
+  bottom: 12px;
+  top: auto;
+  left: 0;
+  right: 0;
+  font-size: 8px;
+  padding: 0;
+  pointer-events: none;
+  z-index: 20;
+}
+
+.cardMode .labelBefore, 
+.cardMode .labelAfter {
+  background: rgba(0,0,0,0.4);
+  padding: 2px 6px;
+  border-radius: 2px;
+  letter-spacing: 0.05em;
+}
+
+.cardMode .sliderHandle {
+  width: 24px;
+  height: 24px;
+}
+
+.cardMode .handleIcon svg {
+  width: 12px;
+  height: 12px;
+}
+
+.cardMode .overlay p {
+  font-size: 10px;
+}
+
+.cardMode .spinner {
+  width: 20px;
+  height: 20px;
+  border-width: 2px;
+}
+
 @media (max-width: 768px) {
   .container {
     min-height: 350px;
   }
   .labels {
     padding: 0 10px;
-    top: 10px;
+    top: 20px;
   }
   .labelItem {
     padding: 4px 10px;

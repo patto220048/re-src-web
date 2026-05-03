@@ -3,25 +3,34 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import styles from "./LUTPreview.module.css";
 
+const getOptimizedUrl = (url, { width, quality }) => {
+  const baseUrl = url.split('?')[0];
+  return `${baseUrl}?q=${quality}&w=${width}&auto=format&fit=crop`;
+};
+
 const DEFAULT_REFERENCES = [
-  { id: 'cinematic', label: 'Cinema', url: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=2025&auto=format&fit=crop' },
-  { id: 'portrait', label: 'Portrait', url: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?q=80&w=1964&auto=format&fit=crop' },
-  { id: 'landscape', label: 'Nature', url: 'https://images.unsplash.com/photo-1472214103451-9374bd1c798e?q=80&w=2070&auto=format&fit=crop' },
-  { id: 'interior', label: 'Indoor', url: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?q=80&w=2069&auto=format&fit=crop' },
+  { id: 'portrait', label: 'Portrait', url: getOptimizedUrl('https://images.unsplash.com/photo-1531746020798-e6953c6e8e04', { width: 2560, quality: 95 }) },
+  { id: 'cinematic', label: 'Cinema', url: getOptimizedUrl('https://images.unsplash.com/photo-1536440136628-849c177e76a1', { width: 2560, quality: 95 }) },
+  { id: 'landscape', label: 'Nature', url: getOptimizedUrl('https://images.unsplash.com/photo-1472214103451-9374bd1c798e', { width: 2560, quality: 95 }) },
+  { id: 'interior', label: 'Indoor', url: getOptimizedUrl('https://images.unsplash.com/photo-1513694203232-719a280e022f', { width: 2560, quality: 95 }) },
 ];
 
-export default function LUTPreview({ lutUrl, referenceImageUrl, name }) {
+export default function LUTPreview({ lutUrl, referenceImageUrl, name, variant = 'full' }) {
+  const isCard = variant === 'card';
   const canvasRef = useRef(null);
   const containerRef = useRef(null);
   const [sliderPos, setSliderPos] = useState(50);
   const [isResizing, setIsResizing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [activeRefImg, setActiveRefImg] = useState(referenceImageUrl || DEFAULT_REFERENCES[0].url);
-  const sliderPosRef = useRef(50); // Use ref for smooth updates without re-triggering useEffect
+  const [activeRefImg, setActiveRefImg] = useState(
+    referenceImageUrl 
+      ? getOptimizedUrl(referenceImageUrl, { width: 2560, quality: 95 }) 
+      : DEFAULT_REFERENCES[0].url
+  );
+  const sliderPosRef = useRef(50);
   const glResourcesRef = useRef({ program: null, sliderLoc: null, gl: null });
 
-  // Update ref when sliderPos changes (for the render loop to pick up)
   useEffect(() => {
     sliderPosRef.current = sliderPos;
   }, [sliderPos]);
@@ -34,8 +43,14 @@ export default function LUTPreview({ lutUrl, referenceImageUrl, name }) {
     setSliderPos(newPos);
   }, []);
 
-  const onMouseDown = () => setIsResizing(true);
-  const onTouchStart = () => setIsResizing(true);
+  const onMouseDown = (e) => {
+    e.stopPropagation();
+    setIsResizing(true);
+  };
+  const onTouchStart = (e) => {
+    e.stopPropagation();
+    setIsResizing(true);
+  };
 
   useEffect(() => {
     if (!isResizing) return;
@@ -98,7 +113,7 @@ uniform float uSliderPos;
 void main() {
   vec4 color = texture(uSampler, vTextureCoord);
   vec3 lookup = clamp(color.rgb, 0.0, 1.0);
-  if (vTextureCoord.x > uSliderPos) {
+  if (vTextureCoord.x < uSliderPos) {
     vec3 graded = texture(uLutSampler, lookup).rgb;
     outColor = vec4(graded, color.a);
   } else {
@@ -183,52 +198,63 @@ void main() {
       active = false; 
       if (rafId) cancelAnimationFrame(rafId);
     };
-  }, [lutUrl, activeRefImg]); // ONLY re-run when source data changes
+  }, [lutUrl, activeRefImg]);
 
   return (
-    <div className={styles.container} ref={containerRef}>
-      <div className={styles.header}>
-        <div className={styles.refSelector}>
-          <span className={styles.selectorLabel}>Reference Scene:</span>
-          <div className={styles.refButtons}>
-            {DEFAULT_REFERENCES.map(ref => (
-              <button 
-                key={ref.id}
-                className={`${styles.refButton} ${activeRefImg === ref.url ? styles.refButtonActive : ""}`}
-                onClick={() => setActiveRefImg(ref.url)}
-              >
-                {ref.label}
-              </button>
-            ))}
+    <div className={`${styles.container} ${isCard ? styles.cardMode : ''}`} ref={containerRef}>
+      {!isCard && (
+        <div className={styles.header}>
+          <div className={styles.refSelector}>
+            <span className={styles.selectorLabel}>Samples:</span>
+            <div className={styles.refButtons}>
+              {DEFAULT_REFERENCES.map((ref) => (
+                <button
+                  key={ref.id}
+                  className={`${styles.refButton} ${activeRefImg === ref.url ? styles.refButtonActive : ""}`}
+                  onClick={() => setActiveRefImg(ref.url)}
+                >
+                  {ref.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <div className={styles.comparisonWrapper}>
-        {isLoading && <div className={styles.loading}><div className={styles.spinner} /><span>Applying LUT...</span></div>}
-        {error && <div className={styles.error}><span>{error}</span></div>}
-
         <canvas ref={canvasRef} className={styles.canvas} />
         
-        <div className={styles.labels}>
-          <div className={styles.labelItem} style={{ opacity: Math.max(0.4, sliderPos / 100) }}>
-            <span className={styles.labelText}>ORIGINAL</span>
+        {isLoading && (
+          <div className={styles.overlay}>
+            <div className={styles.spinner} />
+            <p>Processing LUT...</p>
           </div>
-          <div className={styles.labelItem} style={{ opacity: Math.max(0.4, (100 - sliderPos) / 100) }}>
-            <span className={styles.labelText}>LUT PREVIEW</span>
-          </div>
-        </div>
+        )}
 
-        <div className={styles.slider} style={{ left: `${sliderPos}%` }} onMouseDown={onMouseDown} onTouchStart={onTouchStart}>
-          <div className={styles.sliderLine} />
-          <div className={styles.sliderHandle}>
-            <div className={styles.handleArrows}><span>❮</span><span>❯</span></div>
+        {error && (
+          <div className={styles.overlay}>
+            <p className={styles.errorText}>{error}</p>
           </div>
-        </div>
-      </div>
-      
-      <div className={styles.hintBar}>
-        <p>Drag the slider to see the magic • Left: Original • Right: Graded</p>
+        )}
+
+        {!isLoading && !error && (
+          <>
+            <div 
+              className={styles.slider} 
+              style={{ left: `${sliderPos}%` }}
+              onMouseDown={onMouseDown}
+              onTouchStart={onTouchStart}
+            >
+              <div className={styles.sliderLine} />
+              <div className={styles.sliderHandle} />
+            </div>
+
+            <div className={styles.labels}>
+              <span className={styles.labelBefore}>LUT PREVIEW</span>
+              <span className={styles.labelAfter}>ORIGINAL</span>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
