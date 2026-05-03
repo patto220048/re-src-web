@@ -14,6 +14,18 @@
   transition: none; /* No transition on mount to prevent CLS */
 }
 
+.sidebar.isPlugin {
+  height: 100%;
+  top: 0;
+  border-right: 1px solid var(--border-default);
+  background: var(--bg-surface);
+}
+
+.sidebar.isCollapsed {
+  width: 64px !important;
+  min-width: 64px !important;
+}
+
 .isReady {
   transition: width var(--transition-base);
 }
@@ -71,8 +83,14 @@
 
 /* Highlight resizer zone on hover */
 .resizer:hover,
-.isResizing .resizer {
+.isResizing .resizer,
+.isPlugin .resizer {
   background: rgba(250, 203, 17, 0.05); /* Very subtle gold zone highlight */
+  border-right: 1px solid var(--border-default);
+}
+
+.isPlugin .resizer:hover,
+.isResizing.isPlugin .resizer {
   border-right: 2px solid var(--cat-color, var(--premium-gold));
 }
 
@@ -86,6 +104,17 @@
 .header {
   padding: var(--space-4) var(--space-4) var(--space-2);
   border-bottom: 1px solid var(--border-default);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  min-height: 52px;
+}
+
+.isCollapsed .header {
+  padding: var(--space-4) 0;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .title {
@@ -94,6 +123,31 @@
   color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.isCollapsed .title {
+  display: none;
+}
+
+.collapseBtn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+}
+
+.collapseBtn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
 }
 
 .content {
@@ -126,6 +180,13 @@
   font-size: 0.85rem;
   cursor: pointer;
   transition: all var(--transition-fast);
+  justify-content: center;
+}
+
+.isCollapsed .profileBtn {
+  padding: var(--space-2) 0;
+  border: none;
+  background: transparent;
 }
 
 .profileBtn:hover {
@@ -151,6 +212,10 @@
   font-weight: 500;
 }
 
+.isCollapsed .profileName {
+  display: none;
+}
+
 .allBtn {
   display: flex;
   align-items: center;
@@ -166,6 +231,17 @@
   transition: all var(--transition-fast);
   text-align: left;
   margin-bottom: var(--space-1);
+}
+
+.isCollapsed .allBtn {
+  justify-content: center;
+  padding: var(--space-3) 0;
+  gap: 0;
+}
+
+.isCollapsed .allBtn span,
+.isCollapsed .allBtn svg:first-child {
+  display: none;
 }
 
 .allBtn:hover {
@@ -198,8 +274,8 @@
   display: none;
 }
 
-@media (max-width: 768px) {
-  .sidebar {
+@media (max-width: 600px) {
+  .sidebar:not(.isPlugin) {
     position: fixed;
     top: var(--navbar-height);
     left: 0;
@@ -218,6 +294,19 @@
 
   .mobileToggle {
     display: flex;
+    position: fixed;
+    bottom: var(--space-6);
+    right: var(--space-6);
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--text-primary);
+    color: var(--bg-primary);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    z-index: calc(var(--z-sidebar) + 10);
+    padding: 0;
+    justify-content: center;
+    border: none;
   }
 
   .overlay {

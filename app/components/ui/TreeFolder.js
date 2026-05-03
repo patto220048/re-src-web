@@ -8,6 +8,7 @@ const TreeItem = memo(function TreeItem({
   onSelect, 
   primaryColor, 
   expandedNodes,
+  isCollapsed,
   level = 0 
 }) {
   const isExpandedInitially = expandedNodes.has(folder.id);
@@ -23,31 +24,31 @@ const TreeItem = memo(function TreeItem({
   return (
     <li className={styles.item}>
       <button
-        className={`${styles.row} ${isSelected ? styles.active : ""}`}
-        style={{ paddingLeft: `${16 + level * 16}px` }}
+        className={`${styles.row} ${isSelected ? styles.active : ""} ${isCollapsed ? styles.collapsedRow : ""}`}
+        style={{ paddingLeft: isCollapsed ? "0" : `${16 + level * 16}px` }}
         onClick={() => {
           if (hasChildren) setExpanded(!expanded);
           onSelect(folder);
         }}
       >
-        {hasChildren && (
+        {hasChildren && !isCollapsed && (
           <ChevronRight
             size={14}
             className={`${styles.chevron} ${expanded ? styles.chevronOpen : ""}`}
           />
         )}
-        {!hasChildren && <span className={styles.spacer} />}
+        {!hasChildren && !isCollapsed && <span className={styles.spacer} />}
         {expanded ? (
           <FolderOpen size={16} className={styles.folderIcon} />
         ) : (
           <Folder size={16} className={styles.folderIcon} />
         )}
-        <span className={styles.name}>{folder.name}</span>
-        {folder.totalResourceCount > 0 && (
+        {!isCollapsed && <span className={styles.name}>{folder.name}</span>}
+        {folder.totalResourceCount > 0 && !isCollapsed && (
           <span className={styles.count}>{folder.totalResourceCount}</span>
         )}
       </button>
-      {hasChildren && expanded && (
+      {hasChildren && expanded && !isCollapsed && (
         <ul className={styles.children}>
           {folder.children.map((child) => (
             <TreeItem
@@ -57,6 +58,7 @@ const TreeItem = memo(function TreeItem({
               onSelect={onSelect}
               primaryColor={primaryColor}
               expandedNodes={expandedNodes}
+              isCollapsed={isCollapsed}
               level={level + 1}
             />
           ))}
@@ -66,7 +68,7 @@ const TreeItem = memo(function TreeItem({
   );
 });
 
-const TreeFolder = memo(function TreeFolder({ folders = [], selectedFolderId, onSelect, primaryColor }) {
+const TreeFolder = memo(function TreeFolder({ folders = [], selectedFolderId, onSelect, primaryColor, isCollapsed }) {
   const expandedNodes = useMemo(() => {
     const expanded = new Set();
     if (!selectedFolderId) return expanded;
@@ -88,7 +90,7 @@ const TreeFolder = memo(function TreeFolder({ folders = [], selectedFolderId, on
 
   return (
     <nav 
-      className={styles.tree} 
+      className={`${styles.tree} ${isCollapsed ? styles.collapsed : ""}`} 
       aria-label="Folder navigation"
       style={{ "--cat-color": primaryColor }}
     >
@@ -101,6 +103,7 @@ const TreeFolder = memo(function TreeFolder({ folders = [], selectedFolderId, on
             onSelect={onSelect}
             primaryColor={primaryColor}
             expandedNodes={expandedNodes}
+            isCollapsed={isCollapsed}
           />
         ))}
       </ul>

@@ -3,6 +3,8 @@
 import { useState, useMemo, useEffect, useRef, useCallback, useTransition, useDeferredValue, Suspense } from "react";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useSidebar } from "@/app/context/SidebarContext";
+import { useSiteData } from "@/app/context/SiteContext";
+import { Volume2, Music, Camera, Layers, Video, Folder } from "lucide-react";
 import useSWR from "swr";
 import { useDebounce } from "@/app/hooks/useDebounce";
 
@@ -502,10 +504,42 @@ function ClientPageContent({ slug, info, folders, resources: initialResources, c
   }, [isInitialLoading, isFetchLoading, isLoadingMore, hasMoreDB, serverOffset, debouncedSearch, debouncedFormats, debouncedTags, debouncedFolderId, slug, folders]);
 
 
+  const { categories } = useSiteData();
+
+  const getCategoryIcon = (slug) => {
+    switch (slug) {
+      case 'sound-effects': return <Volume2 size={14} />;
+      case 'music': return <Music size={14} />;
+      case 'luts': return <Camera size={14} />;
+      case 'overlays': return <Layers size={14} />;
+      case 'greenscreen': return <Video size={14} />;
+      default: return <Folder size={14} />;
+    }
+  };
+
   if (isPlugin) {
     return (
-      <div className={styles.pluginLayout}>
-        <aside className={styles.pluginSidebar}>
+      <div className={styles.pluginRoot}>
+        {/* Top Category Nav */}
+        <div className={styles.pluginCategoryNav}>
+          {categories.map((cat) => (
+            <button
+              key={cat.slug}
+              className={`${styles.pluginCatTab} ${slug === cat.slug ? styles.pluginCatTabActive : ""}`}
+              onClick={() => {
+                const params = new URLSearchParams(searchParams);
+                params.set("category", cat.slug);
+                params.delete("folder");
+                router.push(`${pathname}?${params.toString()}`);
+              }}
+            >
+              {getCategoryIcon(cat.slug)}
+              <span>{cat.name}</span>
+            </button>
+          ))}
+        </div>
+
+        <div className={styles.pluginLayout}>
           <Sidebar 
             folders={folders} 
             categorySlug={slug}
@@ -513,7 +547,6 @@ function ClientPageContent({ slug, info, folders, resources: initialResources, c
             primaryColor={info.color}
             isPluginSidebar={true}
           />
-        </aside>
 
         <div className={styles.pluginContent}>
           <FilterSection
@@ -571,8 +604,9 @@ function ClientPageContent({ slug, info, folders, resources: initialResources, c
           />
         )}
       </div>
-    );
-  }
+    </div>
+  );
+}
 
   // Standard Web Layout
   return (

@@ -511,16 +511,6 @@
   background: var(--bg-primary);
 }
 
-.pluginSidebar {
-  width: 260px;
-  min-width: 260px;
-  height: 100%;
-  border-right: 1px solid var(--border-default);
-  overflow-y: auto;
-  background: var(--bg-surface);
-  flex-shrink: 0;
-}
-
 .pluginContent {
   flex: 1;
   height: 100%;
@@ -529,6 +519,12 @@
   flex-direction: column;
   padding: 16px !important;
   position: relative;
+}
+
+@media (max-width: 450px) {
+  .pluginContent {
+    padding: 8px !important;
+  }
 }
 
 .pluginGridWrapper {
@@ -549,7 +545,90 @@
   gap: 12px !important;
 }
 
+@media (max-width: 450px) {
+  .pluginGrid {
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)) !important;
+    gap: 8px !important;
+  }
+}
+
 .pluginSoundGrid {
   grid-template-columns: 1fr !important;
   gap: 8px !important;
+}
+
+/* ---------- Plugin Category Nav (Standalone Top Bar) ---------- */
+.pluginRoot {
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: var(--bg-primary);
+}
+
+.pluginCategoryNav {
+  display: flex;
+  flex-direction: row;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-default);
+  flex-shrink: 0;
+  height: 48px;
+  overflow-x: auto;
+  scrollbar-width: none; 
+}
+
+.pluginCategoryNav::-webkit-scrollbar {
+  display: none;
+}
+
+.pluginCatTab {
+  flex: 1;
+  min-width: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 12px;
+  background: transparent;
+  border: none;
+  border-right: 1px solid var(--border-default);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
+
+.pluginCatTab:last-child {
+  border-right: none;
+}
+
+.pluginCatTab:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.pluginCatTabActive {
+  background: var(--bg-surface);
+  color: var(--cat-color, var(--premium-gold));
+  position: relative;
+}
+
+.pluginCatTabActive::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--cat-color, var(--premium-gold));
+}
+
+.pluginCatTab span {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

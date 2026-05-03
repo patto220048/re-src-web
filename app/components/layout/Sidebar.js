@@ -3,7 +3,7 @@
 
 import { memo, useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { ChevronRight, Menu, X, User, LogIn } from "lucide-react";
+import { ChevronRight, Menu, X, User, LogIn, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useSidebar } from "@/app/context/SidebarContext";
 import { useAuth } from "@/app/lib/auth-context";
 import AuthModal from "@/app/components/auth/AuthModal";
@@ -26,6 +26,7 @@ const Sidebar = memo(function Sidebar({
   primaryColor = "#FFFFFF",
   isPluginSidebar = false
 }) {
+
   const router = useRouter();
   const searchParams = useSearchParams();
   const { selectedFolderId: contextFolderId } = useSidebar();
@@ -48,7 +49,9 @@ const Sidebar = memo(function Sidebar({
 
   const [width, setWidth] = useState(DEFAULT_WIDTH);
   const [isResizing, setIsResizing] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const [isReady, setIsReady] = useState(false);
+  const hasManuallyToggled = useRef(false);
   const sidebarRef = useRef(null);
 
   // Load width from localStorage and sync CSS variable on mount
@@ -64,6 +67,14 @@ const Sidebar = memo(function Sidebar({
       }
     }
     
+    const saved = localStorage.getItem("sidebarCollapsed");
+    if (saved !== null) {
+      // On mobile/narrow screens, we might want to default to expanded even if saved as collapsed
+      if (window.innerWidth > 768) {
+        setIsCollapsed(saved === "true");
+      }
+    }
+
     // Set CSS variable immediately to prevent layout shifts in components that depend on it
     document.documentElement.style.setProperty('--sidebar-width', `${initialWidth}px`);
     
@@ -86,7 +97,21 @@ const Sidebar = memo(function Sidebar({
   const stopResizing = useCallback(() => {
     setIsResizing(false);
     localStorage.setItem("sidebarWidth", width.toString());
-  }, [width]);
+    
+    // If user dragged to expand from collapsed state
+    if (width > 80 && isCollapsed) {
+      hasManuallyToggled.current = true;
+      setIsCollapsed(false);
+      localStorage.setItem("sidebarCollapsed", "false");
+    }
+  }, [width, isCollapsed]);
+
+  const toggleCollapse = useCallback(() => {
+    hasManuallyToggled.current = true;
+    const nextState = !isCollapsed;
+    setIsCollapsed(nextState);
+    localStorage.setItem("sidebarCollapsed", nextState.toString());
+  }, [isCollapsed]);
 
   const resize = useCallback(
     (e) => {
@@ -120,23 +145,53 @@ const Sidebar = memo(function Sidebar({
     };
   }, [isResizing, resize, stopResizing]);
 
+  // Auto-collapse logic for narrow panels
+  useEffect(() => {
+    if (!isReady || hasManuallyToggled.current) return;
+
+    const checkWidth = () => {
+      if (hasManuallyToggled.current) return;
+
+      if (isPluginMode) {
+        if (window.innerWidth < 380) {
+          setIsCollapsed(true);
+        }
+      } else {
+        // Web mode: use Mini-Sidebar for tablets (600px - 1024px)
+        if (window.innerWidth < 1024 && window.innerWidth >= 600) {
+          setIsCollapsed(true);
+        } else if (window.innerWidth >= 1024) {
+          setIsCollapsed(false);
+        }
+      }
+    };
+
+    window.addEventListener("resize", checkWidth);
+    checkWidth();
+
+    return () => window.removeEventListener("resize", checkWidth);
+  }, [isPluginMode, isReady]);
+
   return (
     <>
-      {/* Mobile toggle */}
-      <button
-        className={styles.mobileToggle}
-        onClick={() => setMobileOpen(!mobileOpen)}
-        aria-label="Toggle sidebar"
-      >
-        {mobileOpen ? <X size={20} /> : <Menu size={20} />}
-        <span>Folders</span>
-      </button>
+      {/* Mobile toggle - Hidden in plugin mode as we use mini-sidebar instead */}
+      {!isPluginMode && (
+        <button
+          className={styles.mobileToggle}
+          onClick={() => setMobileOpen(!mobileOpen)}
+          aria-label="Toggle sidebar"
+        >
+          {mobileOpen ? <X size={20} /> : <Menu size={20} />}
+        </button>
+      )}
 
       <aside
         ref={sidebarRef}
-        className={`${styles.sidebar} ${mobileOpen ? styles.open : ""} ${
+        className={`${styles.sidebar} ${(!isPluginMode && mobileOpen) ? styles.open : ""} ${
           isResizing ? styles.isResizing : ""
-        } ${isReady ? styles.isReady : ""}`}
+        } ${isReady ? styles.isReady : ""} ${isPluginSidebar ? styles.isPlugin : ""} ${
+          (isCollapsed && (!mobileOpen || isPluginMode)) ? styles.isCollapsed : ""
+        }`}
         id="category-sidebar"
         data-lenis-prevent
         style={{ 
@@ -146,8 +201,16 @@ const Sidebar = memo(function Sidebar({
       >
         {/* Resize Handle */}
         <div className={styles.resizer} onMouseDown={startResizing} />
+
         <div className={styles.header}>
           <h3 className={styles.title}>{categoryName || "Folders"}</h3>
+          <button 
+            className={styles.collapseBtn} 
+            onClick={toggleCollapse}
+            title={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {isCollapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+          </button>
         </div>
 
         <div className={styles.content}>
@@ -160,7 +223,8 @@ const Sidebar = memo(function Sidebar({
               } else {
                 const params = new URLSearchParams(window.location.search);
                 params.delete("folder");
-                router.push(`/${categorySlug || ""}?${params.toString()}`);
+                const targetPath = isPluginMode ? "/plugins/premiere" : `/${categorySlug || ""}`;
+                router.push(`${targetPath}?${params.toString()}`);
               }
               setMobileOpen(false);
             }}
@@ -178,6 +242,7 @@ const Sidebar = memo(function Sidebar({
           <TreeFolder
             folders={folders}
             selectedFolderId={effectiveFolderId}
+            isCollapsed={isCollapsed}
             onSelect={(folder) => {
               if (onSelectFolder) {
                 onSelectFolder(folder);
@@ -189,8 +254,8 @@ const Sidebar = memo(function Sidebar({
                 } else {
                   params.delete("folder");
                 }
-                // When in a layout, we typically want to go back to the category root list view
-                router.push(`/${categorySlug || ""}?${params.toString()}`);
+                const targetPath = isPluginMode ? "/plugins/premiere" : `/${categorySlug || ""}`;
+                router.push(`${targetPath}?${params.toString()}`);
               }
               setMobileOpen(false);
             }}
