@@ -30,6 +30,8 @@ export default function PreviewOverlay({ resource, onClose, showDownload = false
     
     if (isVideoFormat(resource) && mediaRef.current) {
       mediaManager.play(mediaRef.current, 'video');
+      // Click interaction already happened to open this overlay, so unmuted auto-play should work
+      mediaRef.current.play().catch(err => console.log("Auto-play blocked:", err));
     } else if (isAudioFormat(resource)) {
       const audio = mediaManager.getSharedAudio();
       
@@ -148,9 +150,10 @@ export default function PreviewOverlay({ resource, onClose, showDownload = false
               src={getOptimizedUrl(resource)} 
               poster={getOptimizedUrl(resource.thumbnailUrl || resource.previewUrl, { width: 1200 })}
               controls 
+              autoPlay
               loop
               playsInline 
-              preload="metadata"
+              preload="auto"
               className={styles.largePreviewVideo} 
             />
           )}

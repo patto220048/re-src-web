@@ -37,6 +37,7 @@ const Row = memo(({ index, style, ...rowProps }) => {
         gap: info.layout === "audio" || info.layout === "sound" ? "16px" : "24px",
         padding: "12px 16px",
         boxSizing: "border-box",
+        alignItems: "start",
       }}
     >
       {rowItems.map((item, i) =>
@@ -131,7 +132,27 @@ const ResourceGrid = ({
     return width > 1200 ? 4 : width > 900 ? 3 : width > 768 ? 2 : 1;
   };
 
-  const getRowHeight = () => (isSoundLayout ? 86 : 404);
+  const getRowHeight = (index, currentColumnCount) => {
+    if (isSoundLayout) return 86;
+    
+    const hasLoader = hasMoreDB || isLoadingMore;
+    const baseRowCount = Math.ceil(flatItems.length / currentColumnCount);
+    
+    // Loader row
+    if (hasLoader && index === baseRowCount) return 100;
+
+    const startIndex = index * currentColumnCount;
+    const rowItems = flatItems.slice(startIndex, startIndex + currentColumnCount);
+    
+    // If no items in row (shouldn't happen), default to resource height
+    if (rowItems.length === 0) return 404;
+    
+    // Check if the row contains any resources
+    const hasResource = rowItems.some(item => !item._isFolder);
+    
+    if (hasResource) return 404;
+    return 86; // Match audio row height
+  };
 
   if (isLoading && flatItems.length === 0) {
     return (
@@ -162,8 +183,9 @@ const ResourceGrid = ({
           
           return (
             <List
+              key={`${columnCount}-${isSoundLayout}-${isFiltering}`}
               rowCount={rowCount}
-              rowHeight={getRowHeight()}
+              rowHeight={(index) => getRowHeight(index, columnCount)}
               rowComponent={Row}
               rowProps={{ 
                 columnCount, 

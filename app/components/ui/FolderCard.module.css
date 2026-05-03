@@ -1,13 +1,13 @@
 .card {
   position: relative;
   width: 100%;
-  min-height: 64px;
+  height: 70px;
   background: var(--bg-card);
   border: 1px solid var(--border-default);
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 12px 20px;
+  gap: 12px;
+  padding: 8px 16px;
   cursor: pointer;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;

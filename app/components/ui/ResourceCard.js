@@ -247,16 +247,17 @@ const ResourceCard = memo(function ResourceCard({
     };
   }, []);
 
-  // Video playback on hover
+  // Video playback on hover - DISABLED as per user request
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
     if (isHovering) {
-      mediaManager.play(video, 'video');
-      video.play().then(() => {
-        if (!rafRef.current) rafRef.current = requestAnimationFrame(updateVideoProgress);
-      }).catch(() => {});
+      // Auto-play disabled. Video will only show if rendered, but not play automatically.
+      // mediaManager.play(video, 'video');
+      // video.play().then(() => {
+      //   if (!rafRef.current) rafRef.current = requestAnimationFrame(updateVideoProgress);
+      // }).catch(() => {});
     } else {
       video.pause();
       if (rafRef.current) cancelAnimationFrame(rafRef.current);

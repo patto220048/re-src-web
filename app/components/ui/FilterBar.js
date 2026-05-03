@@ -209,7 +209,7 @@ const FilterBar = memo(function FilterBar({
         </div>
       </div>
 
-      <AnimatePresence mode="wait">
+      <AnimatePresence>
         {(tags.length > 0 || isLoading) && (
           <motion.div 
             layout 

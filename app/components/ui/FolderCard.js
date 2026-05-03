@@ -32,9 +32,9 @@ const FolderCard = memo(function FolderCard({
     >
       <div className={styles.iconWrapper}>
         {isBack ? (
-          <CornerUpLeft size={48} strokeWidth={1.5} />
+          <CornerUpLeft size={40} strokeWidth={1.5} />
         ) : (
-          <Folder size={48} strokeWidth={1.5} fill={primaryColor} fillOpacity={0.1} />
+          <Folder size={40} strokeWidth={1.5} fill={primaryColor} fillOpacity={0.1} />
         )}
       </div>
       
