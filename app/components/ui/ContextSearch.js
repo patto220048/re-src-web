@@ -292,13 +292,7 @@ export default function ContextSearch({ isPlugin = false }) {
         if (activeIndex >= 0 && displayList[activeIndex]) {
           handleItemClick(displayList[activeIndex]);
         } else if (query.trim()) {
-          if (isPlugin) {
-            close();
-          } else {
-            // Navigate to search page with the query
-            window.location.href = `/search?q=${encodeURIComponent(query.trim())}`;
-            close();
-          }
+          close();
         }
         break;
     }
