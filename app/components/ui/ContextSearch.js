@@ -6,6 +6,7 @@ import { Search, Loader2, X, History, Volume2, Filter, ChevronDown, Check, Eye, 
 import { motion, AnimatePresence } from "framer-motion";
 import { getIcon } from "@/app/components/ui/IconLib";
 import { searchResourcesClient, getOrBuildSearchIndex } from "@/app/lib/searchUtils";
+import { useRouter } from "next/navigation";
 import styles from "./ContextSearch.module.css";
 
 function getCategoryIcon(iconName, size = 16) {
@@ -46,6 +47,7 @@ function highlightText(text, matches = [], keyName) {
 }
 
 export default function ContextSearch({ isPlugin = false }) {
+  const router = useRouter();
   const [visible, setVisible] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [query, setQuery] = useState("");
@@ -237,7 +239,7 @@ export default function ContextSearch({ isPlugin = false }) {
         if (folderId) {
           url += `&folder=${folderId}`;
         }
-        window.location.href = url;
+        router.push(url);
       } else {
         // Navigate to category page with folder and resource parameters
         let url = `/${categorySlug}?res=${itemSlug}`;
@@ -363,7 +365,7 @@ export default function ContextSearch({ isPlugin = false }) {
     if (item.type === 'folder') {
       const categorySlug = item.categorySlug || 'all';
       if (isPlugin) {
-        window.location.href = `/plugins/premiere?category=${categorySlug}&folder=${item.id}`;
+        router.push(`/plugins/premiere?category=${categorySlug}&folder=${item.id}`);
       } else {
         window.location.href = `/${categorySlug}?folder=${item.id}`;
       }
@@ -377,7 +379,7 @@ export default function ContextSearch({ isPlugin = false }) {
 
     if (categorySlug && itemSlug) {
       if (isPlugin) {
-        window.location.href = `/plugins/premiere?category=${categorySlug}&res=${itemSlug}`;
+        router.push(`/plugins/premiere?category=${categorySlug}&res=${itemSlug}`);
       } else {
         window.location.href = `/${categorySlug}/${itemSlug}`;
       }
@@ -390,10 +392,13 @@ export default function ContextSearch({ isPlugin = false }) {
   const displayList = results;
 
   return (
-    <div
+    <motion.div
       ref={containerRef}
-      className={styles.container}
-      style={{ left: position.x, top: position.y }}
+      className={`${styles.container} ${isPlugin ? styles.pluginMode : ''}`}
+      style={{
+        left: position.x,
+        top: position.y,
+      }}
       data-lenis-prevent
     >
       <AnimatePresence>

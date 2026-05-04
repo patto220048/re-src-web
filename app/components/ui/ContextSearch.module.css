@@ -433,3 +433,28 @@
 .contextHint {
   opacity: 0.6;
 }
+
+.pluginMode {
+  width: 320px;
+  min-width: 280px;
+}
+
+.pluginMode .searchBox {
+  padding: var(--space-2) var(--space-3);
+}
+
+.pluginMode .results {
+  max-height: 250px;
+}
+
+.pluginMode .resultItem {
+  padding: var(--space-2) var(--space-3);
+}
+
+.pluginMode .resultName {
+  font-size: 0.8rem;
+}
+
+.pluginMode .resultMeta {
+  font-size: 0.6rem;
+}
