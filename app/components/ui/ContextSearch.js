@@ -202,7 +202,7 @@ export default function ContextSearch({ isPlugin = false }) {
           categoryIcon: item.categoryIcon || 'box'
         }));
         setResults(formatted);
-        setActiveIndex(0);
+        setActiveIndex(-1);
       } catch (e) {
         console.error("Search error:", e);
       }
