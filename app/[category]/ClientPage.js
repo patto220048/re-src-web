@@ -46,7 +46,7 @@ const getDescendantIds = (node) => {
   return ids;
 };
 
-const LATEST_EXT_VERSION = "1.0.1";
+const LATEST_EXT_VERSION = "1.0.3";
 
 function ClientPageContent({ slug, info, folders, resources: initialResources, categoryTags = [], isPlugin: propIsPlugin = false }) {
   const [extVersion, setExtVersion] = useState(null);

@@ -34,6 +34,15 @@ Root: HKCU; Subkey: "Software\Adobe\CSXS.13"; ValueType: string; ValueName: "Pla
 [Icons]
 Name: "{group}\Uninstall SFXFolder Plugin"; Filename: "{uninstallexe}"
 
+[InstallDelete]
+; Dọn dẹp cache cũ khi cài đè bản mới
+Type: filesandordirs; Name: "{app}\cache"
+
+[UninstallDelete]
+; Xóa sạch thư mục khi gỡ
+Type: filesandordirs; Name: "{app}"
+
+
 [Messages]
-FinishedHeadingLabel=Cài đặt hoàn tất!
-FinishedLabel=Bộ công cụ SFXFolder đã được cài đặt vào Premiere Pro. Vui lòng khởi động lại Premiere Pro (nếu đang mở) và vào Window -> Extensions -> SFXFolder để bắt đầu sử dụng.
+FinishedHeadingLabel=Installation Complete!
+FinishedLabel=SFXFolder has been installed. Please restart Premiere Pro and go to Window -> Extensions -> SFXFolder to start using the plugin.
