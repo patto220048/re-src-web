@@ -67,6 +67,7 @@ export default function ContextSearch({ isPlugin = false }) {
   const containerRef = useRef(null);
   const listRef = useRef(null);
   const debounceRef = useRef(null);
+  const hasTypedRef = useRef(false);
 
   // Scroll active item into view
   useEffect(() => {
@@ -168,12 +169,15 @@ export default function ContextSearch({ isPlugin = false }) {
 
   const close = useCallback(() => {
     setVisible(false);
+    if (hasTypedRef.current) {
+      window.dispatchEvent(new CustomEvent("local-search", { detail: query }));
+    }
     setQuery("");
     setResults([]);
     setActiveIndex(-1);
     setActiveFolder(null); // Clear folder context on close
     setFilters(prev => ({ ...prev, type: 'all' })); // Reset type filter on close
-  }, []);
+  }, [query]);
 
   useEffect(() => {
     if (!visible) return;
@@ -321,6 +325,7 @@ export default function ContextSearch({ isPlugin = false }) {
       const y = Math.min(e.clientY, window.innerHeight - 360);
 
       setPosition({ x, y });
+      hasTypedRef.current = false;
       setVisible(true);
       setTimeout(() => inputRef.current?.focus(), 50);
     };
@@ -446,7 +451,7 @@ export default function ContextSearch({ isPlugin = false }) {
             const newQuery = e.target.value;
             setQuery(newQuery);
             setActiveIndex(-1);
-            window.dispatchEvent(new CustomEvent("local-search", { detail: newQuery }));
+            hasTypedRef.current = true;
           }}
           className={styles.input}
           id="context-search-input"
