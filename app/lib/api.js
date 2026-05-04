@@ -246,11 +246,14 @@ export async function getResources({
 
     if (searchTerm) {
       isRPC = true;
+      // RPC expects a single UUID for p_folder_id.
+      // When folderId is an array (from getDescendantIds), pass null and post-filter.
+      const rpcFolderId = Array.isArray(folderId) ? null : folderId;
       query = supabase.rpc('search_resources_fuzzy', {
         p_search_term: searchTerm,
         p_category_id: categorySlug,
-        p_folder_id: folderId,
-        p_limit: limit,
+        p_folder_id: rpcFolderId,
+        p_limit: Array.isArray(folderId) ? limit * 3 : limit, // Fetch more to compensate for post-filter
         p_offset: offset
       });
     } else {
@@ -324,7 +327,7 @@ export async function getResources({
     }
 
     // Map data to match the expected format
-    const mappedData = (data || []).map(item => {
+    let mappedData = (data || []).map(item => {
       if (isRPC) {
         // Remap flat RPC fields to the structure expected by mapResource/UI
         return mapResource({
@@ -335,6 +338,14 @@ export async function getResources({
       }
       return mapResource(item);
     });
+
+    // Post-filter: When folderId is an array (RPC can't handle arrays),
+    // filter results to only include items in the target folder hierarchy.
+    if (isRPC && Array.isArray(folderId) && folderId.length > 0) {
+      const folderSet = new Set(folderId);
+      mappedData = mappedData.filter(r => r.folderId && folderSet.has(r.folderId));
+      mappedData = mappedData.slice(0, limit);
+    }
 
     return mappedData;
   };

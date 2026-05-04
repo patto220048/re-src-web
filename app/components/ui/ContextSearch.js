@@ -283,9 +283,9 @@ export default function ContextSearch({ isPlugin = false }) {
         }
         window.location.href = url;
       }
-      close();
+      closeSilent();
     }
-  }, [saveRecent, close, isPlugin]);
+  }, [saveRecent, closeSilent, isPlugin]);
 
   const handleKeyDown = useCallback((e) => {
     const displayList = results;
@@ -415,7 +415,7 @@ export default function ContextSearch({ isPlugin = false }) {
       } else {
         window.location.href = `/${categorySlug}?folder=${item.id}`;
       }
-      close();
+      closeSilent();
       return;
     }
 
@@ -429,7 +429,7 @@ export default function ContextSearch({ isPlugin = false }) {
       } else {
         window.location.href = `/${categorySlug}/${itemSlug}`;
       }
-      close();
+      closeSilent();
     }
   };
 
