@@ -574,6 +574,6 @@ export default function ContextSearch({ isPlugin = false }) {
         <span>↵ select</span>
         <span>esc close</span>
       </div>
-    </div>
+    </motion.div>
   );
 }
