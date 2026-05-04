@@ -3,7 +3,7 @@
 
 import { memo, useState, useEffect, useCallback, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { ChevronRight, Menu, X, User, LogIn, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { ChevronRight, Menu, X, User, LogIn, PanelLeftClose, PanelLeftOpen, Settings, CreditCard, Info, Globe, LogOut, Loader2 } from "lucide-react";
 import { useSidebar } from "@/app/context/SidebarContext";
 import { useAuth } from "@/app/lib/auth-context";
 import AuthModal from "@/app/components/auth/AuthModal";
@@ -44,8 +44,35 @@ const Sidebar = memo(function Sidebar({
 
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const { user, profile } = useAuth();
+  const { user, profile, logout, isPremium, isSyncingProfile, markAwaitingPayment } = useAuth();
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    if (!isDropdownOpen) return;
+    const handleClick = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setIsDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [isDropdownOpen]);
+
+  const openWebUrl = (url) => {
+    if (isPluginMode && typeof window !== 'undefined') {
+      if (window.__adobe_cep__ && window.cep && window.cep.util) {
+        window.cep.util.openURLInDefaultBrowser(url);
+      } else if (window.parent) {
+        window.parent.postMessage({ type: 'OPEN_URL', url }, '*');
+      }
+    } else {
+      window.open(url, '_blank');
+    }
+    setIsDropdownOpen(false);
+  };
 
   const [width, setWidth] = useState(DEFAULT_WIDTH);
   const [isResizing, setIsResizing] = useState(false);
@@ -264,20 +291,78 @@ const Sidebar = memo(function Sidebar({
 
         {/* Plugin Auth Section - Only shown in plugin mode */}
         {isPluginMode && (
-          <div className={styles.footer}>
+          <div className={styles.footer} ref={dropdownRef}>
             {console.log("[Sidebar] Rendering footer. User:", user?.id, "Profile:", profile?.full_name)}
             {user ? (
-              <button 
-                className={styles.profileBtn}
-                onClick={() => router.push('/account')}
-              >
-                {profile?.avatar_url ? (
-                  <img src={profile.avatar_url} className={styles.avatar} alt="Avatar" />
-                ) : (
-                  <User size={18} className={styles.loginIcon} />
+              <div className={styles.profileContainer}>
+                <div className={styles.profileBtnWrapper}>
+                    <button 
+                    className={`${styles.profileBtn} ${styles.disabledBtn}`}
+                    onClick={(e) => {
+                      if (isCollapsed) {
+                        setIsDropdownOpen(!isDropdownOpen);
+                      } else {
+                        e.preventDefault(); // Disable navigation on click
+                      }
+                    }}
+                    title={isCollapsed ? "Open Settings" : undefined}
+                  >
+                    {profile?.avatar_url ? (
+                      <img src={profile.avatar_url} className={styles.avatar} alt="Avatar" />
+                    ) : (
+                      <User size={18} className={styles.loginIcon} />
+                    )}
+                    <div className={styles.profileInfo} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span className={styles.profileName}>{profile?.full_name || user.email?.split('@')[0]}</span>
+                      {isPremium && (
+                        <span className={styles.premiumBadge} title="Premium Member">PRO</span>
+                      )}
+                      {isSyncingProfile && (
+                        <Loader2 size={12} className={styles.syncSpinner} style={{ animation: 'spin 1s linear infinite' }} />
+                      )}
+                    </div>
+                  </button>
+                  <button 
+                    className={`${styles.settingsBtn} ${isDropdownOpen ? styles.active : ''}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsDropdownOpen(!isDropdownOpen);
+                    }}
+                    title="Settings"
+                  >
+                    <Settings size={16} />
+                  </button>
+                </div>
+                
+                {isDropdownOpen && (
+                  <div className={styles.dropdownMenu}>
+                    {isPremium ? (
+                      <button className={styles.dropdownItem} onClick={() => openWebUrl(`${window.location.origin}/account/subscription`)}>
+                        <CreditCard size={14} /> My Subscription
+                      </button>
+                    ) : (
+                      <button className={styles.dropdownItem} onClick={() => {
+                        markAwaitingPayment();
+                        openWebUrl(`${window.location.origin}/pricing`);
+                      }}>
+                        <CreditCard size={14} /> Upgrade to Premium
+                      </button>
+                    )}
+                    <button className={styles.dropdownItem} onClick={() => openWebUrl(`${window.location.origin}/about-us`)}>
+                      <Info size={14} /> About Us
+                    </button>
+                    <button className={styles.dropdownItem} onClick={() => openWebUrl(`${window.location.origin}`)}>
+                      <Globe size={14} /> Online Web
+                    </button>
+                    <button className={styles.dropdownItem} onClick={() => {
+                      setIsDropdownOpen(false);
+                      logout();
+                    }}>
+                      <LogOut size={14} /> Logout
+                    </button>
+                  </div>
                 )}
-                <span className={styles.profileName}>{profile?.full_name || user.email?.split('@')[0]}</span>
-              </button>
+              </div>
             ) : (
               <button 
                 className={styles.profileBtn}

@@ -29,6 +29,7 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null);
   const [session, setSessionState] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isSyncingProfile, setIsSyncingProfile] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const { showToast } = useToast();
   const pathname = usePathname();
@@ -45,6 +46,7 @@ export function AuthProvider({ children }) {
       setProfile(null);
       return null;
     }
+    setIsSyncingProfile(true);
     try {
       // Use the proxied getProfile from api.js to bypass connection limits
       const data = await getProfile(userId);
@@ -54,6 +56,8 @@ export function AuthProvider({ children }) {
       console.warn("Profile fetch error:", e);
       setProfile(null);
       return null;
+    } finally {
+      setIsSyncingProfile(false);
     }
   }, []);
 
@@ -159,6 +163,13 @@ export function AuthProvider({ children }) {
 
       if (sessionUser) {
         await fetchProfile(sessionUser.id);
+        // Save to plugin vault if in plugin mode
+        if (typeof window !== 'undefined' && window.parent && session) {
+           window.parent.postMessage({
+              type: 'SAVE_AUTH',
+              payload: { access_token: session.access_token, refresh_token: session.refresh_token }
+           }, '*');
+        }
       } else {
         setProfile(null);
       }
@@ -166,11 +177,109 @@ export function AuthProvider({ children }) {
       if (mounted) setLoading(false);
     });
 
+    // Listen for AUTH_DATA from plugin vault
+    const handleMessage = async (event) => {
+      if (event.data?.type === 'AUTH_DATA') {
+        const { access_token, refresh_token } = event.data.payload;
+        if (access_token && refresh_token) {
+          try {
+             await supabase.auth.setSession({ access_token, refresh_token });
+          } catch (e) {
+             console.warn("Failed to set session from vault", e);
+          }
+        }
+      }
+    };
+    
+    if (typeof window !== 'undefined') {
+       window.addEventListener('message', handleMessage);
+       // Ask vault for auth if we are in plugin mode
+       if (window.location.search.includes('mode=plugin')) {
+          if (window.parent) {
+             window.parent.postMessage({ type: 'GET_AUTH' }, '*');
+          }
+       }
+    }
+
     return () => {
       mounted = false;
       subscription.unsubscribe();
+      if (typeof window !== 'undefined') {
+         window.removeEventListener('message', handleMessage);
+      }
     };
   }, [supabase, fetchProfile]);
+
+  // Subscribe to real-time changes on the user's profile
+  useEffect(() => {
+    if (!user?.id) return;
+    
+    const channel = supabase.channel(`public:profiles:id=eq.${user.id}`)
+      .on('postgres_changes', 
+          { event: 'UPDATE', schema: 'public', table: 'profiles', filter: `id=eq.${user.id}` }, 
+          (payload) => {
+            console.log('[Auth] Profile updated via realtime!', payload);
+            fetchProfile(user.id);
+          }
+      )
+      .subscribe();
+      
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, fetchProfile]);
+
+  // Fallback Polling / Window Focus sync for Plugin
+  useEffect(() => {
+    const isPremiumUser = profile?.role === "admin" ||
+      (["active", "suspended", "cancelled"].includes(profile?.subscription_status) && 
+       profile?.subscription_expires_at && 
+       new Date(profile.subscription_expires_at) > new Date());
+
+    // If no user or user is already premium, no need to aggressively sync on focus
+    if (!user?.id || isPremiumUser) return;
+    
+    let lastFetchTime = 0;
+    const handleFocus = () => {
+      const awaitingTimeStr = window.localStorage.getItem('awaiting_payment_sync');
+      if (!awaitingTimeStr) return; // Only sync if they expressed intent
+      
+      const awaitingTime = parseInt(awaitingTimeStr, 10);
+      const now = Date.now();
+      
+      // If intent was more than 15 minutes ago, expire it
+      if (now - awaitingTime > 15 * 60 * 1000) {
+        window.localStorage.removeItem('awaiting_payment_sync');
+        return;
+      }
+
+      // Only fetch if 10 seconds have passed since the last focus-triggered fetch
+      if (now - lastFetchTime > 10000) {
+        lastFetchTime = now;
+        console.log("[Auth] Window focused/visible, syncing profile due to recent payment intent...");
+        fetchProfile(user.id).then(data => {
+            const isNowPremium = data?.role === "admin" ||
+              (["active", "suspended", "cancelled"].includes(data?.subscription_status) && 
+               data?.subscription_expires_at && 
+               new Date(data.subscription_expires_at) > new Date());
+            // If they successfully upgraded, clear the intent flag
+            if (isNowPremium) {
+                window.localStorage.removeItem('awaiting_payment_sync');
+            }
+        });
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') handleFocus();
+    });
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('visibilitychange', handleFocus);
+    };
+  }, [user?.id, profile, fetchProfile]);
 
   // Handle "Logout on Exit" logic
   useEffect(() => {
@@ -258,6 +367,11 @@ export function AuthProvider({ children }) {
     setLoading(true);
     
     try {
+      // Clear plugin vault
+      if (typeof window !== 'undefined' && window.parent) {
+         window.parent.postMessage({ type: 'CLEAR_AUTH' }, '*');
+      }
+
       // Use a timeout race to prevent hanging if signOut request is blocked by connection limits
       await Promise.race([
         supabase.auth.signOut(),
@@ -356,6 +470,12 @@ export function AuthProvider({ children }) {
     return Promise.resolve(null);
   };
 
+  const markAwaitingPayment = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('awaiting_payment_sync', Date.now().toString());
+    }
+  }, []);
+
   // ─── Derived State ───
   const isAdmin = profile?.role === "admin";
   
@@ -374,7 +494,9 @@ export function AuthProvider({ children }) {
         loading,
         isAdmin,
         isPremium,
+        isSyncingProfile,
         isLoggingOut,
+        markAwaitingPayment,
         loginWithGoogle,
         loginWithEmail,
         signup,

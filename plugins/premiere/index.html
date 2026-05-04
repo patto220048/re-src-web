@@ -131,6 +131,36 @@
                         return;
                     }
 
+                    if (event.data.type === 'OPEN_URL') {
+                        console.log("Opening URL:", event.data.url);
+                        if (window.cep && window.cep.util && window.cep.util.openURLInDefaultBrowser) {
+                            window.cep.util.openURLInDefaultBrowser(event.data.url);
+                        } else if (typeof csInterface !== 'undefined' && csInterface.openURLInDefaultBrowser) {
+                            csInterface.openURLInDefaultBrowser(event.data.url);
+                        }
+                        return;
+                    }
+
+                    if (event.data.type === 'SAVE_AUTH') {
+                        localStorage.setItem('re_src_plugin_auth', JSON.stringify(event.data.payload));
+                        return;
+                    }
+
+                    if (event.data.type === 'GET_AUTH') {
+                        var authData = localStorage.getItem('re_src_plugin_auth');
+                        if (authData) {
+                            try {
+                                document.getElementById('web-container').contentWindow.postMessage({ type: 'AUTH_DATA', payload: JSON.parse(authData) }, '*');
+                            } catch (e) {}
+                        }
+                        return;
+                    }
+
+                    if (event.data.type === 'CLEAR_AUTH') {
+                        localStorage.removeItem('re_src_plugin_auth');
+                        return;
+                    }
+
                     var activeDownloads = window._activeDownloads || {};
                     window._activeDownloads = activeDownloads;
 

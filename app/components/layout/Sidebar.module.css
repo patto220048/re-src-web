@@ -194,6 +194,111 @@
   border-color: var(--cat-color, var(--premium-gold));
 }
 
+.disabledBtn {
+  cursor: default;
+}
+
+.disabledBtn:hover {
+  background: var(--bg-surface);
+  border-color: var(--border-default);
+}
+
+.profileContainer {
+  position: relative;
+  width: 100%;
+}
+
+.premiumBadge {
+  background: var(--premium-gold, #eab308);
+  color: #000;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 0 6px rgba(234, 179, 8, 0.4);
+}
+
+.profileBtnWrapper {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.profileBtnWrapper .profileBtn {
+  flex: 1;
+  justify-content: flex-start;
+  padding-left: var(--space-2);
+  padding-right: var(--space-2);
+}
+
+.settingsBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.settingsBtn:hover, .settingsBtn.active {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border-color: var(--cat-color, var(--premium-gold));
+}
+
+.dropdownMenu {
+  position: absolute;
+  bottom: calc(100% + var(--space-2));
+  right: 0;
+  width: 100%;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+  padding: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+}
+
+.dropdownItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  transition: all var(--transition-fast);
+  text-align: left;
+}
+
+.dropdownItem:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.isCollapsed .profileBtnWrapper .profileBtn {
+  justify-content: center;
+}
+
+.isCollapsed .settingsBtn {
+  display: none;
+}
+
 .avatar {
   width: 20px;
   height: 20px;
