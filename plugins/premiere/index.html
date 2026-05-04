@@ -111,7 +111,16 @@
 
         try {
             var csInterface = new CSInterface();
-            document.getElementById('status').innerText = "Connected";
+            var EXT_VERSION = "1.0.1"; // Thay đổi khi cập nhật bộ vỏ
+            document.getElementById('status').innerText = "Connected v" + EXT_VERSION;
+
+            // Gửi phiên bản cho iframe ngay khi nó load xong
+            document.getElementById('web-container').onload = function() {
+                this.contentWindow.postMessage({ 
+                    type: 'SET_EXT_VERSION', 
+                    version: EXT_VERSION 
+                }, '*');
+            };
 
             if (typeof require !== 'undefined') {
                 var fs = require('fs');

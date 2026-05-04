@@ -46,7 +46,11 @@ const getDescendantIds = (node) => {
   return ids;
 };
 
+const LATEST_EXT_VERSION = "1.0.1";
+
 function ClientPageContent({ slug, info, folders, resources: initialResources, categoryTags = [], isPlugin: propIsPlugin = false }) {
+  const [extVersion, setExtVersion] = useState(null);
+  const [showUpdateBanner, setShowUpdateBanner] = useState(false);
   const [selectedFolderId, setSelectedFolderId] = useState(null);
   const [selectedFolderName, setSelectedFolderName] = useState(null);
   const [selectedFormats, setSelectedFormats] = useState([]);
@@ -235,6 +239,26 @@ function ClientPageContent({ slug, info, folders, resources: initialResources, c
     window.addEventListener("local-search", handleLocalSearch);
     return () => window.removeEventListener("local-search", handleLocalSearch);
   }, []);
+
+  // Listen for Extension Version from Host
+  useEffect(() => {
+    if (!isPlugin) return;
+
+    const handleMessage = (event) => {
+      if (event.data?.type === 'SET_EXT_VERSION') {
+        const version = event.data.version;
+        setExtVersion(version);
+        
+        // So sánh phiên bản (logic đơn giản: khác là báo update)
+        if (version !== LATEST_EXT_VERSION) {
+          setShowUpdateBanner(true);
+        }
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [isPlugin]);
 
   // When ContextSearch closes (click outside / ESC), navigate to root
   useEffect(() => {
@@ -577,6 +601,16 @@ function ClientPageContent({ slug, info, folders, resources: initialResources, c
             </button>
           ))}
         </div>
+
+        {showUpdateBanner && (
+          <div className={styles.updateBanner}>
+            <span>Có bản cập nhật mới v{LATEST_EXT_VERSION} cho Plugin!</span>
+            <a href="https://sfxfolder.com/download" target="_blank" rel="noopener noreferrer" className={styles.updateBtn}>
+              Tải ngay
+            </a>
+            <button onClick={() => setShowUpdateBanner(false)} className={styles.closeUpdate}>×</button>
+          </div>
+        )}
 
         <div className={styles.pluginLayout}>
           <Sidebar 

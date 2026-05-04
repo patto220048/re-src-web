@@ -34,7 +34,7 @@
 				</Lifecycle>
 				<UI>
 					<Type>Panel</Type>
-					<Menu>RE-SRC Web</Menu>
+					<Menu>SFXFolder</Menu>
 					<Geometry>
 						<Size>
 							<Width>400</Width>
