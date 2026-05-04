@@ -551,6 +551,8 @@ function ClientPageContent({ slug, info, folders, resources: initialResources, c
             categoryName={info.name}
             primaryColor={info.color}
             isPluginSidebar={true}
+            onSelectFolder={handleSelectFolder}
+            selectedFolderId={selectedFolderId}
           />
 
         <div className={styles.pluginContent}>

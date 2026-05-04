@@ -170,7 +170,9 @@ export default function ContextSearch({ isPlugin = false }) {
   const close = useCallback(() => {
     setVisible(false);
     if (hasTypedRef.current) {
-      window.dispatchEvent(new CustomEvent("local-search", { detail: query }));
+      const trimmed = query.trim();
+      window.dispatchEvent(new CustomEvent("local-search", { detail: trimmed }));
+      hasTypedRef.current = false;
     }
     setQuery("");
     setResults([]);
