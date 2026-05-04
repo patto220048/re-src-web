@@ -1,11 +1,12 @@
 <!DOCTYPE html>
 <html>
+
 <head>
     <meta charset="utf-8">
-    <title>RE-SRC Web Plugin</title>
+    <title>SFXFolder Web Plugin</title>
     <script>
         // Polyfill and Error Catcher for older CEF
-        window.onerror = function(msg, url, line, col, error) {
+        window.onerror = function (msg, url, line, col, error) {
             var status = document.getElementById('status');
             status.style.color = '#ff4444';
             status.innerText = 'JS ERROR: ' + msg + ' (Line: ' + line + ')';
@@ -17,7 +18,8 @@
     </script>
     <style>
         body {
-            background-color: #1a1a2e; /* Dark Blue - so we know it loaded */
+            background-color: #1a1a2e;
+            /* Dark Blue - so we know it loaded */
             color: #eee;
             font-family: sans-serif;
             margin: 0;
@@ -26,11 +28,13 @@
             flex-direction: column;
             height: 100vh;
         }
+
         #web-container {
             flex: 1;
             border: none;
             background: #000;
         }
+
         .header {
             padding: 4px 8px;
             background: #111;
@@ -41,7 +45,12 @@
             border-bottom: 1px solid #333;
             color: #666;
         }
-        .status { color: #4CAF50; font-family: monospace; }
+
+        .status {
+            color: #4CAF50;
+            font-family: monospace;
+        }
+
         #error-display {
             background: #441111;
             color: #ffaaaa;
@@ -50,6 +59,7 @@
             display: none;
             border-bottom: 1px solid #ff0000;
         }
+
         .debug-controls {
             padding: 4px;
             background: #111;
@@ -57,6 +67,7 @@
             gap: 4px;
             border-bottom: 1px solid #333;
         }
+
         button {
             padding: 2px 6px;
             font-size: 9px;
@@ -68,14 +79,24 @@
             color: #aaa;
             cursor: pointer;
         }
-        button:hover { background: #333; color: white; }
-        .btn-reload { background: #0078d4; color: white; border-color: #0078d4; }
+
+        button:hover {
+            background: #333;
+            color: white;
+        }
+
+        .btn-reload {
+            background: #0078d4;
+            color: white;
+            border-color: #0078d4;
+        }
     </style>
 </head>
+
 <body>
     <div id="error-display"></div>
     <div class="header">
-        <span style="color:#ffcc00; font-weight:bold;">RE-SRC V2.0</span>
+        <span style="color:#ffcc00; font-weight:bold;">SFXFolder V2.0</span>
         <span id="status" class="status">Connecting...</span>
     </div>
 
@@ -86,14 +107,14 @@
         <button class="btn-reload" onclick="location.reload()">RELOAD PANEL</button>
     </div>
 
-    <iframe id="web-container" src="http://localhost:3000/plugins/premiere?mode=plugin"></iframe>
-    
+    <iframe id="web-container" src="https://sfxfolder.com/plugins/premiere?mode=plugin"></iframe>
+
     <div id="download-progress" style="position:fixed;bottom:0;width:100%;height:4px;background:#333;display:none;">
         <div id="progress-bar" style="width:0%;height:100%;background:#0078d4;"></div>
     </div>
 
     <script src="./lib/CSInterface.js"></script>
-    
+
     <script>
         function showError(msg) {
             var div = document.getElementById('error-display');
@@ -115,10 +136,10 @@
             document.getElementById('status').innerText = "Connected v" + EXT_VERSION;
 
             // Gửi phiên bản cho iframe ngay khi nó load xong
-            document.getElementById('web-container').onload = function() {
-                this.contentWindow.postMessage({ 
-                    type: 'SET_EXT_VERSION', 
-                    version: EXT_VERSION 
+            document.getElementById('web-container').onload = function () {
+                this.contentWindow.postMessage({
+                    type: 'SET_EXT_VERSION',
+                    version: EXT_VERSION
                 }, '*');
             };
 
@@ -132,9 +153,9 @@
                 var downloadFolder = path.join(os.tmpdir(), 'RE-SRC-Cache');
                 if (!fs.existsSync(downloadFolder)) { fs.mkdirSync(downloadFolder); }
 
-                window.addEventListener('message', function(event) {
+                window.addEventListener('message', function (event) {
                     console.log("Panel received message:", event.data);
-                    
+
                     if (event.data.type === 'DEBUG_LOG') {
                         console.log("IFRAME DEBUG:", event.data.message);
                         return;
@@ -160,7 +181,7 @@
                         if (authData) {
                             try {
                                 document.getElementById('web-container').contentWindow.postMessage({ type: 'AUTH_DATA', payload: JSON.parse(authData) }, '*');
-                            } catch (e) {}
+                            } catch (e) { }
                         }
                         return;
                     }
@@ -176,22 +197,22 @@
                     if (event.data.type === 'IMPORT_ASSET') {
                         var fileName = event.data.fileName;
                         var resourceId = event.data.resourceId || 'unknown';
-                        
+
                         // Avoid concurrent downloads of the same specific resource
                         if (activeDownloads[resourceId]) {
                             console.log("Download already in progress for:", resourceId);
                             return;
                         }
-                        
+
                         var status = document.getElementById('status');
                         status.innerText = "Downloading: " + fileName;
-                        
+
                         // Use a unique filename with timestamp to avoid EBUSY (file busy/locked) errors
                         // when the same file is downloaded multiple times or still being accessed
                         var timestamp = new Date().getTime();
                         var uniqueFileName = timestamp + "_" + fileName;
                         var targetPath = path.join(downloadFolder, uniqueFileName);
-                        
+
                         activeDownloads[resourceId] = true;
                         downloadFile(event.data.url, targetPath, fileName, resourceId);
                     }
@@ -208,23 +229,23 @@
             var progressBar = document.getElementById('progress-bar');
             document.getElementById('download-progress').style.display = 'block';
             progressBar.style.width = '0%';
-            
+
             var file = fs.createWriteStream(dest);
             var protocol = url.startsWith('https') ? https : http;
-            
-            var request = protocol.get(url, function(response) {
+
+            var request = protocol.get(url, function (response) {
                 if (response.statusCode !== 200) {
                     status.innerText = "Download Error: " + response.statusCode;
                     document.getElementById('download-progress').style.display = 'none';
                     file.close();
-                    fs.unlink(dest, function() {}); // Xóa file lỗi
+                    fs.unlink(dest, function () { }); // Xóa file lỗi
                     return;
                 }
 
                 var len = parseInt(response.headers['content-length'], 10);
                 var cur = 0;
 
-                response.on('data', function(chunk) {
+                response.on('data', function (chunk) {
                     cur += chunk.length;
                     if (len) {
                         var percent = (100.0 * cur / len).toFixed(2);
@@ -233,28 +254,29 @@
                 });
 
                 response.pipe(file);
-                
-                file.on('finish', function() {
-                    file.close(function() {
+
+                file.on('finish', function () {
+                    file.close(function () {
                         if (window._activeDownloads) delete window._activeDownloads[resourceId];
                         document.getElementById('download-progress').style.display = 'none';
                         status.innerText = "Importing to Timeline...";
                         var safePath = dest.replace(/\\/g, '/');
-                        csInterface.evalScript('importToTimeline("' + safePath + '")', function(result) {
+                        csInterface.evalScript('importToTimeline("' + safePath + '")', function (result) {
                             status.innerText = result || "Done";
                         });
                     });
                 });
             });
 
-            request.on('error', function(err) {
+            request.on('error', function (err) {
                 if (window._activeDownloads) delete window._activeDownloads[resourceId];
                 status.innerText = "Connection Error: " + err.message;
                 document.getElementById('download-progress').style.display = 'none';
                 file.close();
-                fs.unlink(dest, function() {});
+                fs.unlink(dest, function () { });
             });
         }
     </script>
 </body>
+
 </html>
