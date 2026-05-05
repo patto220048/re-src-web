@@ -295,7 +295,7 @@
 
                         if (fs.existsSync(cachedPath)) {
                             console.log("Asset already cached, importing directly:", cachedPath);
-                            importAssetToPremiere(cachedPath, resourceId, displayNameForPremiere);
+                            importAssetToPremiere(cachedPath, resourceId, displayNameForPremiere, event.data.fileFormat);
                             return;
                         }
 
@@ -309,7 +309,7 @@
 
                         activeDownloads[resourceId] = true;
                         var displayNameForPremiere = displayName + "_" + resourceId;
-                        downloadFile(url, cachedPath, fileName, resourceId, displayNameForPremiere);
+                        downloadFile(url, cachedPath, fileName, resourceId, displayNameForPremiere, event.data.fileFormat);
                     }
                 });
             } else {
@@ -319,12 +319,12 @@
             showError("System Error: " + e.message);
         }
 
-        function importAssetToPremiere(filePath, resourceId, displayName) {
+        function importAssetToPremiere(filePath, resourceId, displayName, fileFormat) {
             var status = document.getElementById('status');
             status.innerText = "Adding to Premiere...";
             var safePath = filePath.replace(/\\/g, '/');
-            // Gửi cả đường dẫn file và tên hiển thị sạch cho ExtendScript
-            csInterface.evalScript('importToTimeline("' + safePath + '", "' + displayName + '")', function (result) {
+            // Gửi cả đường dẫn file, tên hiển thị và định dạng cho ExtendScript
+            csInterface.evalScript('importToTimeline("' + safePath + '", "' + displayName + '", "' + (fileFormat || "") + '")', function (result) {
                 status.innerText = result || "Done";
                 // Notify iframe that import is complete
                 var iframe = document.getElementById('web-container');
@@ -338,7 +338,7 @@
             });
         }
 
-        function downloadFile(url, dest, originalName, resourceId, displayName) {
+        function downloadFile(url, dest, originalName, resourceId, displayName, fileFormat) {
             var status = document.getElementById('status');
             var progressBar = document.getElementById('progress-bar');
             var iframe = document.getElementById('web-container');
@@ -395,7 +395,7 @@
                             }, '*');
                         }
 
-                        importAssetToPremiere(dest, resourceId, displayName);
+                        importAssetToPremiere(dest, resourceId, displayName, fileFormat);
                     });
                 });
             });
