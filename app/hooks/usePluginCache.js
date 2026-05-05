@@ -6,26 +6,36 @@ import { useAuth } from "@/app/lib/auth-context";
 // Global store to persist status between navigation within the same session
 const pluginCacheStore = new Map();
 
+// Initial load from localStorage with Versioning
+if (typeof window !== 'undefined') {
+  const CACHE_KEY = 'premiere_plugin_cache';
+  const VER_KEY = 'premiere_plugin_cache_v';
+  const CURRENT_VER = 'v3';
+
+  try {
+    if (localStorage.getItem(VER_KEY) !== CURRENT_VER) {
+      localStorage.removeItem(CACHE_KEY);
+      localStorage.setItem(VER_KEY, CURRENT_VER);
+    }
+
+    const saved = JSON.parse(localStorage.getItem(CACHE_KEY) || '{}');
+    Object.entries(saved).forEach(([id, status]) => pluginCacheStore.set(id, status));
+  } catch (e) {}
+}
+
 // Helper to update store and localStorage
 const updateCacheStore = (id, status) => {
   if (!id) return;
-  pluginCacheStore.set(id, status);
+  const sid = String(id);
+  pluginCacheStore.set(sid, status);
   if (typeof window !== 'undefined') {
     try {
       const saved = JSON.parse(localStorage.getItem('premiere_plugin_cache') || '{}');
-      saved[id] = status;
+      saved[sid] = status;
       localStorage.setItem('premiere_plugin_cache', JSON.stringify(saved));
     } catch (e) {}
   }
 };
-
-// Initial load from localStorage
-if (typeof window !== 'undefined') {
-  try {
-    const saved = JSON.parse(localStorage.getItem('premiere_plugin_cache') || '{}');
-    Object.entries(saved).forEach(([id, status]) => pluginCacheStore.set(id, status));
-  } catch (e) {}
-}
 
 /**
  * Hook to manage resource cache status and communication with Premiere Pro Plugin Shell
@@ -74,14 +84,25 @@ export function usePluginCache(resourceId, fileName, fileFormat) {
 
       switch (type) {
         case 'RESOURCE_STATUS':
+          const sid = String(resourceId);
           if (exists) {
             setDownloadStatus('cached');
             setProgress(100);
-            updateCacheStore(resourceId, 'cached');
+            updateCacheStore(sid, 'cached');
           } else {
+            // If Premiere says it doesn't exist, REMOVE it from cache store
             setDownloadStatus('idle');
             setProgress(0);
-            updateCacheStore(resourceId, 'idle');
+            if (pluginCacheStore.has(sid)) {
+              pluginCacheStore.delete(sid);
+              if (typeof window !== 'undefined') {
+                try {
+                  const saved = JSON.parse(localStorage.getItem('premiere_plugin_cache') || '{}');
+                  delete saved[sid];
+                  localStorage.setItem('premiere_plugin_cache', JSON.stringify(saved));
+                } catch (e) {}
+              }
+            }
           }
           break;
 

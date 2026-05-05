@@ -206,12 +206,22 @@
                     if (event.data.type === 'CHECK_RESOURCE_STATUS') {
                         var rid = event.data.resourceId;
                         var fileName = event.data.fileName;
-                        var cachedPath = path.join(downloadFolder, rid + "_" + fileName);
-                        var exists = fs.existsSync(cachedPath);
+                        if (!rid || !fileName) {
+                            event.source.postMessage({ type: 'RESOURCE_STATUS', resourceId: rid, exists: false }, '*');
+                            return;
+                        }
                         
-                        console.log("Checking cache for:", rid, fileName);
-                        console.log("Full path:", cachedPath);
-                        console.log("Exists:", exists);
+                        var cachedPath = path.join(downloadFolder, rid + "_" + fileName);
+                        var exists = false;
+                        
+                        try {
+                            // Check if exists AND is a file (not a directory)
+                            exists = fs.existsSync(cachedPath) && fs.lstatSync(cachedPath).isFile();
+                        } catch (e) {
+                            exists = false;
+                        }
+                        
+                        console.log("[CHECK_CACHE]", rid, "Exists:", exists, "Path:", cachedPath);
                         
                         event.source.postMessage({
                             type: 'RESOURCE_STATUS',
