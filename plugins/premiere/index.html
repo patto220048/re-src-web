@@ -230,17 +230,17 @@
                             return;
                         }
                         
+                        console.log("[CHECK_CACHE] Request for ID:", rid, "File:", fileName);
                         var cachedPath = path.join(downloadFolder, rid + "_" + fileName);
                         var exists = false;
                         
                         try {
-                            // Check if exists AND is a file (not a directory)
                             exists = fs.existsSync(cachedPath) && fs.lstatSync(cachedPath).isFile();
                         } catch (e) {
                             exists = false;
                         }
                         
-                        console.log("[CHECK_CACHE]", rid, "Exists:", exists, "Path:", cachedPath);
+                        console.log("[CHECK_CACHE] Path:", cachedPath, "Result:", exists);
                         
                         event.source.postMessage({
                             type: 'RESOURCE_STATUS',
