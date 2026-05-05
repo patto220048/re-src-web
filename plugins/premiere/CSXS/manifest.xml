@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ExtensionManifest Version="10.0" ExtensionBundleId="com.resrc.premiere" ExtensionBundleVersion="1.0.1"
-	ExtensionBundleName="RE-SRC Web Plugin" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+	ExtensionBundleName="SFXFolder Web Plugin" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
 	<ExtensionList>
 		<Extension Id="com.resrc.premiere.panel" Version="1.0.1" />
 	</ExtensionList>
