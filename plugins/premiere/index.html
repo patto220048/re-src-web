@@ -233,25 +233,39 @@
                     // --- New Resource Status Tracking ---
                     if (event.data.type === 'CHECK_RESOURCE_STATUS') {
                         var rid = event.data.resourceId;
-                        var fileName = event.data.fileName;
-                        if (!rid || !fileName) {
+                        var fileName = event.data.fileName || "";
+                        if (!rid) {
                             event.source.postMessage({ type: 'RESOURCE_STATUS', resourceId: rid, exists: false }, '*');
                             return;
                         }
                         
-                        console.log("[CHECK_CACHE] Request for ID:", rid);
                         var ext = event.data.fileFormat || "";
+                        if (!ext && fileName.indexOf('.') !== -1) {
+                            ext = fileName.split('.').pop();
+                        }
                         if (ext && ext.indexOf(".") !== 0) ext = "." + ext;
-                        var cachedPath = path.join(downloadFolder, rid + (ext || ".dat"));
+                        
+                        // Try primary path (ID + detected extension)
+                        var diskFileName = rid + (ext || ".dat");
+                        var cachedPath = path.join(downloadFolder, diskFileName);
                         var exists = false;
                         
                         try {
                             exists = fs.existsSync(cachedPath) && fs.lstatSync(cachedPath).isFile();
+                            
+                            // Fallback: check .dat if primary failed
+                            if (!exists && ext !== ".dat") {
+                                var fallbackPath = path.join(downloadFolder, rid + ".dat");
+                                exists = fs.existsSync(fallbackPath) && fs.lstatSync(fallbackPath).isFile();
+                                if (exists) cachedPath = fallbackPath;
+                            }
                         } catch (e) {
                             exists = false;
                         }
                         
-                        console.log("[CHECK_CACHE] Path:", cachedPath, "Result:", exists);
+                        if (exists) {
+                            console.log("[CHECK_CACHE] Found:", cachedPath);
+                        }
                         
                         event.source.postMessage({
                             type: 'RESOURCE_STATUS',
@@ -272,11 +286,16 @@
                         if (ext && ext.indexOf(".") !== 0) ext = "." + ext;
                         var url = event.data.url;
 
-                        // Check if file already exists in cache (Use ID + proper extension)
-                        var cachedPath = path.join(downloadFolder, resourceId + (ext || ".dat"));
+                        // Disk file is obfuscated (ID only)
+                        var diskFileName = resourceId + (ext || ".dat");
+                        var cachedPath = path.join(downloadFolder, diskFileName);
+
+                        // Name for Premiere: Current Name + ID
+                        var displayNameForPremiere = displayName + "_" + resourceId;
+
                         if (fs.existsSync(cachedPath)) {
                             console.log("Asset already cached, importing directly:", cachedPath);
-                            importAssetToPremiere(cachedPath, resourceId, displayName);
+                            importAssetToPremiere(cachedPath, resourceId, displayNameForPremiere);
                             return;
                         }
 
@@ -289,7 +308,8 @@
                         status.innerText = "Processing: " + displayName;
 
                         activeDownloads[resourceId] = true;
-                        downloadFile(url, cachedPath, fileName, resourceId, displayName);
+                        var displayNameForPremiere = displayName + "_" + resourceId;
+                        downloadFile(url, cachedPath, fileName, resourceId, displayNameForPremiere);
                     }
                 });
             } else {

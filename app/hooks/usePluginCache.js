@@ -10,7 +10,7 @@ const pluginCacheStore = new Map();
 if (typeof window !== 'undefined') {
   const CACHE_KEY = 'premiere_plugin_cache';
   const VER_KEY = 'premiere_plugin_cache_v';
-  const CURRENT_VER = 'v4'; 
+  const CURRENT_VER = 'v7'; 
 
   try {
     const savedVer = localStorage.getItem(VER_KEY);
@@ -27,6 +27,7 @@ if (typeof window !== 'undefined') {
 const updateCacheStore = (id, status) => {
   if (!id) return;
   const sid = String(id);
+  console.log(`[CacheStore] Updating ${sid} to ${status}`);
   pluginCacheStore.set(sid, status);
   if (typeof window !== 'undefined') {
     try {
@@ -37,7 +38,9 @@ const updateCacheStore = (id, status) => {
         delete saved[sid];
       }
       localStorage.setItem('premiere_plugin_cache', JSON.stringify(saved));
-    } catch (e) {}
+    } catch (e) {
+      console.error("[CacheStore] LocalStorage error:", e);
+    }
   }
 };
 
@@ -47,8 +50,28 @@ const updateCacheStore = (id, status) => {
 export function usePluginCache(resourceId, fileName, fileFormat) {
   const { isPlugin } = useAuth();
   
-  const [downloadStatus, setDownloadStatus] = useState('idle'); 
-  const [progress, setProgress] = useState(0);
+  const [downloadStatus, setDownloadStatus] = useState(() => {
+    if (typeof window !== 'undefined' && resourceId) {
+      const sid = String(resourceId);
+      // 1. Check in-memory store
+      if (pluginCacheStore.has(sid)) return pluginCacheStore.get(sid);
+      
+      // 2. Check localStorage
+      try {
+        const saved = JSON.parse(localStorage.getItem('premiere_plugin_cache') || '{}');
+        if (saved[sid] === 'cached') return 'cached';
+      } catch (e) {}
+    }
+    return 'idle';
+  });
+  
+  const [progress, setProgress] = useState(() => {
+    if (typeof window !== 'undefined' && resourceId) {
+      const sid = String(resourceId);
+      if (pluginCacheStore.get(sid) === 'cached') return 100;
+    }
+    return 0;
+  });
   const [lastError, setLastError] = useState(null);
 
   const isInsidePlugin = isPlugin || (typeof window !== 'undefined' && window.location.search.includes('mode=plugin'));
