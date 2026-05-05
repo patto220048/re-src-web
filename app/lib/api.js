@@ -133,85 +133,72 @@ export async function getResourceBySlug(slug) {
 }
 
 /**
- * Get related resources based on vector similarity.
- * Returns resources with a 'similarity' score for UI display.
+ * Get related resources based on Tag similarity and Category.
+ * This replaces the previous Vector Search to save database space and cost.
  */
 export async function getRelatedResources(resourceId, limit = 6) {
   if (!resourceId) return [];
 
   try {
-    // 1. Get the embedding from resource_embeddings and category from resources
-    const { data: current, error: fetchError } = await supabase
-      .from('resource_embeddings')
-      .select('embedding, resources(category_id)')
+    // 1. Lấy thông tin tags và category của tài nguyên hiện tại
+    const { data: current, error: currentError } = await supabase
+      .from('resources')
+      .select('tags, category_id')
       .eq('id', resourceId)
       .single();
 
-    if (fetchError || !current?.embedding) {
-      console.warn("Could not fetch embedding from resource_embeddings:", fetchError);
-      return [];
-    }
+    if (currentError || !current) return [];
 
-    const categoryId = current.resources?.category_id;
+    const { tags, category_id } = current;
 
-    // 2. Call the RPC v2 to match similar resources
-    const { data, error } = await supabase.rpc('match_resources_v2', {
-      query_embedding: current.embedding,
-      match_threshold: 0.3,
-      match_count: limit * 2,
-      p_exclude_id: resourceId
-    });
-
-    if (error) {
-      console.error('Error fetching related resources (v2):', error);
-      return [];
-    }
-
-    if (!data || data.length === 0) return [];
-
-    // 3. Fetch full details for these resources to get file_format, download_count, etc.
-    const ids = data.map(item => item.id);
-    const { data: details, error: detailsError } = await supabase
+    // 2. Tìm các tài nguyên cùng Category và có ít nhất 1 tag chung
+    // Chúng ta ưu tiên các tài nguyên cùng Category trước
+    let query = supabase
       .from('resources')
       .select(RESOURCE_SUMMARY_COLUMNS)
-      .in('id', ids);
+      .eq('is_published', true)
+      .neq('id', resourceId) // Loại bỏ chính nó
+      .limit(limit * 2); // Lấy dư một chút để sắp xếp
 
-    if (detailsError) {
-      console.error('Error fetching related details:', detailsError);
-      // Fallback to minimal data if details fetch fails
+    // Nếu có tags, tìm các tài nguyên chứa ít nhất một trong các tags đó
+    if (tags && tags.length > 0) {
+      query = query.overlaps('tags', tags);
+    } else {
+      // Nếu không có tags, chỉ lấy cùng category
+      query = query.eq('category_id', category_id);
     }
 
-    // Create a map for quick lookup
-    const detailsMap = (details || []).reduce((acc, item) => {
-      acc[item.id] = item;
-      return acc;
-    }, {});
+    const { data, error } = await query;
 
-    // 4. Post-process: Boost same-category results and map
-    const results = data.map(item => {
-      const fullDetail = detailsMap[item.id] || {};
-      let finalSimilarity = item.similarity;
-      // Small boost for same category to improve relevance
-      if (item.category_id === categoryId || fullDetail.category_id === categoryId) {
-        finalSimilarity += 0.05;
+    if (error) {
+      console.error('Error fetching related resources:', error);
+      return [];
+    }
+
+    // 3. Sắp xếp kết quả: Ưu tiên cùng Category > Số lượng Tag chung > Mới nhất
+    const results = (data || []).map(res => {
+      // Tính toán độ liên quan (Score)
+      let score = 0;
+      
+      // Cùng category: +2 điểm
+      if (res.category_id === category_id) score += 2;
+      
+      // Số lượng tag chung
+      if (tags && res.tags) {
+        const commonTags = res.tags.filter(t => tags.includes(t));
+        score += commonTags.length;
       }
 
       return {
-        ...mapResource({
-          ...fullDetail,
-          ...item, // RPC data takes precedence for similarity, but fullDetail provides missing fields
-          categories: item.category_name 
-            ? { name: item.category_name, slug: item.category_slug }
-            : (fullDetail.categories || null)
-        }),
-        similarity: Math.min(0.99, finalSimilarity)
+        ...mapResource(res),
+        relevanceScore: score
       };
     });
 
-    // Sort by adjusted similarity and limit
     return results
-      .sort((a, b) => b.similarity - a.similarity)
+      .sort((a, b) => b.relevanceScore - a.relevanceScore || new Date(b.created_at) - new Date(a.created_at))
       .slice(0, limit);
+
   } catch (err) {
     console.error('getRelatedResources failed:', err);
     return [];
