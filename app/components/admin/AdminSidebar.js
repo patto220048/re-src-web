@@ -3,7 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  LayoutDashboard, Upload, FolderTree, Tags, Settings, LogOut, ExternalLink, CreditCard, Users, Receipt
+  LayoutDashboard, Upload, FolderTree, Tags, Settings, LogOut, ExternalLink, CreditCard, Users, Receipt, Wrench
 } from "lucide-react";
 import { useAuth } from "@/app/lib/auth-context";
 import styles from "./AdminSidebar.module.css";
@@ -15,6 +15,7 @@ const menuItems = [
   { icon: Tags, label: "Tags", href: "/admin/tags" },
   { icon: Users, label: "Users", href: "/admin/users" },
   { icon: Receipt, label: "Subscriptions", href: "/admin/subscriptions" },
+  { icon: Wrench, label: "Maintenance", href: "/admin/maintenance" },
   { icon: Settings, label: "Settings", href: "/admin/settings", exact: true },
   { icon: CreditCard, label: "PayPal Config", href: "/admin/settings/paypal" },
 ];

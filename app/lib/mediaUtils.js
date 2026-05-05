@@ -63,8 +63,6 @@ export const getMediaType = (res) => {
 export const getOptimizedUrl = (resource, options = {}) => {
   if (!resource) return "";
   
-  // Toggle this based on your Supabase plan (True = Pro, False = Free)
-  // If False, it will always return the original URL
   const IS_SUPABASE_PRO = process.env.NEXT_PUBLIC_SUPABASE_TRANSFORM === 'true';
 
   const { 
@@ -81,7 +79,6 @@ export const getOptimizedUrl = (resource, options = {}) => {
     if (typeof resource === 'string') {
       urlToOptimize = resource;
     } else {
-      // It's a resource object
       if (isVideoFormat(resource)) {
         return resource.previewUrl || resource.downloadUrl || resource.fileUrl || "";
       }
@@ -91,18 +88,17 @@ export const getOptimizedUrl = (resource, options = {}) => {
 
   if (!urlToOptimize) return "";
 
-  // If not Pro or not a Supabase URL, return original
-  if (!IS_SUPABASE_PRO || !urlToOptimize.includes(".supabase.co/storage/v1/object/public/")) {
-    return urlToOptimize;
-  }
+  // Only optimize Supabase Storage URLs
+  const isSupabaseStorage = urlToOptimize.includes(".supabase.co/storage/v1/object/public/");
+  if (!isSupabaseStorage) return urlToOptimize;
 
-  // Strict check for image extensions supported by Supabase Transformation
   const supportedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'avif'];
   const ext = urlToOptimize.split('.').pop()?.toLowerCase();
-  
-  if (supportedExtensions.includes(ext)) {
+  if (!supportedExtensions.includes(ext)) return urlToOptimize;
+
+  // Option A: Use Supabase Pro Transformation if enabled
+  if (IS_SUPABASE_PRO) {
     let transformedUrl = urlToOptimize.replace("/object/public/", "/render/image/public/");
-    
     const params = [];
     if (width) params.push(`width=${width}`);
     if (quality) params.push(`quality=${quality}`);
@@ -114,5 +110,14 @@ export const getOptimizedUrl = (resource, options = {}) => {
     return transformedUrl;
   }
 
-  return urlToOptimize;
+  // Option B: Use FREE Image Proxy (wsrv.nl) - Best for saving Egress on Free Plan
+  // This offloads image bandwidth to wsrv.nl CDN and optimizes on the fly
+  const proxyUrl = new URL("https://wsrv.nl/");
+  proxyUrl.searchParams.set("url", urlToOptimize);
+  if (width) proxyUrl.searchParams.set("w", width.toString());
+  proxyUrl.searchParams.set("q", quality.toString());
+  proxyUrl.searchParams.set("output", "webp"); // Force webp for best compression
+  proxyUrl.searchParams.set("we", ""); // WebP lossless if needed, but here we just use it for proxying
+
+  return proxyUrl.toString();
 };

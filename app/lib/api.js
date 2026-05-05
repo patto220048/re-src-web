@@ -1288,30 +1288,43 @@ export async function syncAllTagsFromResources() {
 
 /**
  * Get global site settings (version, name, status, etc.)
- * Cached for performance.
+ * Safe for both server and client side.
  */
-export const getSiteSettings = unstable_cache(
-  async () => {
+export async function getSiteSettings() {
+  const isServer = typeof window === 'undefined';
+  
+  const fetchLogic = async () => {
     const { data, error } = await supabase
       .from('site_settings')
       .select('*')
       .eq('id', 1)
-      .single();
+      .maybeSingle();
 
-    if (error) {
-      console.warn('Cannot fetch site settings, using defaults:', error);
+    if (error || !data) {
+      if (error) console.warn('Cannot fetch site settings:', error);
       return {
         site_name: 'SFXFolder.com',
         tagline: 'Free Resources for Video Editors',
         project_version: 'v 0.1.16.4',
-        status_text: 'System Online'
+        status_text: 'System Online',
+        contact_email: '',
+        social_links: []
       };
     }
     return data;
-  },
-  ['site-settings'],
-  { revalidate: 3600, tags: ['settings'] }
-);
+  };
+
+  if (isServer && REVALIDATE_TIME !== false) {
+    return unstable_cache(
+      fetchLogic,
+      ['site-settings'],
+      { revalidate: 3600, tags: ['settings'] }
+    )();
+  }
+
+  return fetchLogic();
+}
+
 
 /**
  * Update site settings.

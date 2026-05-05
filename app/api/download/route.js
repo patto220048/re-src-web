@@ -77,11 +77,43 @@ export async function POST(request) {
       );
     }
 
+    // --- RATE LIMITING LOGIC ---
+    const MAX_DAILY_DOWNLOADS = 200;
+    const today = new Date().toISOString().split('T')[0]; // Định dạng YYYY-MM-DD
+    
+    let currentCount = profile?.daily_download_count || 0;
+    const lastDate = profile?.last_download_date;
+
+    // Reset bộ đếm nếu là ngày mới
+    if (lastDate !== today) {
+      currentCount = 0;
+    }
+
+    // Admin không bị giới hạn
+    if (profile?.role !== "admin" && currentCount >= MAX_DAILY_DOWNLOADS) {
+      return NextResponse.json(
+        { error: `Bạn đã đạt giới hạn tải xuống ${MAX_DAILY_DOWNLOADS} file/ngày. Vui lòng quay lại vào ngày mai.` },
+        { status: 429 }
+      );
+    }
+    // --- END RATE LIMITING LOGIC ---
+
     // 4. Increment download count (don't let this block the download if it fails)
     try {
+      // Tăng số lượt tải của tài nguyên
       await incrementDownloadCount(resourceId);
+      
+      // Cập nhật số lượt tải trong ngày của User
+      await supabaseAdmin
+        .from("profiles")
+        .update({
+          daily_download_count: currentCount + 1,
+          last_download_date: today
+        })
+        .eq("id", user.id);
+
     } catch (e) {
-      console.warn("Failed to increment download count:", e);
+      console.warn("Failed to update download stats:", e);
     }
 
     // 5. Generate Signed URL for secure native download

@@ -9,19 +9,19 @@ import { convertToSlug } from './stringUtils';
  * @param {function} onProgress - Progress callback
  * @returns {Promise<string>} Public URL
  */
-export async function uploadFile(file, path, bucket = 'resources', onProgress = null) {
-  // Handle case where bucket is omitted but onProgress is provided as 3rd arg
-  if (typeof bucket === 'function') {
-    onProgress = bucket;
+export async function uploadFile(file, path, bucket = 'resources', options = {}) {
+  const { onProgress = null, cacheControl = '31536000' } = options;
+  
+  // Handle case where bucket is omitted but options is provided as 3rd arg
+  if (typeof bucket === 'object' && !Array.isArray(bucket)) {
+    options = bucket;
     bucket = 'resources';
   }
 
-  // Note: Supabase JS client doesn't have a built-in progress callback like Firebase.
-  // For production, you might want to use XMLHttpRequest or a special library if progress is critical.
   const { data, error } = await supabase.storage
     .from(bucket)
     .upload(path, file, {
-      cacheControl: '3600',
+      cacheControl: cacheControl,
       upsert: true,
     });
 
