@@ -395,10 +395,15 @@ const SoundButton = memo(function SoundButton({
           document.body.removeChild(link);
         }, 100);
       }
-    } catch (err) {
-      console.error("Download failed:", err);
+      // 4. Cleanup UI state (In plugin, hook handles the state via messages)
+      if (!isInsidePlugin) {
+        setIsDownloading(false);
+      }
+    } catch (error) {
+      console.error("Download failed:", error);
+      setIsDownloading(false);
+      alert(error.message || "Failed to download asset.");
     }
-    setIsDownloading(false);
   };
 
   const displayName = (name || fileName || "Untitled").replace(/\.[^/.]+$/, "");
@@ -515,17 +520,17 @@ const SoundButton = memo(function SoundButton({
         aria-label={`${isPlugin ? 'Import' : 'Download'} ${displayName}`}
       >
         {isInsidePlugin ? (
-          <>
+          <div key={downloadStatus}>
             {downloadStatus === 'downloading' ? (
-              <Loader2 size={14} className="animate-spin" />
+              <Loader2 size={14} className="animate-spin" color="white" />
             ) : downloadStatus === 'cached' ? (
               <Plus size={16} color="white" />
             ) : (
               <Download size={16} color="white" />
             )}
-          </>
+          </div>
         ) : (
-          isDownloading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />
+          isDownloading ? <Loader2 size={14} className="animate-spin" color="white" /> : <Download size={14} color="white" />
         )}
       </button>
     </div>

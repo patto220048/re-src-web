@@ -80,15 +80,13 @@ export default function DownloadButton({ downloadUrl, fileUrl, fileName, fileFor
   };
 
   const getIcon = () => {
-    if (state === "done") return <Check size={16} className={styles.checkIcon} />;
-    
     if (isInsidePlugin) {
       if (downloadStatus === 'downloading') return <Loader2 size={16} className={`${styles.loaderIcon} animate-spin`} />;
       if (downloadStatus === 'cached') return <Plus size={16} color="white" />;
-      
       return <Download size={16} className={styles.downloadIcon} />;
     }
 
+    if (state === "done") return <Check size={16} className={styles.checkIcon} />;
     if (state === "downloading") return <Loader2 size={16} className={`${styles.loaderIcon} animate-spin`} />;
     return <Download size={16} className={styles.downloadIcon} />;
   };

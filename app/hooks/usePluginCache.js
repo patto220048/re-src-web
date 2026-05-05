@@ -70,7 +70,7 @@ export function usePluginCache(resourceId, fileName, fileFormat) {
     const handleMessage = (event) => {
       const { type, resourceId: msgResourceId, exists, progress: dlProgress, error } = event.data;
       
-      if (msgResourceId !== resourceId) return;
+      if (String(msgResourceId) !== String(resourceId)) return;
 
       switch (type) {
         case 'RESOURCE_STATUS':
