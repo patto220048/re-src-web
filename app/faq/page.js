@@ -8,9 +8,13 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://sfxfolder.com';
 export const metadata = {
   title: "Q&A - Frequently Asked Questions | SFXFolder",
   description: "Find answers to common questions about SFXFolder resources, Premiere Pro plugin, commercial usage, and more.",
+  keywords: ["SFXFolder FAQ", "Premiere Pro plugin help", "SFX copyright", "video editing assets Q&A", "free sound effects commercial use"],
+  alternates: {
+    canonical: `${SITE_URL}/faq`,
+  },
   openGraph: {
     title: "SFXFolder Q&A - Frequently Asked Questions",
-    description: "Got questions about SFXFolder? We have answers. Learn about our free assets, commercial licensing, and plugin integration.",
+    description: "Got questions about SFXFolder? We have answers. Learn about our assets, maintenance fees, and plugin integration.",
     url: `${SITE_URL}/faq`,
     siteName: "SFXFolder",
     images: [
@@ -18,6 +22,7 @@ export const metadata = {
         url: `${SITE_URL}/og-faq.jpg`,
         width: 1200,
         height: 630,
+        alt: "SFXFolder Q&A Support Center",
       },
     ],
     locale: "en_US",
@@ -34,15 +39,31 @@ export const metadata = {
 const faqs = [
   {
     question: "Is SFXFolder really free?",
-    answer: "Yes, 100%. All resources on SFXFolder are free to download and use in your projects. We believe in providing high-quality tools to the editor community without barriers."
+    answer: "To maintain the quality and reliability of our platform, we collect a small maintenance fee. This allows us to cover essential server costs and licensing fees for high-end third-party resources, ensuring SFXFolder remains a sustainable tool for the editing community."
   },
   {
     question: "Can I use these assets for commercial projects?",
-    answer: "Absolutely. All assets are royalty-free and can be used for both personal and commercial projects, including YouTube videos, feature films, and commercial advertisements."
+    answer: "Absolutely. However, for assets longer than one minute (such as background music tracks), users are responsible for verifying specific copyright status independently. As SFXFolder is a library curated by individual creators and small groups, we cannot guarantee commercial clearance for every extended resource. We recommend reviewing usage rights for long-form content before commercial publication."
   },
   {
     question: "How do I install the Premiere Pro plugin?",
     answer: "You can download the installer from our homepage. Once installed, open Premiere Pro and navigate to Window > Extensions > SFXFolder to start using the plugin directly inside your project."
+  },
+  {
+    question: "When will the DaVinci Resolve and After Effects plugins be available?",
+    answer: "Both are currently in active development. We are working hard to bring the SFXFolder experience to these platforms soon. You can track our progress in the 'New Tools' section on our homepage or follow our community updates."
+  },
+  {
+    question: "Can I request specific sound effects or assets?",
+    answer: "Absolutely! We value our community's input. Feel free to send your requests through our Contact page, and our team will prioritize adding them to our upcoming library updates."
+  },
+  {
+    question: "How often is the library updated with new resources?",
+    answer: "We typically update the SFXFolder library weekly. Our team of curators and creators is constantly sourcing and producing new high-quality assets to ensure your projects always have fresh options."
+  },
+  {
+    question: "How can I contribute my own assets to SFXFolder?",
+    answer: "We welcome contributions from talented creators! If you have high-quality resources you'd like to share with the community, please reach out to us. Selected assets will be featured with full credit to you or your creative team."
   },
   {
     question: "What audio formats are supported?",
@@ -50,7 +71,7 @@ const faqs = [
   },
   {
     question: "Do I need to provide credit when using assets?",
-    answer: "While not required, we always appreciate a shout-out or a link back to SFXFolder. It helps us grow and keep providing free resources for everyone."
+    answer: "While not required, we always appreciate a shout-out or a link back to SFXFolder. It helps us grow and keep providing resources for everyone."
   },
   {
     question: "Is there a download limit?",
