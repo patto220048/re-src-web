@@ -449,65 +449,53 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Invalid payload" }), { status: 400, headers: corsHeaders })
     }
 
-    const subscriptionID = resource.id
-
-    const { data: currentSub } = await supabase
-      .from("subscriptions")
-      .select("auto_renew, status")
-      .eq("paypal_subscription_id", subscriptionID)
-      .single()
+    const subscriptionID = resource.id;
 
     if (eventType.startsWith("BILLING.SUBSCRIPTION.")) {
-      let status = resource.status
-      const nextBillingTime = resource.billing_info?.next_billing_time
+      const nextBillingTime = resource.billing_info?.next_billing_time;
+      const status = resource.status;
 
-      if (eventType === "BILLING.SUBSCRIPTION.RENEWED" && currentSub?.auto_renew === false) {
-        status = "CANCELLED"
+      // Call the consolidated RPC function
+      const { data: result, error: rpcError } = await supabase.rpc('handle_paypal_subscription_update', {
+        p_subscription_id: subscriptionID,
+        p_event_type: eventType,
+        p_status: status,
+        p_next_billing_time: nextBillingTime
+      });
+
+      if (rpcError || !result || result.length === 0) {
+        console.error(`[PayPal Webhook] RPC Error for ${subscriptionID}:`, rpcError);
+        return new Response(JSON.stringify({ error: "Failed to update database" }), { status: 500, headers: corsHeaders });
       }
 
-      const updateData: any = { status, updated_at: new Date().toISOString() }
-      if (nextBillingTime) updateData.current_period_end = nextBillingTime
+      const { user_email: email, final_status: updatedStatus } = result[0];
 
-      await supabase.from("subscriptions").update(updateData).eq("paypal_subscription_id", subscriptionID)
-
-      // Fetch user email for notification
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("email")
-        .eq("subscription_id", subscriptionID)
-        .single()
-
-      if (profile?.email) {
-        console.log(`[Email] Found profile for ${subscriptionID}: ${profile.email}`)
+      if (email) {
+        console.log(`[Email] Found profile for ${subscriptionID}: ${email}`);
         if (eventType === "BILLING.SUBSCRIPTION.CREATED") {
-          const emailHtml = getWelcomeEmailTemplate(subscriptionID)
-          await sendEmail(profile.email, "Welcome to Sfxfolder Premium — Subscription Confirmed", emailHtml)
+          const emailHtml = getWelcomeEmailTemplate(subscriptionID);
+          await sendEmail(email, "Welcome to Sfxfolder Premium — Subscription Confirmed", emailHtml);
         } else if (eventType === "BILLING.SUBSCRIPTION.UPDATED") {
-          const emailHtml = getUpgradeEmailTemplate(subscriptionID)
-          await sendEmail(profile.email, "Sfxfolder Premium — Plan Upgraded Successfully", emailHtml)
+          const emailHtml = getUpgradeEmailTemplate(subscriptionID);
+          await sendEmail(email, "Sfxfolder Premium — Plan Upgraded Successfully", emailHtml);
         } else if (eventType === "BILLING.SUBSCRIPTION.PAYMENT.FAILED") {
-          const emailHtml = getPaymentFailedEmailTemplate(subscriptionID)
-          await sendEmail(profile.email, "Action Required: Payment Failed for Sfxfolder Premium", emailHtml)
+          const emailHtml = getPaymentFailedEmailTemplate(subscriptionID);
+          await sendEmail(email, "Action Required: Payment Failed for Sfxfolder Premium", emailHtml);
         } else if (eventType === "BILLING.SUBSCRIPTION.CANCELLED") {
-          const emailHtml = getExpiryReminderEmailTemplate(subscriptionID)
-          await sendEmail(profile.email, "Sfxfolder Premium — Subscription Expiry Reminder", emailHtml)
-        } else if ((eventType === "BILLING.SUBSCRIPTION.RENEWED" || eventType === "BILLING.SUBSCRIPTION.ACTIVATED") && status === "ACTIVE") {
-          const emailHtml = getRenewalEmailTemplate(subscriptionID, nextBillingTime)
-          await sendEmail(profile.email, "Sfxfolder Premium — Renewal Successful", emailHtml)
+          const emailHtml = getExpiryReminderEmailTemplate(subscriptionID);
+          await sendEmail(email, "Sfxfolder Premium — Subscription Expiry Reminder", emailHtml);
+        } else if ((eventType === "BILLING.SUBSCRIPTION.RENEWED" || eventType === "BILLING.SUBSCRIPTION.ACTIVATED") && updatedStatus === "ACTIVE") {
+          const emailHtml = getRenewalEmailTemplate(subscriptionID, nextBillingTime);
+          await sendEmail(email, "Sfxfolder Premium — Renewal Successful", emailHtml);
         } else {
-          console.log(`[Email] Event ${eventType} with status ${status} does not trigger an email.`)
+          console.log(`[Email] Event ${eventType} with status ${updatedStatus} does not trigger an email.`);
         }
       } else {
-        console.warn(`[Email] No profile found with subscription_id: ${subscriptionID}. Email skipped.`)
+        console.warn(`[Email] No profile found with subscription_id: ${subscriptionID}. Email skipped.`);
       }
 
-      await supabase.from("profiles").update({
-        subscription_status: status.toLowerCase(),
-        subscription_expires_at: nextBillingTime
-      }).eq("subscription_id", subscriptionID)
-
-      console.log(`[PayPal Webhook] Success: Updated ${subscriptionID} to ${status}`)
-      return new Response(JSON.stringify({ success: true, status }), { headers: corsHeaders })
+      console.log(`[PayPal Webhook] Success: Updated ${subscriptionID} to ${updatedStatus}`);
+      return new Response(JSON.stringify({ success: true, status: updatedStatus }), { headers: corsHeaders });
     }
 
     return new Response(JSON.stringify({ success: true, ignored: true }), { headers: corsHeaders })
