@@ -26,6 +26,12 @@ export default function DownloadButton({ downloadUrl, fileUrl, fileName, fileFor
     e.preventDefault();
     e.stopPropagation();
 
+    // If already cached in plugin, just import immediately
+    if (isInsidePlugin && downloadStatus === 'cached') {
+      requestImport(resolvedUrl); // This sends IMPORT_ASSET via hook
+      return;
+    }
+
     if (loading) return;
 
     // Premium Check

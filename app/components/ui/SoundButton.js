@@ -331,6 +331,22 @@ const SoundButton = memo(function SoundButton({
     }
 
     console.log("Starting asset download for Premiere:", id);
+    // 0. If already cached in plugin, just import immediately
+    if (isInsidePlugin && downloadStatus === 'cached') {
+      const getDownloadName = () => {
+        const baseName = (name || fileName || "download").replace(/\.[^/.]+$/, "");
+        const ext = fileFormat ? `.${fileFormat.replace(/^\./, "").toLowerCase()}` : "";
+        return `${baseName}${ext}`;
+      };
+      window.parent.postMessage({
+        type: 'IMPORT_ASSET',
+        url: downloadUrl,
+        fileName: getDownloadName(),
+        resourceId: id
+      }, '*');
+      return;
+    }
+
     if (isDownloading) return;
 
     setIsDownloading(true);
@@ -395,10 +411,8 @@ const SoundButton = memo(function SoundButton({
           document.body.removeChild(link);
         }, 100);
       }
-      // 4. Cleanup UI state (In plugin, hook handles the state via messages)
-      if (!isInsidePlugin) {
-        setIsDownloading(false);
-      }
+      // 4. Cleanup UI state
+      setIsDownloading(false);
     } catch (error) {
       console.error("Download failed:", error);
       setIsDownloading(false);

@@ -273,6 +273,17 @@ export default function PreviewOverlay({ resource, onClose, showDownload = false
                           }
                         } catch (e) {}
 
+                        // If already cached in plugin, just import immediately
+                        if (isInsidePlugin && downloadStatus === 'cached') {
+                          window.parent.postMessage({
+                            type: 'IMPORT_ASSET',
+                            url: resource.url,
+                            fileName: resource.fileName || `${resource.name || 'asset'}.${resource.fileFormat || 'mp3'}`,
+                            resourceId: resource.id
+                          }, '*');
+                          return;
+                        }
+
                         if (isInserting) return;
 
                         // Check auth
