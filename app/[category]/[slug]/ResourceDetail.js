@@ -606,7 +606,7 @@ export default function ResourceDetail({
           <div className={styles.downloadSection}>
             <DownloadButton
               downloadUrl={resolvedUrl}
-              fileName={resource.name}
+              fileName={resource.name || resource.fileName}
               fileFormat={resource.fileFormat}
               resourceId={resource.id}
               isPlugin={isPlugin}

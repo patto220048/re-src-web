@@ -53,7 +53,7 @@ const SoundButton = memo(function SoundButton({
     isInsidePlugin, 
     importAsset, 
     downloadResource 
-  } = usePluginCache(id, fileName, fileFormat);
+  } = usePluginCache(id, name || fileName, fileFormat);
   
   const { user, session, isPremium: userIsPremium, isAdmin, loading } = useAuth();
   const router = useRouter();

@@ -641,7 +641,7 @@ const ResourceCard = memo(function ResourceCard({
         )}
         <DownloadButton 
           downloadUrl={resolvedUrl} 
-          fileName={name} 
+          fileName={name || fileName} 
           fileFormat={fileFormat} 
           resourceId={id} 
           isPlugin={isPlugin}

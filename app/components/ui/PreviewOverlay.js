@@ -24,7 +24,7 @@ export default function PreviewOverlay({ resource, onClose, showDownload = false
     isInsidePlugin, 
     importAsset,
     downloadResource 
-  } = usePluginCache(resource?.id, resource?.fileName, resource?.fileFormat);
+  } = usePluginCache(resource?.id, resource?.name || resource?.fileName, resource?.fileFormat);
 
   useEffect(() => {
     console.log("PreviewOverlay mounted:", { 
