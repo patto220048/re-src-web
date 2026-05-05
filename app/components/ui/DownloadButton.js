@@ -1,10 +1,8 @@
-"use client";
-
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Download, Check, Loader2, Plus } from "lucide-react";
-import { incrementDownloadCount } from "@/app/lib/api";
 import { useAuth } from "@/app/lib/auth-context";
+import { usePluginCache } from "@/app/hooks/usePluginCache";
 import styles from "./DownloadButton.module.css";
 
 export default function DownloadButton({ downloadUrl, fileUrl, fileName, fileFormat, resourceId, size, isPremiumResource, isPlugin = false }) {
@@ -12,43 +10,35 @@ export default function DownloadButton({ downloadUrl, fileUrl, fileName, fileFor
   const { user, session, isPremium, isAdmin, loading } = useAuth();
   const router = useRouter();
 
-  // Resolve URL: prefer downloadUrl, fallback to fileUrl
-  const resolvedUrl = downloadUrl || fileUrl;
-
-  const isInsidePlugin = isPlugin || (typeof window !== 'undefined' && window.location.search.includes('mode=plugin'));
-
-  // Build proper filename with extension
-  const getDownloadName = () => {
+  // Resolve proper filename with extension
+  const getFullFileName = () => {
     const baseName = fileName?.replace(/\.[^/.]+$/, "") || "download";
     const ext = fileFormat ? `.${fileFormat.replace(/^\./, "").toLowerCase()}` : "";
     return `${baseName}${ext}`;
   };
 
+  // Use our new reusable hook
+  const { downloadStatus, progress, isInsidePlugin, requestImport } = usePluginCache(resourceId, getFullFileName(), fileFormat);
+
+  const resolvedUrl = downloadUrl || fileUrl;
+
   const handleClick = async (e) => {
     e.preventDefault();
     e.stopPropagation();
 
-    if (loading) {
-      alert("Still checking your account... please wait a second.");
-      return;
-    }
+    if (loading) return;
 
-    // Premium Check - All resources now require Premium
+    // Premium Check
     if (!isAdmin && !isPremium) {
-      if (isInsidePlugin) {
-        alert("Please login with a Premium account to add assets to Premiere.");
-      } else {
-        alert("Please upgrade to a Premium account to download this asset.");
-      }
       window.dispatchEvent(new CustomEvent("need-premium"));
       return;
     }
 
-    if (state !== "idle") return;
+    if (state !== "idle" || (isInsidePlugin && downloadStatus === 'downloading')) return;
     setState("downloading");
 
     try {
-      // 1. Call our API to increment count and get a Secure Signed Download URL
+      // 1. Get Secure Signed Download URL
       const headers = { 'Content-Type': 'application/json' };
       if (session?.access_token) {
         headers['Authorization'] = `Bearer ${session.access_token}`;
@@ -60,44 +50,26 @@ export default function DownloadButton({ downloadUrl, fileUrl, fileName, fileFor
         body: JSON.stringify({ resourceId: resourceId }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        if (errorData.requiresPremium) {
-          window.dispatchEvent(new CustomEvent("need-premium"));
-          throw new Error("Premium required");
-        }
-        throw new Error(errorData.error || "Download failed");
-      }
+      if (!response.ok) throw new Error("Download failed");
 
       const { downloadUrl: signedUrl } = await response.json();
-      
-      if (!signedUrl) throw new Error("No download URL returned");
+      if (!signedUrl) throw new Error("No download URL");
 
       if (isInsidePlugin) {
-        // 2. Tích hợp với Premiere Plugin: Gửi URL để Plugin tự tải và import
-        console.log("POSTING MESSAGE TO PARENT:", signedUrl);
-        window.parent.postMessage({
-          type: 'IMPORT_ASSET',
-          url: signedUrl,
-          fileName: getDownloadName(),
-          resourceId: resourceId
-        }, '*');
-        
-        setState("done");
-        setTimeout(() => setState("idle"), 2000);
+        // 2. Delegate to Plugin Shell via Hook
+        requestImport(signedUrl);
+        // We stay in 'downloading' until Shell reports 'IMPORT_COMPLETE' (not implemented in hook yet for 'state', but UI will show progress)
+        // For simple UI feedback, we can set done after a while if not using full sync
+        setTimeout(() => setState("idle"), 1000); 
       } else {
-        // 2. Trigger Native Browser Download via Hidden Anchor
+        // 2. Standard Browser Download
         const link = document.createElement('a');
         link.href = signedUrl;
         link.style.display = 'none';
         document.body.appendChild(link);
         link.click();
+        setTimeout(() => document.body.removeChild(link), 100);
         
-        // Cleanup
-        setTimeout(() => {
-          document.body.removeChild(link);
-        }, 100);
-
         setState("done");
         setTimeout(() => setState("idle"), 2000);
       }
@@ -107,25 +79,42 @@ export default function DownloadButton({ downloadUrl, fileUrl, fileName, fileFor
     }
   };
 
+  const getIcon = () => {
+    if (state === "done") return <Check size={16} className={styles.checkIcon} />;
+    
+    if (isInsidePlugin) {
+      if (downloadStatus === 'downloading') return <Loader2 size={16} className={`${styles.loaderIcon} animate-spin`} />;
+      if (downloadStatus === 'cached') return <Plus size={16} color="#4ade80" />;
+      
+      return <Download size={16} className={styles.downloadIcon} />;
+    }
+
+    if (state === "downloading") return <Loader2 size={16} className={`${styles.loaderIcon} animate-spin`} />;
+    return <Download size={16} className={styles.downloadIcon} />;
+  };
+
+  const getLabel = () => {
+    if (state === "done") return "Done!";
+    if (isInsidePlugin) {
+      if (downloadStatus === 'downloading') return `${Math.round(progress)}%`;
+      if (downloadStatus === 'cached') return "Add";
+      return "Download Asset"; 
+    }
+    if (state === "downloading") return "...";
+    return "Download";
+  };
+
   return (
     <button
-      className={`${styles.btn} ${styles[state]} ${size === "compact" ? styles.compact : ""}`}
+      className={`${styles.btn} ${styles[state]} ${size === "compact" ? styles.compact : ""} ${isInsidePlugin && downloadStatus === 'cached' ? styles.cached : ""}`}
       onClick={handleClick}
-      disabled={state === "downloading" || !resolvedUrl}
+      disabled={(state === "downloading" && !isInsidePlugin) || !resolvedUrl || (isInsidePlugin && downloadStatus === 'downloading')}
       aria-label={`${isInsidePlugin ? 'Add' : 'Download'} ${fileName || "file"}`}
     >
-      {state === "done" ? (
-        <Check size={16} className={styles.checkIcon} />
-      ) : state === "downloading" ? (
-        <Loader2 size={16} className={styles.loaderIcon} />
-      ) : (
-        isInsidePlugin ? <Plus size={16} color="white" /> : <Download size={16} className={styles.downloadIcon} />
-      )}
-      {size !== "compact" && !isInsidePlugin && (
+      {getIcon()}
+      {size !== "compact" && (
         <span className={styles.text}>
-          {state === "idle" && "Download"}
-          {state === "downloading" && "..."}
-          {state === "done" && "Done!"}
+          {getLabel()}
         </span>
       )}
     </button>

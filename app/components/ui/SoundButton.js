@@ -2,8 +2,9 @@
 
 import { memo, useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { Download, Eye, Plus } from "lucide-react";
+import { Download, Eye, Plus, Loader2 } from "lucide-react";
 import { useAuth } from "@/app/lib/auth-context";
+import { usePluginCache } from "@/app/hooks/usePluginCache";
 import { incrementDownloadCount } from "@/app/lib/api";
 import { mediaManager } from "@/app/lib/mediaManager";
 import { isVideoFormat, isImageFormat, isFontFormat, isAudioFormat } from "@/app/lib/mediaUtils";
@@ -47,6 +48,8 @@ const SoundButton = memo(function SoundButton({
   const [isHovered, setIsHovered] = useState(false);
   
   const isInsidePlugin = isPlugin || (typeof window !== 'undefined' && window.location.search.includes('mode=plugin'));
+  
+  const { downloadStatus, progress: pluginProgress } = usePluginCache(id, fileName, fileFormat);
   
   const { user, session, isPremium: userIsPremium, isAdmin, loading } = useAuth();
   const router = useRouter();
@@ -332,11 +335,18 @@ const SoundButton = memo(function SoundButton({
 
     setIsDownloading(true);
     try {
-      // 1. Call our API to increment count and get a Secure Signed Download URL
-      const headers = { 'Content-Type': 'application/json' };
-      if (session?.access_token) {
-        headers['Authorization'] = `Bearer ${session.access_token}`;
+      // Check for session explicitly
+      if (!session?.access_token) {
+        console.error("No access token found in session:", session);
+        alert("Your session has expired. Please sign out and sign in again.");
+        return;
       }
+
+      // 1. Call our API to increment count and get a Secure Signed Download URL
+      const headers = { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`
+      };
 
       const response = await fetch('/api/download', {
         method: 'POST',
@@ -498,14 +508,28 @@ const SoundButton = memo(function SoundButton({
         </button>
       )}
 
-      {/* Download */}
       <button
         className={styles.downloadBtn}
         onClick={handleDownload}
-        disabled={isDownloading || !downloadUrl}
+        disabled={isDownloading || !downloadUrl || (isInsidePlugin && downloadStatus === 'downloading')}
         aria-label={`${isPlugin ? 'Import' : 'Download'} ${displayName}`}
       >
-        {isPlugin ? <Plus size={16} color="white" /> : <Download size={14} />}
+        {isInsidePlugin ? (
+          <>
+            {downloadStatus === 'downloading' ? (
+              <div className="flex items-center gap-1">
+                <Loader2 size={14} className="animate-spin" />
+                <span style={{ fontSize: '10px' }}>{Math.round(pluginProgress)}%</span>
+              </div>
+            ) : downloadStatus === 'cached' ? (
+              <Plus size={16} color="#4ade80" />
+            ) : (
+              <Download size={16} color="#ffcc00" />
+            )}
+          </>
+        ) : (
+          isDownloading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />
+        )}
       </button>
     </div>
   );

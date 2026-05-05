@@ -79,3 +79,14 @@
 .text {
   white-space: nowrap;
 }
+
+.btn.cached {
+  background: #22c55e; /* Green-500 */
+  border-color: #16a34a;
+  color: white;
+}
+
+.btn.cached:hover {
+  background: #16a34a;
+  box-shadow: 4px 4px 0px rgba(22, 163, 74, 0.3);
+}

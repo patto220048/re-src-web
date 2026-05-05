@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { X, Music } from "lucide-react";
+import { X, Music, Download, Plus, Loader2 } from "lucide-react";
 import { mediaManager } from "@/app/lib/mediaManager";
+import { usePluginCache } from "@/app/hooks/usePluginCache";
 import dynamic from "next/dynamic";
 const LUTPreview = dynamic(() => import("./LUTPreview"), {
   loading: () => <div style={{ height: '500px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#000', borderRadius: '12px' }}>Loading Preview...</div>,
@@ -17,6 +18,7 @@ export default function PreviewOverlay({ resource, onClose, showDownload = false
   const mediaRef = useRef(null);
   const [isHovering, setIsHovering] = useState(false);
   const { user, session, isPremium, isAdmin } = useAuth();
+  const { downloadStatus, progress: pluginProgress } = usePluginCache(resource?.id, resource?.fileName, resource?.fileFormat);
 
   useEffect(() => {
     console.log("PreviewOverlay mounted:", { 
@@ -281,12 +283,17 @@ export default function PreviewOverlay({ resource, onClose, showDownload = false
                         
                         setIsInserting(true);
                         
+                        if (!session?.access_token) {
+                          alert("Your session has expired. Please sign out and sign in again.");
+                          return;
+                        }
+
                         // 1. Fetch secure signed URL from API
                         console.log("Calling /api/download for resource:", resource.id);
-                        const headers = { 'Content-Type': 'application/json' };
-                        if (session?.access_token) {
-                          headers['Authorization'] = `Bearer ${session.access_token}`;
-                        }
+                        const headers = { 
+                          'Content-Type': 'application/json',
+                          'Authorization': `Bearer ${session.access_token}`
+                        };
 
                         const response = await fetch('/api/download', {
                           method: 'POST',
@@ -328,7 +335,33 @@ export default function PreviewOverlay({ resource, onClose, showDownload = false
                       }
                     }}
                   >
-                    {isInserting ? "PREPARING..." : "INSERT"}
+                    {isInserting ? (
+                      <div className="flex items-center gap-2">
+                        <Loader2 size={16} className="animate-spin" />
+                        <span>PREPARING...</span>
+                      </div>
+                    ) : (
+                      isPlugin && (
+                        <>
+                          {downloadStatus === 'downloading' ? (
+                            <div className="flex items-center gap-2">
+                              <Loader2 size={16} className="animate-spin" />
+                              <span>DOWNLOADING {Math.round(pluginProgress)}%</span>
+                            </div>
+                          ) : downloadStatus === 'cached' ? (
+                            <div className="flex items-center gap-2" style={{ color: '#4ade80' }}>
+                              <Plus size={18} />
+                              <span>ADD TO TIMELINE</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-2" style={{ color: '#ffcc00' }}>
+                              <Download size={18} />
+                              <span>DOWNLOAD ASSET</span>
+                            </div>
+                          )}
+                        </>
+                      )
+                    )}
                   </button>
                 )}
                 {!isPlugin && (

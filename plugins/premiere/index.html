@@ -202,14 +202,41 @@
                         return;
                     }
 
+                    // --- New Resource Status Tracking ---
+                    if (event.data.type === 'CHECK_RESOURCE_STATUS') {
+                        var rid = event.data.resourceId;
+                        var fileName = event.data.fileName;
+                        var cachedPath = path.join(downloadFolder, rid + "_" + fileName);
+                        var exists = fs.existsSync(cachedPath);
+                        
+                        console.log("Checking cache for:", rid, fileName);
+                        console.log("Full path:", cachedPath);
+                        console.log("Exists:", exists);
+                        
+                        event.source.postMessage({
+                            type: 'RESOURCE_STATUS',
+                            resourceId: rid,
+                            exists: exists
+                        }, '*');
+                        return;
+                    }
+
                     var activeDownloads = window._activeDownloads || {};
                     window._activeDownloads = activeDownloads;
 
                     if (event.data.type === 'IMPORT_ASSET') {
                         var fileName = event.data.fileName;
                         var resourceId = event.data.resourceId || 'unknown';
+                        var url = event.data.url;
 
-                        // Avoid concurrent downloads of the same specific resource
+                        // Check if file already exists in cache
+                        var cachedPath = path.join(downloadFolder, resourceId + "_" + fileName);
+                        if (fs.existsSync(cachedPath)) {
+                            console.log("Asset already cached, importing directly:", cachedPath);
+                            importAssetToPremiere(cachedPath, resourceId);
+                            return;
+                        }
+
                         if (activeDownloads[resourceId]) {
                             console.log("Download already in progress for:", resourceId);
                             return;
@@ -218,14 +245,8 @@
                         var status = document.getElementById('status');
                         status.innerText = "Downloading: " + fileName;
 
-                        // Use a unique filename with timestamp to avoid EBUSY (file busy/locked) errors
-                        // when the same file is downloaded multiple times or still being accessed
-                        var timestamp = new Date().getTime();
-                        var uniqueFileName = timestamp + "_" + fileName;
-                        var targetPath = path.join(downloadFolder, uniqueFileName);
-
                         activeDownloads[resourceId] = true;
-                        downloadFile(event.data.url, targetPath, fileName, resourceId);
+                        downloadFile(url, cachedPath, fileName, resourceId);
                     }
                 });
             } else {
@@ -235,9 +256,29 @@
             showError("System Error: " + e.message);
         }
 
+        function importAssetToPremiere(filePath, resourceId) {
+            var status = document.getElementById('status');
+            status.innerText = "Importing to Timeline...";
+            var safePath = filePath.replace(/\\/g, '/');
+            csInterface.evalScript('importToTimeline("' + safePath + '")', function (result) {
+                status.innerText = result || "Done";
+                // Notify iframe that import is complete
+                var iframe = document.getElementById('web-container');
+                if (iframe && iframe.contentWindow) {
+                    iframe.contentWindow.postMessage({
+                        type: 'IMPORT_COMPLETE',
+                        resourceId: resourceId,
+                        success: true
+                    }, '*');
+                }
+            });
+        }
+
         function downloadFile(url, dest, originalName, resourceId) {
             var status = document.getElementById('status');
             var progressBar = document.getElementById('progress-bar');
+            var iframe = document.getElementById('web-container');
+            
             document.getElementById('download-progress').style.display = 'block';
             progressBar.style.width = '0%';
 
@@ -249,7 +290,8 @@
                     status.innerText = "Download Error: " + response.statusCode;
                     document.getElementById('download-progress').style.display = 'none';
                     file.close();
-                    fs.unlink(dest, function () { }); // Xóa file lỗi
+                    fs.unlink(dest, function () { });
+                    if (window._activeDownloads) delete window._activeDownloads[resourceId];
                     return;
                 }
 
@@ -261,6 +303,15 @@
                     if (len) {
                         var percent = (100.0 * cur / len).toFixed(2);
                         progressBar.style.width = percent + '%';
+                        
+                        // Notify iframe of progress
+                        if (iframe && iframe.contentWindow) {
+                            iframe.contentWindow.postMessage({
+                                type: 'DOWNLOAD_PROGRESS',
+                                resourceId: resourceId,
+                                progress: percent
+                            }, '*');
+                        }
                     }
                 });
 
@@ -270,11 +321,17 @@
                     file.close(function () {
                         if (window._activeDownloads) delete window._activeDownloads[resourceId];
                         document.getElementById('download-progress').style.display = 'none';
-                        status.innerText = "Importing to Timeline...";
-                        var safePath = dest.replace(/\\/g, '/');
-                        csInterface.evalScript('importToTimeline("' + safePath + '")', function (result) {
-                            status.innerText = result || "Done";
-                        });
+                        
+                        // Notify iframe download is done
+                        if (iframe && iframe.contentWindow) {
+                            iframe.contentWindow.postMessage({
+                                type: 'DOWNLOAD_COMPLETE',
+                                resourceId: resourceId,
+                                success: true
+                            }, '*');
+                        }
+
+                        importAssetToPremiere(dest, resourceId);
                     });
                 });
             });
@@ -285,6 +342,14 @@
                 document.getElementById('download-progress').style.display = 'none';
                 file.close();
                 fs.unlink(dest, function () { });
+                
+                if (iframe && iframe.contentWindow) {
+                    iframe.contentWindow.postMessage({
+                        type: 'DOWNLOAD_ERROR',
+                        resourceId: resourceId,
+                        error: err.message
+                    }, '*');
+                }
             });
         }
     </script>
