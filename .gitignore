@@ -49,3 +49,8 @@ next-env.d.ts
 .claude
 .agents
 .skills-lock.json
+
+# logs
+*.log
+lint-output*.txt
+build-output.log
