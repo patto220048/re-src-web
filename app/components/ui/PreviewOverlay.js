@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { X, Music, Download, Plus, Loader2 } from "lucide-react";
+import { X, Music, Download, Plus, Loader2, Video } from "lucide-react";
 import { mediaManager } from "@/app/lib/mediaManager";
 import { usePluginCache } from "@/app/hooks/usePluginCache";
 import dynamic from "next/dynamic";
