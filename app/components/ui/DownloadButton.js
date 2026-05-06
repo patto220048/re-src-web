@@ -109,13 +109,13 @@ export default function DownloadButton({ downloadUrl, fileUrl, fileName, fileFor
 
   return (
     <button
-      className={`${styles.btn} ${styles[state]} ${size === "compact" ? styles.compact : ""} ${isInsidePlugin && downloadStatus === 'cached' ? styles.cached : ""}`}
+      className={`${styles.btn} ${styles[state]} ${size === "compact" ? styles.compact : ""} ${size === "minimal" ? styles.minimal : ""} ${isInsidePlugin && downloadStatus === 'cached' ? styles.cached : ""}`}
       onClick={handleClick}
       disabled={(state === "downloading" && !isInsidePlugin) || !resolvedUrl || (isInsidePlugin && downloadStatus === 'downloading')}
       aria-label={`${isInsidePlugin ? 'Add' : 'Download'} ${fileName || "file"}`}
     >
       {getIcon()}
-      {size !== "compact" && (
+      {size !== "compact" && size !== "minimal" && (
         <span className={styles.text}>
           {getLabel()}
         </span>

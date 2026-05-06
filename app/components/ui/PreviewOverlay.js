@@ -165,11 +165,11 @@ export default function PreviewOverlay({ resource, onClose, showDownload = false
   return (
     <div className={styles.previewOverlay} onClick={onClose}>
       <div 
-        className={styles.previewContent} 
+        className={`${styles.previewContent} ${isPlugin ? styles.plugin : ""}`} 
         onClick={(e) => e.stopPropagation()}
       >
         <button className={styles.closePreview} onClick={onClose} title="Close (Esc)">
-          <X size={24} />
+          <X size={isPlugin ? 18 : 24} />
         </button>
         
         <div 
@@ -380,14 +380,14 @@ export default function PreviewOverlay({ resource, onClose, showDownload = false
                               <span>DOWNLOADING...</span>
                             </div>
                           ) : downloadStatus === 'cached' ? (
-                            <div className="flex items-center gap-2" style={{ color: 'white' }}>
+                            <div className="flex items-center gap-2">
                               <Plus size={18} />
-                              <span>ADD TO TIMELINE</span>
+                              <span>{isPlugin ? 'ADD' : 'ADD TO TIMELINE'}</span>
                             </div>
                           ) : (
-                            <div className="flex items-center gap-2" style={{ color: 'white' }}>
+                            <div className="flex items-center gap-2">
                               <Download size={18} />
-                              <span>DOWNLOAD ASSET</span>
+                              <span>{isPlugin ? 'DOWNLOAD' : 'DOWNLOAD ASSET'}</span>
                             </div>
                           )}
                         </>

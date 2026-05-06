@@ -28,6 +28,25 @@
   gap: 0;
 }
 
+.btn.minimal {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  padding: 0;
+  gap: 0;
+  border-color: var(--border-default);
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.btn.minimal:hover {
+  border-color: var(--border-active);
+  color: var(--text-primary);
+  background: var(--bg-hover);
+  transform: none;
+  box-shadow: none;
+}
+
 .btn:hover {
   transform: translate(-3px, -3px);
   box-shadow: 4px 4px 0px var(--text-muted);

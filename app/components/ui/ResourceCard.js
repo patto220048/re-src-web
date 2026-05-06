@@ -588,7 +588,7 @@ const ResourceCard = memo(function ResourceCard({
 
   return (
     <div
-      className={styles.card}
+      className={`${styles.card} ${isPlugin ? styles.compact : ""}`}
       style={{ 
         "--stagger-index": index,
         "--cat-color": primaryColor
@@ -597,57 +597,104 @@ const ResourceCard = memo(function ResourceCard({
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
-      <div className={styles.previewClickArea} onClick={() => onPreview && onPreview()}>
-        {renderPreview()}
-      </div>
-
-      <div className={styles.info} onClick={() => onPreview && onPreview()}>
-        <h3 className={styles.name} title={name}>{displayName}</h3>
-
-        <div className={styles.meta}>
-          <span className={styles.size}>{formatSize(fileSize)}</span>
-          <span className={styles.downloads}>
-            <DownloadCount size={12} />
-            {(downloadCount || 0).toLocaleString()}
-          </span>
-        </div>
-
-        {tags.length > 0 && (
-          <div className={styles.tags}>
-            {tags.slice(0, 3).map((tag) => (
-              <span key={tag} className={styles.tag}>{tag}</span>
-            ))}
+      {isPlugin ? (
+        <>
+          {/* Compact Left: Small Thumbnail */}
+          <div className={styles.compactPreview} onClick={() => onPreview && onPreview()}>
+            {thumbnailUrl ? (
+              <Image 
+                width={64}
+                height={44}
+                src={getOptimizedUrl(thumbnailUrl, { width: 120 })} 
+                alt={displayName} 
+                className={styles.compactThumbnail} 
+              />
+            ) : (
+              <div className={styles.compactPlaceholder}>
+                <span>{fileFormat?.toUpperCase().slice(0, 3)}</span>
+              </div>
+            )}
+            <div className={styles.compactPlayIcon}>
+              <Play size={10} fill="currentColor" />
+            </div>
           </div>
-        )}
-      </div>
 
-      <div className={styles.actions}>
-        {!isPlugin && (onPreview || detailUrl) && (
-          <button
-            type="button"
-            className={styles.detailBtn}
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              if (detailUrl) {
-                router.push(detailUrl);
-              } else if (onPreview) {
-                onPreview();
-              }
-            }}
-            title="View details"
-          >
-            <Eye size={16} />
-          </button>
-        )}
-        <DownloadButton 
-          downloadUrl={resolvedUrl} 
-          fileName={name || fileName} 
-          fileFormat={fileFormat} 
-          resourceId={id} 
-          isPlugin={isPlugin}
-        />
-      </div>
+          {/* Compact Middle: Info */}
+          <div className={styles.compactInfo} onClick={() => onPreview && onPreview()}>
+            <h3 className={styles.compactName} title={name}>{displayName}</h3>
+            <div className={styles.compactMeta}>
+              {fileFormat && <span className={styles.format}>{fileFormat}</span>}
+              <span className={styles.size}>{formatSize(fileSize)}</span>
+            </div>
+          </div>
+
+          {/* Compact Right: Actions */}
+          <div className={styles.compactActions}>
+            <DownloadButton 
+              downloadUrl={resolvedUrl} 
+              fileName={name || fileName} 
+              fileFormat={fileFormat} 
+              resourceId={id} 
+              isPlugin={isPlugin}
+              size="minimal"
+            />
+          </div>
+        </>
+      ) : (
+        <>
+          <div className={styles.previewClickArea} onClick={() => onPreview && onPreview()}>
+            {renderPreview()}
+          </div>
+
+          <div className={styles.info} onClick={() => onPreview && onPreview()}>
+            <h3 className={styles.name} title={name}>{displayName}</h3>
+
+            <div className={styles.meta}>
+              <span className={styles.size}>{formatSize(fileSize)}</span>
+              <span className={styles.downloads}>
+                <DownloadCount size={12} />
+                {(downloadCount || 0).toLocaleString()}
+              </span>
+            </div>
+
+            {tags.length > 0 && (
+              <div className={styles.tags}>
+                {tags.slice(0, 3).map((tag) => (
+                  <span key={tag} className={styles.tag}>{tag}</span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className={styles.actions}>
+            {!isPlugin && (onPreview || detailUrl) && (
+              <button
+                type="button"
+                className={styles.detailBtn}
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (detailUrl) {
+                    router.push(detailUrl);
+                  } else if (onPreview) {
+                    onPreview();
+                  }
+                }}
+                title="View details"
+              >
+                <Eye size={16} />
+              </button>
+            )}
+            <DownloadButton 
+              downloadUrl={resolvedUrl} 
+              fileName={name || fileName} 
+              fileFormat={fileFormat} 
+              resourceId={id} 
+              isPlugin={isPlugin}
+            />
+          </div>
+        </>
+      )}
     </div>
   );
 });

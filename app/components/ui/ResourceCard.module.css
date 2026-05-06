@@ -14,6 +14,148 @@
   animation-delay: calc(var(--stagger-index, 0) * 25ms);
 }
 
+.card.compact {
+  flex-direction: row;
+  height: 70px;
+  align-items: center;
+  padding: var(--space-3) var(--space-4);
+  gap: var(--space-4);
+}
+
+.card.compact:hover {
+  transform: none;
+  box-shadow: none;
+  border-color: var(--border-active);
+  background: var(--bg-hover);
+}
+
+.compactPreview {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  background: var(--bg-surface);
+  flex-shrink: 0;
+  cursor: pointer;
+  overflow: hidden;
+  border: 1px solid var(--border-default);
+}
+
+.compactThumbnail {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+
+.compactPreview:hover .compactThumbnail {
+  transform: scale(1.1);
+}
+
+.compactPlaceholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.compactPlayIcon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 24px;
+  height: 24px;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.2s;
+  z-index: 2;
+}
+
+.compactPreview:hover .compactPlayIcon {
+  opacity: 1;
+}
+
+.compactInfo {
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+}
+
+.compactName {
+  font-family: var(--font-heading);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+}
+
+.compactMeta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-weight: 500;
+}
+
+.compactActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.compactDownloadBtn,
+.compactPreviewBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  border: 1px solid var(--border-default);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.compactDownloadBtn:hover,
+.compactPreviewBtn:hover {
+  border-color: var(--border-active);
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.compactDownloadBtn:active,
+.compactPreviewBtn:active {
+  transform: scale(0.9);
+}
+
+.compactDownloadBtn.cached {
+  background: var(--text-primary);
+  color: var(--bg-primary);
+  border-color: var(--text-primary);
+}
+
 .card:hover {
   border-color: var(--cat-color, var(--text-primary));
   transform: translate(-3px, -3px);

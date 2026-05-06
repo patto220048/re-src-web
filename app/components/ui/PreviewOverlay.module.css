@@ -11,7 +11,7 @@
   align-items: center;
   justify-content: center;
   z-index: 100000;
-  padding: 20px;
+  padding: clamp(10px, 4vw, 20px);
   animation: overlayFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
@@ -32,7 +32,17 @@
   flex-direction: column;
   box-shadow: 12px 12px 0px rgba(0, 0, 0, 0.5);
   overflow: hidden;
-  margin: auto; /* Safety for flex centering */
+  margin: auto;
+}
+
+@media (max-width: 768px) {
+  .previewContent {
+    width: 95vw;
+    max-width: 95vw;
+    min-width: unset;
+    border-width: 2px;
+    max-height: 85vh;
+  }
 }
 
 /* Dark mode compatibility if needed */
@@ -278,9 +288,9 @@
 }
 
 .insertBtn {
-  background: var(--premium-gold);
-  color: #000;
-  border: none;
+  background: var(--text-primary);
+  color: var(--bg-primary);
+  border: 1px solid var(--text-primary);
   padding: 0 20px;
   height: 42px;
   font-family: var(--font-mono);
@@ -295,7 +305,124 @@
 }
 
 .insertBtn:hover {
-  filter: brightness(1.1);
-  transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
+  transform: translate(-3px, -3px);
+  box-shadow: 4px 4px 0px var(--text-muted);
+}
+
+/* Plugin Specific Styles */
+.previewContent.plugin {
+  max-width: 420px; /* Fixed compact width for Premiere panels */
+  width: 92vw;
+  max-height: 80vh;
+  border: 1px solid #333;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+  background: #111;
+  border-radius: 8px;
+}
+
+.previewContent.plugin .previewMedia {
+  border-bottom: 1px solid #333;
+  background: #000;
+  flex: none;
+  min-height: 180px;
+  max-height: 55vh; /* Responsive max height */
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Responsive adjustments for short panels */
+@media (max-height: 600px) {
+  .previewContent.plugin {
+    max-height: 95vh;
+  }
+  .previewContent.plugin .previewMedia {
+    min-height: 140px;
+    max-height: 45vh;
+  }
+}
+
+/* Responsive adjustments for narrow panels */
+@media (max-width: 350px) {
+  .previewContent.plugin .previewInfo {
+    padding: 10px 12px;
+  }
+  .previewContent.plugin .previewInfo h2 {
+    font-size: 1rem;
+  }
+  .previewContent.plugin .previewMeta {
+    font-size: 0.7rem;
+    flex-wrap: wrap;
+  }
+  .previewContent.plugin .closePreview {
+    top: 8px;
+    right: 8px;
+  }
+}
+
+.previewContent.plugin .previewInfo {
+  padding: 12px 16px;
+  background: #111;
+}
+
+.previewContent.plugin .previewInfo h2 {
+  font-size: 1.1rem;
+  margin-bottom: 8px;
+  color: #fff !important;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.previewContent.plugin .previewMeta {
+  margin-bottom: 10px;
+  font-size: 0.75rem;
+  gap: 6px;
+  color: #888;
+}
+
+.previewContent.plugin .previewTags {
+  gap: 4px;
+  display: flex;
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
+.previewContent.plugin .previewTag {
+  padding: 2px 8px;
+  font-size: 0.7rem;
+  background: #222;
+  border-color: #333;
+  color: #aaa;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+  flex-shrink: 0;
+}
+
+.previewContent.plugin .closePreview {
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  border: 1px solid #333;
+  background: #000;
+}
+
+.previewContent.plugin .insertBtn {
+  height: 34px;
+  padding: 0 14px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.previewContent.plugin .audioPlayerUI {
+  gap: 15px;
+}
+
+.previewContent.plugin .audioVisualizer {
+  height: 60px;
 }

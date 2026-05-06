@@ -139,7 +139,7 @@ const ResourceGrid = ({
       if (isPlugin) return width > 600 ? 2 : 1;
       return width > 1400 ? 3 : width > 900 ? 2 : 1;
     }
-    if (isPlugin) return width > 600 ? 3 : width > 350 ? 2 : 1;
+    if (isPlugin) return width > 600 ? 2 : 1; // Match sound layout in plugin
     return width > 1200 ? 4 : width > 900 ? 3 : width > 768 ? 2 : 1;
   };
 
@@ -156,12 +156,12 @@ const ResourceGrid = ({
     const rowItems = flatItems.slice(startIndex, startIndex + currentColumnCount);
     
     // If no items in row (shouldn't happen), default to resource height
-    if (rowItems.length === 0) return isPlugin ? 280 : 404;
+    if (rowItems.length === 0) return isPlugin ? 72 : 404;
     
     // Check if the row contains any resources
     const hasResource = rowItems.some(item => !item._isFolder);
     
-    if (hasResource) return isPlugin ? 280 : 404;
+    if (hasResource) return isPlugin ? 72 : 404;
     return isPlugin ? 72 : 86; // Match audio row height
   };
 
