@@ -596,13 +596,15 @@ export default function ContextSearch({ isPlugin = false }) {
                 </div>
               </div>
               <div className={styles.resultActions}>
-                <button 
-                  className={styles.viewBtn} 
-                  onClick={(e) => handleNavigate(e, item)}
-                  title="View Details"
-                >
-                  <Eye size={14} />
-                </button>
+                {query && (
+                  <button 
+                    className={styles.viewBtn} 
+                    onClick={(e) => handleNavigate(e, item)}
+                    title="View Details"
+                  >
+                    <Eye size={14} />
+                  </button>
+                )}
                 {!query && (
                   <button 
                     className={styles.removeBtn} 
