@@ -18,6 +18,7 @@ import NavigationHeader from "./components/NavigationHeader";
 import FilterSection from "./components/FilterSection";
 import ResourceGrid from "./components/ResourceGrid";
 import Sidebar from "@/app/components/layout/Sidebar";
+import PluginNavbar from "@/app/components/layout/PluginNavbar";
 
 import styles from "./page.module.css";
 

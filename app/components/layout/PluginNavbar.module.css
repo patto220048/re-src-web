@@ -1,0 +1,83 @@
+.navGroup {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0;
+  height: 32px;
+  flex-shrink: 0;
+}
+
+.buttons {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.iconBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  color: var(--text-muted);
+  transition: all 0.2s ease;
+  background: transparent;
+}
+
+.iconBtn:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.divider {
+  width: 1px;
+  height: 16px;
+  background: var(--border-default);
+  margin: 0 4px;
+}
+
+.path {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  padding-right: var(--space-2);
+}
+
+.pathSegment {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.pathItem {
+  color: var(--text-secondary);
+  font-weight: 500;
+  transition: color 0.2s ease;
+  padding: 1px 3px;
+  border-radius: 2px;
+}
+
+.pathItem:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+
+.sep {
+  color: var(--text-muted);
+  opacity: 0.5;
+}
+
+@media (max-width: 400px) {
+  .path {
+    display: none;
+  }
+}
+

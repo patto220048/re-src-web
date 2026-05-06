@@ -8,6 +8,7 @@ import Navbar from "@/app/components/layout/Navbar";
 import Footer from "@/app/components/layout/Footer";
 import ContextSearch from "@/app/components/ui/ContextSearch";
 
+
 function LayoutContent({ children, initialCategories }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -22,10 +23,11 @@ function LayoutContent({ children, initialCategories }) {
   return (
     <div className={isPlugin ? 'is-plugin' : ''}>
       {!isAdmin && !isPlugin && <Navbar initialCategories={initialCategories} isPlugin={isPlugin} />}
+
       <main 
         style={{ 
           position: 'relative',
-          paddingTop: "var(--navbar-height)"
+          paddingTop: !isPlugin && !isAdmin ? "var(--navbar-height)" : "0px"
         }}
       >
         {children}
@@ -35,6 +37,7 @@ function LayoutContent({ children, initialCategories }) {
     </div>
   );
 }
+
 
 export default function LayoutShell({ children, initialCategories = [] }) {
   return (

@@ -4,6 +4,7 @@ import { memo, useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { Filter, ArrowUpDown, ChevronDown, Search, X, Tag, Check } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import styles from "./FilterBar.module.css";
+import PluginNavbar from "@/app/components/layout/PluginNavbar";
 
 const FilterBar = memo(function FilterBar({
   formats = [],
@@ -79,7 +80,13 @@ const FilterBar = memo(function FilterBar({
     <motion.div layout className={styles.container} id="filter-bar">
       <div className={styles.topRow}>
         <div className={styles.leftGroup}>
-          {!isPlugin && (
+          {isPlugin ? (
+            <PluginNavbar 
+              breadcrumbs={breadcrumbs} 
+              categoryName={categoryName} 
+              onBreadcrumbClick={onBreadcrumbClick}
+            />
+          ) : (
             <div className={styles.breadcrumbWrapper}>
               <button 
                 className={styles.breadcrumbBtn} 

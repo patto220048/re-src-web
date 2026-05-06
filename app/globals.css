@@ -92,7 +92,7 @@
 }
 
 .is-plugin {
-  --navbar-height: 0px !important;
+  --navbar-height: 44px !important;
   user-select: none;
   -webkit-user-select: none;
   -moz-user-select: none;

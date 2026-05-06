@@ -24,11 +24,22 @@
   flex-wrap: wrap;
 }
 
+:global(.is-plugin) .topRow {
+  flex-wrap: nowrap;
+  overflow: hidden;
+}
+
 .leftGroup,
 .rightGroup {
   display: flex;
   align-items: center;
   gap: var(--space-3);
+}
+
+:global(.is-plugin) .leftGroup {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .labelSection {
