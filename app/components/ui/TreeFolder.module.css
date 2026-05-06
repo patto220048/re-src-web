@@ -132,3 +132,20 @@
 .row.active .countText {
   color: rgba(0, 0, 0, 0.6);
 }
+
+/* Plugin Scale Down */
+:global(.is-plugin) .row {
+  padding: 4px 10px;
+  gap: 8px;
+  font-size: 10.5px;
+}
+
+:global(.is-plugin) .folderIcon {
+  width: 14px;
+  height: 14px;
+}
+
+:global(.is-plugin) .chevron {
+  width: 12px;
+  height: 12px;
+}

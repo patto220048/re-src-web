@@ -9,7 +9,7 @@ import SoundButton from "@/app/components/ui/SoundButton";
 import styles from "../page.module.css";
 
 // Row renderer outside component to prevent re-creation
-const Row = memo(({ index, style, columnCount, flatItems, rowCount, category, onPreview, router, handleSelectFolder, info, hasMoreDB, isLoadingMore, isPlugin }) => {
+const Row = memo(({ index, style, columnCount, flatItems, rowCount, category, onPreview, router, handleSelectFolder, info, hasMoreDB, isLoadingMore, isPlugin, containerWidth }) => {
   
   if (index === rowCount - 1 && (isLoadingMore || hasMoreDB)) {
     return (
@@ -33,8 +33,8 @@ const Row = memo(({ index, style, columnCount, flatItems, rowCount, category, on
         ...style,
         display: "grid",
         gridTemplateColumns: `repeat(${columnCount}, 1fr)`,
-        gap: info.layout === "audio" || info.layout === "sound" ? "16px" : "24px",
-        padding: "12px 16px",
+        gap: isPlugin ? (containerWidth < 380 ? "6px" : "10px") : (info.layout === "audio" || info.layout === "sound" ? "16px" : "24px"),
+        padding: isPlugin ? (containerWidth < 320 ? "4px 6px" : "6px 10px") : "12px 16px",
         boxSizing: "border-box",
         alignItems: "start",
       }}
@@ -135,16 +135,22 @@ const ResourceGrid = ({
   }, [currentSubfolders, filteredResources, isFiltering]);
 
   const getColumnCount = (width) => {
+    if (isPlugin) {
+      // Aggressive breakpoints to ensure we drop columns in Premiere Pro panels
+      if (width > 850) return 4;
+      if (width > 550) return 3; // Need ~760px panel width for 3 columns
+      if (width > 300) return 2; // Need ~510px panel width for 2 columns
+      return 1; // Below ~510px panel width, go to 1 column
+    }
+    
     if (isSoundLayout) {
-      if (isPlugin) return width > 600 ? 2 : 1;
       return width > 1400 ? 3 : width > 900 ? 2 : 1;
     }
-    if (isPlugin) return width > 600 ? 2 : 1; // Match sound layout in plugin
     return width > 1200 ? 4 : width > 900 ? 3 : width > 768 ? 2 : 1;
   };
 
   const getRowHeight = (index, currentColumnCount) => {
-    if (isSoundLayout) return isPlugin ? 72 : 86;
+    if (isSoundLayout) return isPlugin ? 54 : 86;
     
     const hasLoader = hasMoreDB || isLoadingMore;
     const baseRowCount = Math.ceil(flatItems.length / currentColumnCount);
@@ -156,13 +162,13 @@ const ResourceGrid = ({
     const rowItems = flatItems.slice(startIndex, startIndex + currentColumnCount);
     
     // If no items in row (shouldn't happen), default to resource height
-    if (rowItems.length === 0) return isPlugin ? 72 : 404;
+    if (rowItems.length === 0) return isPlugin ? 54 : 404;
     
     // Check if the row contains any resources
     const hasResource = rowItems.some(item => !item._isFolder);
     
-    if (hasResource) return isPlugin ? 72 : 404;
-    return isPlugin ? 72 : 86; // Match audio row height
+    if (hasResource) return isPlugin ? 54 : 404;
+    return isPlugin ? 54 : 86; // Match audio row height
   };
 
   if (isLoading && flatItems.length === 0) {
@@ -189,9 +195,11 @@ const ResourceGrid = ({
     <div className={isPlugin ? styles.pluginGridWrapper : styles.gridWrapper} style={wrapperStyle}>
       <AutoSizer 
         renderProp={({ height, width }) => {
-          if (!height || !width) return null;
+          // Fallback to prevent hidden content if dimensions are 0
+          const finalHeight = height > 0 ? height : (isPlugin ? 500 : 800);
+          const finalWidth = width > 0 ? width : (typeof window !== 'undefined' ? window.innerWidth - 200 : 1000);
           
-          const columnCount = getColumnCount(width);
+          const columnCount = getColumnCount(finalWidth);
           const baseRowCount = Math.ceil(flatItems.length / columnCount);
           const hasLoader = hasMoreDB || isLoadingMore;
           const rowCount = baseRowCount + (hasLoader ? 1 : 0);
@@ -213,7 +221,8 @@ const ResourceGrid = ({
                 info,
                 hasMoreDB,
                 isLoadingMore,
-                isPlugin
+                isPlugin,
+                containerWidth: finalWidth
               }}
               onRowsRendered={({ stopIndex }) => {
                 if (stopIndex >= rowCount - 1 && hasMoreDB && !isLoadingMore) {
@@ -221,7 +230,7 @@ const ResourceGrid = ({
                 }
               }}
               className={isPending ? styles.gridLoading : "scrollbar-hide"}
-              style={{ width, height }}
+              style={{ width: finalWidth, height: finalHeight }}
             />
           );
         }}

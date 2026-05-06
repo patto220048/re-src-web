@@ -301,6 +301,26 @@
   transform: rotate(180deg);
 }
 
+:global(.is-plugin) .searchBar {
+  height: 32px;
+  padding: 0 10px;
+}
+
+:global(.is-plugin) .breadcrumbBtn {
+  font-size: 10px;
+  padding: 2px 6px;
+}
+
+:global(.is-plugin) .iconButton {
+  width: 32px;
+  height: 32px;
+}
+
+:global(.is-plugin) .sortTrigger {
+  height: 32px;
+  padding: 0 10px;
+}
+
 .sortMenu {
   position: absolute;
   top: calc(100% + 8px);

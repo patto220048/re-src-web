@@ -21,6 +21,15 @@
   background: var(--bg-surface);
 }
 
+.sidebar.isPlugin .header {
+  padding: 8px 12px;
+  min-height: 38px;
+}
+
+.sidebar.isPlugin .footer {
+  padding: 8px;
+}
+
 .sidebar.isCollapsed {
   width: 64px !important;
   min-width: 64px !important;

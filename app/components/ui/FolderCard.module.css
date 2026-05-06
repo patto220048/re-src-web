@@ -100,6 +100,27 @@
   animation-delay: var(--delay, 0s);
 }
 
+/* Plugin Scale Down */
+:global(.is-plugin) .card {
+  height: 54px !important;
+  padding: 4px 10px !important;
+  gap: 8px !important;
+}
+
+:global(.is-plugin) .iconWrapper svg {
+  width: 28px !important;
+  height: 28px !important;
+}
+
+:global(.is-plugin) .name {
+  font-size: 10px !important; /* Slightly smaller for tighter layout */
+}
+
+:global(.is-plugin) .count {
+  font-size: 9px !important;
+  margin-top: 0;
+}
+
 @keyframes cardAppear {
   from {
     opacity: 0;
