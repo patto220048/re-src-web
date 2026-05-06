@@ -25,7 +25,7 @@
 
 :global(.is-plugin) .item {
   height: 54px !important;
-  padding: 4px 8px !important;
+  padding: 4px 10px !important;
   gap: 8px !important;
 }
 

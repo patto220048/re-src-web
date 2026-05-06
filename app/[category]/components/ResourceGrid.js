@@ -33,8 +33,8 @@ const Row = memo(({ index, style, columnCount, flatItems, rowCount, category, on
         ...style,
         display: "grid",
         gridTemplateColumns: `repeat(${columnCount}, 1fr)`,
-        gap: isPlugin ? (containerWidth < 380 ? "6px" : "10px") : (info.layout === "audio" || info.layout === "sound" ? "16px" : "24px"),
-        padding: isPlugin ? (containerWidth < 320 ? "4px 6px" : "6px 10px") : "12px 16px",
+        gap: isPlugin ? "10px" : (info.layout === "audio" || info.layout === "sound" ? "16px" : "24px"),
+        padding: isPlugin ? "6px 10px" : "12px 16px",
         boxSizing: "border-box",
         alignItems: "start",
       }}
@@ -150,7 +150,10 @@ const ResourceGrid = ({
   };
 
   const getRowHeight = (index, currentColumnCount) => {
-    if (isSoundLayout) return isPlugin ? 54 : 86;
+    // Plugin mode needs a bit more height for spacing between rows
+    const pluginRowHeight = 66; // 54px card + 12px vertical padding
+    
+    if (isSoundLayout) return isPlugin ? pluginRowHeight : 86;
     
     const hasLoader = hasMoreDB || isLoadingMore;
     const baseRowCount = Math.ceil(flatItems.length / currentColumnCount);
@@ -162,13 +165,13 @@ const ResourceGrid = ({
     const rowItems = flatItems.slice(startIndex, startIndex + currentColumnCount);
     
     // If no items in row (shouldn't happen), default to resource height
-    if (rowItems.length === 0) return isPlugin ? 54 : 404;
+    if (rowItems.length === 0) return isPlugin ? pluginRowHeight : 404;
     
     // Check if the row contains any resources
     const hasResource = rowItems.some(item => !item._isFolder);
     
-    if (hasResource) return isPlugin ? 54 : 404;
-    return isPlugin ? 54 : 86; // Match audio row height
+    if (hasResource) return isPlugin ? pluginRowHeight : 404;
+    return isPlugin ? pluginRowHeight : 86; // Match audio row height
   };
 
   if (isLoading && flatItems.length === 0) {
